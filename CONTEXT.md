@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.5.0
+**Versione contesto:** 0.6.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -26,12 +26,18 @@ da Family Link.
   end-to-end (scartata volontariamente), non progettazione per rivendita
   futura (scartata: vincoli legali/compliance troppo onerosi per il
   ritorno atteso, vedi log decisioni).
-- **Backend:** Firebase. Firestore funziona su piano Spark, ma le
-  **Cloud Functions richiedono il piano Blaze** (pay-as-you-go: serve
-  una carta collegata, requisito Google per Cloud Build/Artifact
-  Registry). Blaze ha le stesse quote gratuite di Spark: per l'uso
-  familiare previsto il costo reale atteso resta 0€/mese, con un
-  budget alert impostato come rete di sicurezza.
+- **Backend:** ibrido, per restare a costo zero senza carta collegata
+  da nessuna parte.
+  - **Firestore** (Firebase, piano Spark) come datastore: gratuito,
+    nessuna carta richiesta.
+  - **Vercel Functions** (piano Hobby gratuito, nessuna carta) come
+    compute al posto delle Cloud Functions di Firebase, che
+    richiedono il piano Blaze (pay-as-you-go, serve una carta) —
+    vincolo Google per Cloud Build/Artifact Registry, non evitabile
+    restando su Cloud Functions. Stesso codice Node.js
+    (`firebase-admin`), solo il "contenitore" cambia.
+  - Deploy automatico su Vercel ad ogni push (import diretto del repo
+    GitHub, root directory `backend`).
 - **Mappa:** Google Maps SDK (free tier $200/mese di credito Google,
   sufficiente per uso familiare).
 - **Auth:** Firebase Authentication, legata all'account Google del
@@ -47,9 +53,9 @@ da Family Link.
     aggiornamenti automatici via Play Store, zero cavo dopo il primo
     setup.
 - **Integrazione Home Assistant:** pull-based, non push. HA interroga
-  (piattaforma `rest`, polling ogni N minuti) un endpoint HTTPS esposto
-  da una Cloud Function, protetto da token statico, che legge l'ultima
-  posizione/batteria da Firestore. Nessuna esposizione di Home Assistant
+  (piattaforma `rest`, polling ogni N minuti) l'endpoint
+  `/api/ha-status` (funzione Vercel), protetto da token statico, che
+  legge l'ultima posizione/batteria da Firestore. Nessuna esposizione di Home Assistant
   su internet richiesta (no VPN/tunnel/port-forwarding), anche se
   l'utente ha comunque HA raggiungibile via Nabu Casa.
   **Vincolo esplicito: è un livello aggiuntivo opzionale.** L'app
@@ -62,10 +68,11 @@ da Family Link.
 
 ## Stato implementazione
 
-- **backend/**: endpoint MVP implementati (`ingestLocation`,
-  `triggerSos`, `deviceConfig`, `haStatus` + trigger push su nuovo
-  evento). Regole Firestore scritte. Non ancora distribuito su un
-  progetto Firebase reale (richiede setup manuale, vedi
+- **backend/**: endpoint MVP implementati come funzioni Vercel
+  (`ingest-location`, `trigger-event`, `device-config`, `ha-status`).
+  Progetto Firebase reale creato (`child-tracker-7a1f1`), Firestore +
+  regole di sicurezza già deployati. Deploy su Vercel da collegare
+  (richiede import del repo da dashboard Vercel, vedi
   `backend/README.md`).
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
@@ -162,3 +169,11 @@ CHANGELOG.md  Storico versioni
   comunque 0€/mese (stesse quote gratuite di Spark), in attesa che
   l'utente colleghi la fatturazione dalla Console (passaggio che
   richiede browser, non automatizzabile) (v0.5.0).
+- 2026-09-09: L'utente preferisce evitare del tutto una carta
+  collegata, anche se il costo reale sarebbe 0€. Migrate le 4
+  funzioni da Firebase Cloud Functions a **Vercel Functions** (piano
+  Hobby gratuito, nessuna carta): stesso codice Node.js/firebase-admin,
+  Firestore resta invariato su Spark. Il trigger Firestore automatico
+  su nuovo evento (non disponibile fuori da Firebase Functions) è
+  stato sostituito unendo scrittura evento + invio push FCM nella
+  stessa chiamata dell'endpoint `trigger-event` (v0.6.0).

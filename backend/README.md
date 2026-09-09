@@ -1,23 +1,34 @@
 # backend
 
-Backend Firebase (piano gratuito Spark) condiviso da watch-app e
-phone-app.
+Backend a costo zero, senza carta collegata da nessuna parte:
+**Firestore su piano Firebase Spark** (datastore) + **funzioni
+HTTP su Vercel** (compute), invece delle Cloud Functions di Firebase
+(che richiedono il piano Blaze — vedi log decisioni in
+`../CONTEXT.md`).
 
-**Stato:** endpoint MVP implementati (Cloud Functions + regole
-Firestore). Non ancora distribuito su un progetto Firebase reale.
+**Stato:** endpoint MVP implementati. Regole Firestore già deployate
+sul progetto reale (`child-tracker-7a1f1`). Deploy su Vercel da fare
+(vedi Setup).
 
 ## Struttura
 
 ```
 backend/
-  firebase.json          Configurazione progetto Firebase (functions, emulatori)
-  .firebaserc             ID progetto Firebase (da compilare, vedi Setup)
-  firestore.rules         Regole di sicurezza Firestore
-  firestore.indexes.json  Indici Firestore (vuoto per ora, MVP non ne richiede)
-  functions/
-    index.js               Cloud Functions (endpoint HTTPS + trigger Firestore)
-    package.json
-    .env.example            Template variabili d'ambiente (token)
+  firebase.json            Config Firestore (regole, indici, emulatore) — niente Functions
+  .firebaserc               ID progetto Firebase
+  firestore.rules           Regole di sicurezza Firestore
+  firestore.indexes.json    Indici Firestore (vuoto, MVP non ne richiede)
+  package.json              Dipendenze delle funzioni Vercel (firebase-admin)
+  vercel.json                Config runtime funzioni Vercel
+  .env.example                Template variabili d'ambiente (token + service account)
+  api/
+    ingest-location.js        POST — batch posizioni dal watch
+    trigger-event.js          POST — SOS o transizione geofence + push FCM
+    device-config.js          GET  — geofence attive per il watch
+    ha-status.js               GET  — stato per il polling opzionale di Home Assistant
+    _lib/
+      firebase-admin.js         Init condivisa dell'Admin SDK
+      auth.js                    Verifica token device/HA
 ```
 
 ## Modello dati Firestore
@@ -26,21 +37,21 @@ backend/
 devices/{deviceId}                      stato corrente (lastLocation, battery, lastSeen, activity)
 devices/{deviceId}/locations/{autoId}    storico posizioni (retention 48h via TTL, vedi Setup)
 devices/{deviceId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
-devices/{deviceId}/events/{autoId}       eventi (sos, in futuro geofence_enter/exit)
+devices/{deviceId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
 parents/{uid}                            token FCM del genitore per le push
 ```
 
 MVP: un solo dispositivo (`devices/figlio`), un solo genitore.
 Multi-figlio/multi-genitore è in backlog Fase 2 (vedi `../CONTEXT.md`).
 
-## Endpoint Cloud Functions
+## Endpoint (funzioni Vercel)
 
 | Endpoint | Metodo | Auth | Chiamato da |
 |---|---|---|---|
-| `/ingestLocation` | POST | header `X-Device-Token` | watch-app (batch posizioni) |
-| `/triggerSos` | POST | header `X-Device-Token` | watch-app (pulsante SOS) |
-| `/deviceConfig` | GET | header `X-Device-Token` | watch-app (legge geofence attive) |
-| `/haStatus` | GET | header `Authorization: Bearer <token>` | Home Assistant (polling opzionale) |
+| `/api/ingest-location` | POST | header `X-Device-Token` | watch-app (batch posizioni) |
+| `/api/trigger-event` | POST | header `X-Device-Token` | watch-app (SOS, ingresso/uscita geofence) — scrive l'evento e invia la push FCM nella stessa chiamata |
+| `/api/device-config` | GET | header `X-Device-Token` | watch-app (legge geofence attive) |
+| `/api/ha-status` | GET | header `Authorization: Bearer <token>` | Home Assistant (polling opzionale) |
 
 La phone-app **non** passa da questi endpoint: legge/scrive Firestore
 direttamente via SDK con Firebase Auth (realtime, nessun costo extra
@@ -48,39 +59,50 @@ nel piano gratuito per questo volume).
 
 ## Setup
 
-1. Crea un progetto Firebase (piano Spark, gratuito) dalla console
-   Firebase, poi sostituisci il placeholder in `.firebaserc` con il suo
-   project ID.
-2. `cd backend/functions && cp .env.example .env`, genera due token
-   casuali lunghi (es. `openssl rand -hex 32`) e valorizza
-   `DEVICE_TOKEN` e `HA_STATUS_TOKEN`. Non committare mai `.env`.
-3. In `firestore.rules`, sostituisci
-   `SOSTITUISCI_CON_UID_GENITORE` con l'UID Firebase Auth reale del
-   genitore (visibile in Console → Authentication dopo il primo login
-   dalla phone-app).
-4. Abilita la **TTL policy** su `devices/*/locations` sul campo
-   `expiresAt` (una tantum, non gestibile da file di config):
+### Firestore (Firebase, piano Spark)
+
+1. Progetto Firebase già creato: `child-tracker-7a1f1` (vedi
+   `.firebaserc`). Database Firestore e regole già deployati.
+2. In `firestore.rules`, sostituisci `SOSTITUISCI_CON_UID_GENITORE`
+   con l'UID Firebase Auth reale del genitore, poi ridistribuisci:
+   ```
+   firebase deploy --only firestore:rules --project child-tracker-7a1f1
+   ```
+3. Abilita la **TTL policy** su `devices/*/locations` sul campo
+   `expiresAt` (una tantum):
    ```
    gcloud firestore fields ttl-configs create \
-     --collection-group=locations --field=expiresAt
+     --collection-group=locations --field=expiresAt \
+     --project=child-tracker-7a1f1
    ```
    Così lo storico oltre le 48h viene eliminato automaticamente e
-   gratuitamente da Firestore, senza bisogno di una Cloud Function
-   dedicata.
-5. `npm install` dentro `functions/`.
+   gratuitamente da Firestore.
+
+### Funzioni (Vercel)
+
+1. Genera una chiave della service account Firebase (Console ->
+   Impostazioni progetto -> Account di servizio -> Genera nuova
+   chiave privata) e codificala in base64: `base64 -w0 chiave.json`.
+2. Su [vercel.com](https://vercel.com): *Add New -> Project -> Import*
+   questo repository GitHub, impostando **Root Directory** su
+   `backend`. Nessuna carta richiesta per il piano Hobby gratuito.
+3. In *Project Settings -> Environment Variables* aggiungi (vedi
+   `.env.example`): `FIREBASE_SERVICE_ACCOUNT_B64`, `DEVICE_TOKEN`
+   (generato es. con `openssl rand -hex 32`), `HA_STATUS_TOKEN`.
+4. Deploy: automatico ad ogni push su questo branch/repo una volta
+   collegato il progetto — nessun comando manuale da rilanciare in
+   seguito.
 
 ## Sviluppo locale
 
 ```
-firebase emulators:start --only functions,firestore
+cd backend && vercel dev
 ```
 
-Nessun costo, nessun deploy necessario per testare la logica.
-
-## Deploy
+Oppure per la sola parte Firestore, senza le funzioni:
 
 ```
-firebase deploy --only functions,firestore:rules
+firebase emulators:start --only firestore
 ```
 
 ## Note

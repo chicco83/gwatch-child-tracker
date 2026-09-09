@@ -13,12 +13,12 @@ captures/
 *.ap_
 *.dex
 
-# Firebase / Node (Cloud Functions)
+# Firebase / Vercel / Node
 node_modules/
 firebase-debug.log
 firebase-debug.*.log
 .firebase/
-functions/lib/
+.vercel/
 
 # Secrets
 *.keystore

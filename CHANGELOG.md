@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-09
+
+### Changed
+- **Migrazione backend**: le 4 funzioni spostate da Firebase Cloud
+  Functions a **Vercel Functions** (piano Hobby gratuito, nessuna
+  carta richiesta), su richiesta esplicita per evitare di collegare
+  un metodo di pagamento anche se il costo reale su Blaze sarebbe
+  stato 0€. Firestore resta invariato (piano Spark).
+- Endpoint rinominati/riorganizzati in `backend/api/`:
+  `ingest-location`, `trigger-event` (unisce SOS e geofence
+  enter/exit), `device-config`, `ha-status`.
+- Il trigger Firestore `onEventCreated` (invio push su nuovo evento)
+  è stato eliminato: `trigger-event` scrive l'evento e invia la push
+  FCM nella stessa chiamata, senza bisogno di un trigger separato.
+
+### Removed
+- `backend/functions/` (Firebase Cloud Functions), sostituito da
+  `backend/api/` (Vercel Functions).
+
 ## [0.5.0] - 2026-09-09
 
 ### Added
