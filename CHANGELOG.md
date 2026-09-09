@@ -7,6 +7,36 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-09
+
+### Added
+- `watch-app/`: scaffolding completo dell'app Wear OS (Kotlin).
+  - `location/LocationTrackingService.kt` + `ActivityTransitionReceiver.kt`:
+    foreground service con sampling GPS adattivo (10 min da fermo, 1
+    min in movimento).
+  - `data/PendingLocationStore.kt` + `upload/LocationUploadWorker.kt`:
+    buffer locale e upload a batch verso `/api/ingest-location`
+    (periodico ogni 15 min, più trigger immediato oltre soglia).
+  - `geofence/`: `GeofenceSyncWorker.kt` (sync zone da
+    `/api/device-config`), `GeofenceBroadcastReceiver.kt` +
+    `GeofenceEventWorker.kt` (transizioni verso `/api/trigger-event`).
+  - `sos/SosWorker.kt`: fix posizione ad alta precisione + invio SOS
+    come lavoro espedito (bypassa Doze/App Standby).
+  - `boot/BootReceiver.kt`: riavvia service e re-registra le geofence
+    dopo un riavvio del watch.
+  - `ui/MainActivity.kt`: richiesta permessi (inclusa background
+    location come step separato, richiesto da Android) + pulsante SOS.
+  - `network/BackendClient.kt`: client OkHttp verso i 3 endpoint del
+    watch, JSON con `org.json` (nessuna libreria di serializzazione
+    aggiuntiva, per minimizzare rischio di incompatibilità di versioni
+    non verificabile in questo ambiente).
+  - Gradle wrapper generato e incluso nel progetto.
+
+### Known limitations
+- Non compilato né testato in questo ambiente: nessun SDK Android,
+  nessuna rete verso i repository Google Maven. Richiede Android
+  Studio per il primo build reale.
+
 ## [0.14.0] - 2026-09-09
 
 ### Verified

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.14.0
+**Versione contesto:** 0.15.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -91,7 +91,12 @@ da Family Link.
   giorno) invece della TTL nativa Firestore (richiederebbe Blaze) o
   dei Cron Job Vercel (bloccavano il deploy su piano Hobby). Guardia
   di traffico giornaliera attiva su tutti gli endpoint (SOS escluso).
-- **watch-app/**: non ancora implementata.
+- **watch-app/**: scaffolding completo (Wear OS, Kotlin) — sampling
+  GPS adattivo, upload a batch, geofence, SOS espedito, gestione
+  permessi/riavvio. **Non ancora compilato/testato**: nessun SDK
+  Android né rete verso i repository Google Maven in questo ambiente.
+  Gradle wrapper già generato. Da aprire in Android Studio per il
+  primo build reale.
 - **phone-app/**: non ancora implementata.
 
 ## Scope MVP (v1 — in sviluppo ora)
@@ -248,3 +253,12 @@ CHANGELOG.md  Storico versioni
   `HTTP 200`, `{"ok":true,"locationsDeleted":0,"quotaDeleted":0}`.
   Pulizia programmata confermata funzionante end-to-end. **Backend
   MVP chiuso**, si passa a watch-app/phone-app (v0.14.0).
+- 2026-09-09: Scritto lo scaffolding completo di watch-app (Wear OS,
+  Kotlin): foreground service con sampling adattivo, buffer locale +
+  upload a batch, sync/gestione geofence, SOS come lavoro espedito,
+  richiesta permessi (inclusa background location come step separato),
+  riavvio dopo boot. Gradle wrapper generato a parte (la rete
+  dell'ambiente non arriva ai repository Google Maven, necessari per
+  risolvere il plugin Android) e poi copiato nel progetto. **Non
+  compilato/testato qui** — nessun SDK Android disponibile; test reale
+  rimandato a stasera su Android Studio + Watch4 (v0.15.0).
