@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.15.0
+**Versione contesto:** 0.16.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -97,7 +97,15 @@ da Family Link.
   Android né rete verso i repository Google Maven in questo ambiente.
   Gradle wrapper già generato. Da aprire in Android Studio per il
   primo build reale.
-- **phone-app/**: non ancora implementata.
+- **phone-app/**: scaffolding completo (Android, Kotlin/Compose) —
+  login Google (solo genitori pre-autorizzati), mappa in tempo reale
+  via listener Firestore (nessun endpoint backend dedicato per la
+  lettura), gestione geofence (unica scrittura diretta dal client,
+  come da regole di sicurezza), notifiche push su SOS/geofence,
+  registrazione token FCM su `parents/{uid}`. **Non ancora
+  compilato/testato**: stesso limite di watch-app, più due passaggi di
+  setup manuale su Firebase/Google Cloud Console che questa sessione
+  non può più fare da sola (vedi log decisioni e `phone-app/README.md`).
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -262,3 +270,19 @@ CHANGELOG.md  Storico versioni
   risolvere il plugin Android) e poi copiato nel progetto. **Non
   compilato/testato qui** — nessun SDK Android disponibile; test reale
   rimandato a stasera su Android Studio + Watch4 (v0.15.0).
+- 2026-09-09: Scritto lo scaffolding completo di phone-app (Android,
+  Kotlin/Compose): login Google (Firebase Auth), mappa in tempo reale
+  con Google Maps Compose (marker, storico 48h come polyline, cerchi
+  geofence), gestione zone con scrittura diretta su Firestore, servizio
+  FCM per le push SOS/geofence, registrazione token su `parents/{uid}`.
+  Riusato il Gradle wrapper già generato per watch-app (indipendente
+  dal progetto). **Scoperto un limite pratico**: la sessione precedente
+  aveva accesso a una service account Firebase (per creare utenti,
+  deployare regole, ecc.), ma questo ambiente è un container effimero —
+  le credenziali caricate in sessione non sopravvivono a un nuovo
+  container, quindi non posso più registrare l'app Android su Firebase
+  Console (serve per `google-services.json`) né creare la chiave Maps
+  al posto dell'utente. Documentati in `phone-app/README.md` i due
+  passaggi manuali richiesti (registrazione app + SHA-1 debug per il
+  login Google, chiave Maps SDK). **Non compilato/testato** — stesso
+  limite di watch-app (v0.16.0).

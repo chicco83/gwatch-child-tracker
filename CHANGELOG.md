@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-09
+
+### Added
+- `phone-app/`: scaffolding completo dell'app Android per il genitore
+  (Kotlin/Compose).
+  - `auth/AuthRepository.kt`: login Google classico + Firebase Auth
+    (stessa scelta "meno pezzi in movimento" di OkHttp in watch-app).
+  - `data/DeviceRepository.kt`: listener Firestore in tempo reale su
+    stato dispositivo, storico (48h), geofence, eventi; scrittura
+    diretta consentita solo per le geofence (regole di sicurezza).
+  - `ui/MapScreen.kt`: mappa (Google Maps Compose) con marker ultima
+    posizione, polyline storico, cerchi geofence, card stato
+    (batteria/ultimo aggiornamento), lista eventi recenti.
+  - `ui/GeofenceScreen.kt`: aggiunta zona per tocco su mappa,
+    attiva/disattiva, eliminazione.
+  - `messaging/FcmService.kt`: ricezione push SOS/geofence, notifica in
+    primo piano, registrazione/aggiornamento token su `parents/{uid}`.
+  - Gradle wrapper riusato da `watch-app/` (indipendente dal progetto).
+
+### Known limitations
+- Non compilato né testato in questo ambiente, come `watch-app/`.
+- Richiede due setup manuali su Firebase/Google Cloud Console non più
+  automatizzabili da questa sessione (credenziali service account non
+  disponibili in un nuovo container effimero): registrazione app
+  Android (`google-services.json` + SHA-1 debug per il login Google) e
+  creazione chiave Maps SDK. Istruzioni in `phone-app/README.md`.
+
 ## [0.15.0] - 2026-09-09
 
 ### Added

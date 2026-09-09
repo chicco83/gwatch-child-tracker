@@ -1,0 +1,8 @@
+# Copia questo file in "local.properties" (stessa cartella, gia'
+# ignorato da git) e compila il valore sotto.
+#
+# maps.api.key: chiave API "Maps SDK for Android", creata nella Google
+# Cloud Console dello stesso progetto Firebase (child-tracker-7a1f1) —
+# rientra nel credito gratuito $200/mese di Google Maps Platform, piu'
+# che sufficiente per uso familiare (vedi CONTEXT.md).
+maps.api.key=INSERISCI_QUI_LA_CHIAVE_MAPS

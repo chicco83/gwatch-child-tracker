@@ -1,0 +1,9 @@
+<resources>
+    <!-- Tema di piattaforma minimo: la UI vera e' Compose Material3
+         (vedi ui/), questo serve solo per la finestra/status bar prima
+         che Compose venga caricato. Nessuna libreria Material Components
+         aggiuntiva richiesta, per minimizzare rischio di incompatibilita'
+         non verificabile in questo ambiente (vedi ../watch-app per la
+         stessa scelta). -->
+    <style name="Theme.ChildTrackerPhone" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

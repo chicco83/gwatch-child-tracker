@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Dov\'è</string>
+    <string name="login_subtitle">Accedi con l\'account genitore autorizzato per vedere la posizione.</string>
+    <string name="sign_in_with_google">Accedi con Google</string>
+    <string name="no_data_yet">Nessuna posizione ricevuta ancora</string>
+    <string name="battery_format">Batteria watch: %d%%</string>
+    <string name="last_known_position">Ultima posizione nota</string>
+    <string name="geofences_title">Zone</string>
+    <string name="sign_out">Esci</string>
+    <string name="back">Indietro</string>
+    <string name="geofence_tap_hint">Tocca la mappa per scegliere il centro di una nuova zona</string>
+    <string name="geofence_name_label">Nome zona (es. Casa, Scuola)</string>
+    <string name="geofence_radius_label">Raggio: %d m</string>
+    <string name="save_geofence">Salva zona</string>
+    <string name="delete">Elimina</string>
+</resources>
