@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.10.0
+**Versione contesto:** 0.11.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -38,6 +38,10 @@ da Family Link.
     (`firebase-admin`), solo il "contenitore" cambia.
   - Deploy automatico su Vercel ad ogni push (import diretto del repo
     GitHub, root directory `backend`).
+  - **GitHub Actions** per la pulizia programmata dello storico
+    (`/api/cleanup` chiamato una volta al giorno): i Cron Job nativi
+    di Vercel bloccavano il deploy su piano Hobby, GitHub Actions è
+    gratuito e senza questa dipendenza.
 - **Mappa:** Google Maps SDK (free tier $200/mese di credito Google,
   sufficiente per uso familiare).
 - **Auth:** Firebase Authentication, legata all'account Google del
@@ -82,10 +86,11 @@ da Family Link.
   da admin per evitare auto-autorizzazione da parte di account Google
   arbitrari. I due genitori sono già pre-autorizzati (vedi log
   decisioni). Storico posizioni esteso a 12 mesi (margine ampio nel
-  piano gratuito, vedi log decisioni); pulizia automatica via Vercel
-  Cron (`/api/cleanup`) invece della TTL nativa Firestore, che
-  richiederebbe Blaze. Guardia di traffico giornaliera attiva su tutti
-  gli endpoint (SOS escluso).
+  piano gratuito, vedi log decisioni); pulizia automatica via un
+  workflow **GitHub Actions** (`/api/cleanup` chiamato una volta al
+  giorno) invece della TTL nativa Firestore (richiederebbe Blaze) o
+  dei Cron Job Vercel (bloccavano il deploy su piano Hobby). Guardia
+  di traffico giornaliera attiva su tutti gli endpoint (SOS escluso).
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
 
@@ -221,3 +226,11 @@ CHANGELOG.md  Storico versioni
   con un Cron Job Vercel giornaliero (`/api/cleanup`, gratuito su
   Hobby) che cancella i documenti scaduti. Indici collection-group
   necessari deployati senza problemi di billing (v0.10.0).
+- 2026-09-09: Il Cron Job Vercel bloccava il deploy su piano Hobby
+  (build falliva subito dopo il clone, nessun log — probabile
+  restrizione/eleggibilità dell'account su `crons` in `vercel.json`).
+  Rimosso `crons` da `vercel.json`; la pulizia programmata
+  (`/api/cleanup`) è ora invocata da un **workflow GitHub Actions**
+  (`.github/workflows/cleanup-cron.yml`, una volta al giorno, anche
+  avviabile a mano) — gratuito, nessuna dipendenza da eleggibilità
+  Vercel (v0.11.0).

@@ -1,0 +1,30 @@
+# Pulizia programmata dello storico scaduto (vedi backend/api/cleanup.js).
+# Sostituisce sia la TTL policy nativa di Firestore (richiede Blaze anche
+# per uso gratuito) sia i Cron Job di Vercel (il piano Hobby ha bloccato
+# il deploy con crons in vercel.json) — GitHub Actions e' gratuito per
+# questo volume e non dipende da nessuno dei due.
+#
+# Richiede il secret CRON_SECRET nel repository (Settings -> Secrets and
+# variables -> Actions), stesso valore impostato su Vercel.
+name: Pulizia storico backend
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # ogni giorno alle 03:00 UTC
+  workflow_dispatch: {} # permette anche l'avvio manuale da GitHub
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama /api/cleanup
+        run: |
+          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://gwatch-child-tracker.vercel.app/api/cleanup)
+          echo "HTTP $status"
+          cat /tmp/response.json
+          if [ "$status" != "200" ]; then
+            echo "Chiamata fallita (HTTP $status)"
+            exit 1
+          fi

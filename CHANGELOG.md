@@ -7,6 +7,18 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-09
+
+### Fixed
+- Deploy Vercel bloccato dalla sezione `crons` in `vercel.json` (build
+  falliva subito dopo il clone, piano Hobby). Rimossa.
+
+### Changed
+- Pulizia storico (`/api/cleanup`) non più invocata da Vercel Cron ma
+  da un nuovo workflow **GitHub Actions**
+  (`.github/workflows/cleanup-cron.yml`), una volta al giorno,
+  avviabile anche manualmente dalla tab Actions del repo.
+
 ## [0.10.0] - 2026-09-09
 
 ### Added

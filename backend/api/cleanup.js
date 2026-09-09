@@ -1,16 +1,23 @@
 /**
  * GET /api/cleanup
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
- * l'uso reale resterebbe gratuito (vedi CONTEXT.md), quindi puliamo i
- * documenti scaduti da soli con un Cron Job di Vercel (gratuito anche
- * su piano Hobby, nessuna carta).
+ * l'uso reale resterebbe gratuito (vedi CONTEXT.md).
  *
- * Invocato automaticamente da Vercel Cron una volta al giorno (vedi
- * vercel.json). Autenticato con l'header che Vercel inietta da solo
- * quando e' impostata la variabile d'ambiente CRON_SECRET.
+ * Invocato una volta al giorno da un workflow GitHub Actions
+ * (.github/workflows/cleanup-cron.yml), non da Vercel Cron: il piano
+ * Hobby ha bloccato il deploy con "crons" in vercel.json (v0.10.0),
+ * quindi la programmazione e' su GitHub Actions, gratuito e senza
+ * questo vincolo. Autenticato con l'header "Authorization: Bearer
+ * <CRON_SECRET>", stesso valore impostato su Vercel e come secret
+ * GitHub del repository.
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-09): invocazione via Vercel Cron.
+ * - 0.2.0 (2026-09-09): spostata su GitHub Actions (Vercel Cron
+ *   bloccava il deploy su piano Hobby).
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getAdminApp } = require("./_lib/firebase-admin");

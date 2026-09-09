@@ -26,7 +26,7 @@ backend/
     trigger-event.js          POST — SOS o transizione geofence + push FCM
     device-config.js          GET  — geofence attive per il watch
     ha-status.js               GET  — stato per il polling opzionale di Home Assistant
-    cleanup.js                  GET  — pulizia storico scaduto, invocata da Vercel Cron
+    cleanup.js                  GET  — pulizia storico scaduto, invocata da GitHub Actions
     _lib/
       firebase-admin.js         Init condivisa dell'Admin SDK
       auth.js                    Verifica token device/HA
@@ -91,9 +91,13 @@ in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
    non esiste già.
 3. **Pulizia storico**: la TTL policy nativa di Firestore richiede il
    piano Blaze (anche per un uso gratuito), quindi non la usiamo — la
-   pulizia gira invece via **Vercel Cron** (`/api/cleanup`, vedi sotto),
-   gratuito anche su Hobby. Gli indici collection-group su `expiresAt`
-   necessari alla query sono già deployati (`firestore.indexes.json`).
+   pulizia gira invece via un **workflow GitHub Actions**
+   (`.github/workflows/cleanup-cron.yml`) che chiama `/api/cleanup`
+   una volta al giorno. Non usiamo i Cron Job di Vercel: il piano
+   Hobby ha bloccato il deploy con `crons` in `vercel.json` (vedi log
+   decisioni in `../CONTEXT.md`). Gli indici collection-group su
+   `expiresAt` necessari alla query sono già deployati
+   (`firestore.indexes.json`).
 
 ### Funzioni (Vercel)
 
@@ -106,13 +110,17 @@ in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
 3. In *Project Settings -> Environment Variables* aggiungi (vedi
    `.env.example`): `FIREBASE_SERVICE_ACCOUNT_B64`, `DEVICE_TOKEN`
    (generato es. con `openssl rand -hex 32`), `HA_STATUS_TOKEN`,
-   `CRON_SECRET` (altra stringa casuale — Vercel la usa da sola per
-   autenticare le chiamate del Cron Job, non serve altra
-   configurazione).
+   `CRON_SECRET` (altra stringa casuale, stesso valore che andrà
+   anche come secret GitHub — vedi punto 5).
 4. Deploy: automatico ad ogni push su questo branch/repo una volta
    collegato il progetto — nessun comando manuale da rilanciare in
-   seguito. Il Cron Job (`vercel.json`) parte automaticamente col
-   primo deploy, una volta al giorno alle 03:00 UTC.
+   seguito.
+5. Per attivare la pulizia programmata: nel repository GitHub, *Settings
+   -> Secrets and variables -> Actions*, aggiungi un secret
+   `CRON_SECRET` con lo stesso valore usato su Vercel. Il workflow
+   `.github/workflows/cleanup-cron.yml` gira poi da solo una volta al
+   giorno (avviabile anche a mano dalla tab *Actions* del repo, per
+   testarlo subito senza aspettare).
 
 ## Sviluppo locale
 
