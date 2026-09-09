@@ -7,6 +7,15 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-09
+
+### Added
+- Backend deployato e verificato su
+  https://gwatch-child-tracker.vercel.app: `ha-status` respinge
+  richieste senza token o con token errato (401) e risponde
+  correttamente con token valido, confermando che la connessione a
+  Firestore tramite la service account funziona.
+
 ## [0.6.0] - 2026-09-09
 
 ### Changed

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.6.0
+**Versione contesto:** 0.7.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -68,12 +68,17 @@ da Family Link.
 
 ## Stato implementazione
 
-- **backend/**: endpoint MVP implementati come funzioni Vercel
-  (`ingest-location`, `trigger-event`, `device-config`, `ha-status`).
-  Progetto Firebase reale creato (`child-tracker-7a1f1`), Firestore +
-  regole di sicurezza già deployati. Deploy su Vercel da collegare
-  (richiede import del repo da dashboard Vercel, vedi
-  `backend/README.md`).
+- **backend/**: **live e verificato**, deployato su
+  https://gwatch-child-tracker.vercel.app. Endpoint MVP implementati
+  come funzioni Vercel (`ingest-location`, `trigger-event`,
+  `device-config`, `ha-status`). Progetto Firebase reale
+  (`child-tracker-7a1f1`), Firestore + regole di sicurezza deployati.
+  Verifica end-to-end fatta: auth respinta senza token (401), respinta
+  con token errato (401), accettata con token corretto e Firestore
+  raggiunto correttamente (404 "device non trovato", atteso perché
+  nessuna posizione ancora inviata — il watch-app non esiste ancora).
+  Restano da fare: UID genitore nelle regole Firestore, TTL policy
+  storico posizioni.
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
 
@@ -177,3 +182,6 @@ CHANGELOG.md  Storico versioni
   su nuovo evento (non disponibile fuori da Firebase Functions) è
   stato sostituito unendo scrittura evento + invio push FCM nella
   stessa chiamata dell'endpoint `trigger-event` (v0.6.0).
+- 2026-09-09: Deploy backend su Vercel completato e verificato
+  end-to-end (auth + connessione Firestore funzionanti) su
+  https://gwatch-child-tracker.vercel.app (v0.7.0).
