@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.8.0
+**Versione contesto:** 0.9.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -80,9 +80,8 @@ da Family Link.
   Multi-genitore supportato: le regole autorizzano chiunque abbia un
   documento in `parents/{uid}` (nessun UID hardcoded), creabile solo
   da admin per evitare auto-autorizzazione da parte di account Google
-  arbitrari. Restano da fare: pre-creare gli utenti Firebase Auth e i
-  documenti `parents/{uid}` per i due genitori, TTL policy storico
-  posizioni.
+  arbitrari. I due genitori sono già pre-autorizzati (vedi log
+  decisioni). Resta da fare: TTL policy storico posizioni.
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
 
@@ -200,3 +199,9 @@ CHANGELOG.md  Storico versioni
   auto-crearsi il documento e ottenere accesso alla posizione del
   minore. Il genitore può solo leggere/aggiornare il proprio documento
   una volta pre-creato. Deployato (v0.8.0).
+- 2026-09-09: Abilitata Firebase Authentication (Console, provider
+  Google) — richiedeva un click una tantum via browser, la via API
+  automatica portava a un percorso a pagamento (Identity Platform) da
+  evitare. Creati i due utenti genitore (`cristianozecchi@gmail.com`,
+  `benedettagarofalo81@gmail.com`) e i relativi documenti
+  `parents/{uid}` tramite service account (v0.9.0).

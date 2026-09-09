@@ -7,6 +7,14 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-09
+
+### Added
+- Firebase Authentication abilitata (provider Google).
+- Utenti genitore pre-autorizzati: `cristianozecchi@gmail.com` e
+  `benedettagarofalo81@gmail.com`, con relativi documenti
+  `parents/{uid}` creati tramite service account.
+
 ## [0.8.0] - 2026-09-09
 
 ### Added
