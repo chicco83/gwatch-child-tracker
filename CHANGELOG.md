@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-09
+
+### Added
+- Progetto Firebase reale collegato: `child-tracker-7a1f1`.
+- Deploy eseguito: regole Firestore (`firestore:rules`) live sul
+  progetto reale; database Firestore di default creato.
+
+### Changed
+- Precisazione costi in `CONTEXT.md`: le Cloud Functions richiedono il
+  piano **Blaze** (pay-as-you-go), non attivabile restando su Spark —
+  vincolo Google (Cloud Build/Artifact Registry), non una nostra
+  scelta. Costo reale atteso comunque 0€/mese entro le quote gratuite,
+  identiche tra Spark e Blaze.
+
+### Blocked
+- Deploy Cloud Functions in attesa che l'utente colleghi la
+  fatturazione (Blaze) dalla Console Firebase — passaggio che richiede
+  browser/carta, non automatizzabile da qui.
+
 ## [0.4.0] - 2026-09-09
 
 ### Added

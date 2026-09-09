@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.4.0
+**Versione contesto:** 0.5.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -26,8 +26,12 @@ da Family Link.
   end-to-end (scartata volontariamente), non progettazione per rivendita
   futura (scartata: vincoli legali/compliance troppo onerosi per il
   ritorno atteso, vedi log decisioni).
-- **Backend:** Firebase, piano gratuito Spark (Firestore + Cloud
-  Functions + Firebase Cloud Messaging). Nessun canone fisso mensile.
+- **Backend:** Firebase. Firestore funziona su piano Spark, ma le
+  **Cloud Functions richiedono il piano Blaze** (pay-as-you-go: serve
+  una carta collegata, requisito Google per Cloud Build/Artifact
+  Registry). Blaze ha le stesse quote gratuite di Spark: per l'uso
+  familiare previsto il costo reale atteso resta 0€/mese, con un
+  budget alert impostato come rete di sicurezza.
 - **Mappa:** Google Maps SDK (free tier $200/mese di credito Google,
   sufficiente per uso familiare).
 - **Auth:** Firebase Authentication, legata all'account Google del
@@ -150,3 +154,11 @@ CHANGELOG.md  Storico versioni
   regole di sicurezza, e la retention storico via TTL Firestore
   (gratuita, nessuna Cloud Function schedulata dedicata). Documentato
   il setup manuale richiesto in `backend/README.md` (v0.4.0).
+- 2026-09-09: Progetto Firebase reale creato (`child-tracker-7a1f1`).
+  Regole Firestore deployate con successo tramite service account
+  dedicata. Deploy Cloud Functions **bloccato**: richiedono piano
+  Blaze (pay-as-you-go), non disponibile su Spark — vincolo Google,
+  non evitabile restando su Cloud Functions. Costo reale atteso
+  comunque 0€/mese (stesse quote gratuite di Spark), in attesa che
+  l'utente colleghi la fatturazione dalla Console (passaggio che
+  richiede browser, non automatizzabile) (v0.5.0).
