@@ -1,0 +1,50 @@
+// Regole di sicurezza Firestore — gwatch-child-tracker
+// Versione: 0.1.0
+//
+// Modello MVP: un solo genitore, un solo dispositivo (watch). Tutte le
+// scritture "di dati" (posizione, batteria, eventi SOS) passano SOLO
+// dalle Cloud Functions tramite Admin SDK, che bypassa queste regole:
+// qui quindi le neghiamo sempre esplicitamente. L'unica scrittura
+// concessa direttamente al client è la configurazione delle geofence,
+// fatta dal genitore dalla phone-app.
+//
+// Da aggiornare quando si passerà a multi-genitore/multi-figlio
+// (Fase 2 backlog, vedi CONTEXT.md): la funzione isParent() andrà
+// sostituita con un controllo su una collezione "devices/{id}/parents"
+// invece dell'UID hardcoded.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isParent() {
+      return request.auth != null &&
+        request.auth.uid == "SOSTITUISCI_CON_UID_GENITORE";
+    }
+
+    match /devices/{deviceId} {
+      allow read: if isParent();
+      allow write: if false; // solo Admin SDK via Cloud Functions
+
+      match /locations/{locId} {
+        allow read: if isParent();
+        allow write: if false;
+      }
+
+      match /geofences/{zoneId} {
+        allow read: if isParent();
+        allow write: if isParent(); // unica scrittura diretta dal client
+      }
+
+      match /events/{eventId} {
+        allow read: if isParent();
+        allow write: if false;
+      }
+    }
+
+    match /parents/{parentId} {
+      // Il genitore gestisce solo il proprio documento (token FCM).
+      allow read, write: if request.auth != null && request.auth.uid == parentId;
+    }
+  }
+}

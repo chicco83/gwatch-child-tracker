@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.3.0
+**Versione contesto:** 0.4.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -55,6 +55,16 @@ da Family Link.
   presenza. HA aggiunge solo una seconda vista/mappa e la possibilità di
   automazioni personalizzate lato utente, in parallelo a quanto l'app
   già fa nativamente.
+
+## Stato implementazione
+
+- **backend/**: endpoint MVP implementati (`ingestLocation`,
+  `triggerSos`, `deviceConfig`, `haStatus` + trigger push su nuovo
+  evento). Regole Firestore scritte. Non ancora distribuito su un
+  progetto Firebase reale (richiede setup manuale, vedi
+  `backend/README.md`).
+- **watch-app/**: non ancora implementata.
+- **phone-app/**: non ancora implementata.
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -134,3 +144,9 @@ CHANGELOG.md  Storico versioni
   tornano ad essere funzioni native dell'app (push FCM), non delegate.
   L'integrazione HA resta come livello aggiuntivo opzionale in
   parallelo, mai come dipendenza (v0.3.0).
+- 2026-09-09: Implementato lo scaffolding funzionante del backend
+  Firebase: 4 Cloud Functions HTTPS (`ingestLocation`, `triggerSos`,
+  `deviceConfig`, `haStatus`), un trigger Firestore per le push SOS,
+  regole di sicurezza, e la retention storico via TTL Firestore
+  (gratuita, nessuna Cloud Function schedulata dedicata). Documentato
+  il setup manuale richiesto in `backend/README.md` (v0.4.0).

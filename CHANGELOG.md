@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-09
+
+### Added
+- `backend/`: scaffolding Firebase completo (`firebase.json`,
+  `.firebaserc`, `firestore.rules`, `firestore.indexes.json`).
+- Cloud Functions MVP in `backend/functions/index.js`:
+  - `POST /ingestLocation` — ingest batch posizioni dal watch.
+  - `POST /triggerSos` — evento SOS, priorità/latenza separata dal
+    flusso posizione normale.
+  - `GET /deviceConfig` — geofence attive per il watch.
+  - `GET /haStatus` — lettura stato per il polling opzionale di Home
+    Assistant.
+  - Trigger `onEventCreated` — invio push FCM al genitore su nuovo
+    evento (SOS in MVP).
+- Modello dati Firestore documentato in `backend/README.md`
+  (`devices`, `locations`, `geofences`, `events`, `parents`).
+- Retention storico posizioni via TTL policy Firestore nativa (campo
+  `expiresAt`, 48h) invece di una Cloud Function di pulizia dedicata.
+
 ## [0.3.0] - 2026-09-09
 
 ### Changed
