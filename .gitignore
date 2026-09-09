@@ -1,0 +1,28 @@
+# Android / Gradle
+*.iml
+.gradle/
+build/
+local.properties
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Firebase / Node (Cloud Functions)
+node_modules/
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+functions/lib/
+
+# Secrets
+*.keystore
+*.jks
+google-services.json
+serviceAccountKey.json
+.env
