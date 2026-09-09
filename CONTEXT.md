@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.12.0
+**Versione contesto:** 0.13.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -241,3 +241,6 @@ CHANGELOG.md  Storico versioni
   `cleanup.js`, lasciando la regola specifica successiva "senza nulla
   da matchare" → build fallita. Unificato in un solo pattern
   (`api/*.js`, `maxDuration: 30` per tutte le funzioni) (v0.12.0).
+- 2026-09-09: Deploy confermato funzionante (`/api/cleanup` risponde
+  401 come atteso). **Backend MVP completo e verificato end-to-end**
+  (v0.13.0).

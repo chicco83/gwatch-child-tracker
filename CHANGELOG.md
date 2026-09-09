@@ -7,6 +7,12 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-09-09
+
+### Verified
+- Deploy Vercel confermato funzionante: `/api/cleanup` risponde 401
+  senza auth, come atteso. **Backend MVP completo.**
+
 ## [0.12.0] - 2026-09-09
 
 ### Fixed
