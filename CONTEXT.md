@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.13.0
+**Versione contesto:** 0.14.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -244,3 +244,7 @@ CHANGELOG.md  Storico versioni
 - 2026-09-09: Deploy confermato funzionante (`/api/cleanup` risponde
   401 come atteso). **Backend MVP completo e verificato end-to-end**
   (v0.13.0).
+- 2026-09-09: Workflow GitHub Actions testato con avvio manuale:
+  `HTTP 200`, `{"ok":true,"locationsDeleted":0,"quotaDeleted":0}`.
+  Pulizia programmata confermata funzionante end-to-end. **Backend
+  MVP chiuso**, si passa a watch-app/phone-app (v0.14.0).

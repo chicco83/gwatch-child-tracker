@@ -7,6 +7,13 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-09
+
+### Verified
+- Workflow GitHub Actions di pulizia testato con avvio manuale:
+  `HTTP 200`, risposta corretta. **Backend MVP chiuso** — prossimo
+  passo: watch-app o phone-app.
+
 ## [0.13.0] - 2026-09-09
 
 ### Verified
