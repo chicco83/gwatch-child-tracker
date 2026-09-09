@@ -7,6 +7,41 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-09
+
+### Added
+- `phone-app/`: registrazione reale dell'app Android sul progetto
+  Firebase (`child-tracker-7a1f1`) completata via API con la service
+  account fornita dall'utente, senza alcun passaggio manuale su
+  Console: app registrata (package `com.gwatch.childtracker.phone`),
+  `debug.keystore` generato e relativa SHA-1 registrata (necessaria per
+  il login Google), `google-services.json` reale scaricato. Entrambi i
+  file restano solo in locale (ignorati da git), consegnati
+  all'utente.
+
+### Changed
+- `phone-app/`: sostituita Google Maps (Maps SDK/Maps Compose) con
+  **OpenStreetMap (osmdroid)** per la mappa. Motivo: Google Maps
+  Platform richiede una carta di credito collegata al progetto Google
+  Cloud e — a differenza di quanto ipotizzato inizialmente — il
+  collegamento deve restare **attivo in permanenza** (la fatturazione
+  viene verificata a ogni richiesta, non solo alla creazione della
+  chiave API), il che va contro la priorità del progetto di non
+  richiedere mai una carta se evitabile. L'utente ha scelto
+  esplicitamente osmdroid pur sapendo che comporta una mappa meno
+  rifinita.
+  - `ui/MapScreen.kt` e `ui/GeofenceScreen.kt` riscritti: `MapView` di
+    osmdroid incorporato in Compose via `AndroidView`, marker/polyline/
+    poligoni al posto delle equivalenti Google Maps Compose,
+    `MapEventsOverlay` per il tocco sulla mappa (scelta zona).
+  - `TrackerApplication.kt`: inizializzazione osmdroid (user agent
+    obbligatorio, cache in `cacheDir` per non richiedere permessi di
+    storage esterno).
+  - `app/build.gradle.kts`: rimosse le dipendenze Google Maps
+    SDK/Maps Compose, aggiunta `org.osmdroid:osmdroid-android`.
+  - Rimosso `local.properties.example` (non serve più alcuna chiave
+    Maps da configurare).
+
 ## [0.16.0] - 2026-09-09
 
 ### Added

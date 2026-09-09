@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,16 +28,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
+import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.MapEventsOverlay
 
 /**
  * Gestione zone (casa/scuola, MVP): tocco sulla mappa per scegliere il
@@ -51,13 +54,32 @@ import com.gwatch.childtracker.phone.data.model.GeofenceZone
 fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val geofences by viewModel.geofences.collectAsState()
 
-    var pickedLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var pickedPoint by remember { mutableStateOf<GeoPoint?>(null) }
     var name by remember { mutableStateOf("") }
     var radius by remember { mutableStateOf(150f) }
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(41.9028, 12.4964), 13f)
+    val context = LocalContext.current
+    val mapView = remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(13.0)
+            controller.setCenter(GeoPoint(41.9028, 12.4964))
+            overlays.add(
+                MapEventsOverlay(
+                    object : MapEventsReceiver {
+                        override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                            pickedPoint = p
+                            return true
+                        }
+
+                        override fun longPressHelper(p: GeoPoint): Boolean = false
+                    },
+                ),
+            )
+        }
     }
+    DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
 
     Scaffold(
         topBar = {
@@ -74,15 +96,19 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
             )
 
-            GoogleMap(
+            AndroidView(
+                factory = { mapView },
                 modifier = Modifier.fillMaxWidth().height(220.dp),
-                cameraPositionState = cameraPositionState,
-                onMapClick = { latLng -> pickedLatLng = latLng },
-            ) {
-                pickedLatLng?.let { Marker(state = MarkerState(position = it)) }
-            }
+                update = { map ->
+                    map.overlays.removeAll { it is Marker }
+                    pickedPoint?.let { point ->
+                        map.overlays.add(Marker(map).apply { position = point })
+                    }
+                    map.invalidate()
+                },
+            )
 
-            pickedLatLng?.let { picked ->
+            pickedPoint?.let { picked ->
                 Column(modifier = Modifier.padding(12.dp)) {
                     OutlinedTextField(
                         value = name,
@@ -104,7 +130,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                                 )
                                 viewModel.saveGeofence(zone) {
                                     name = ""
-                                    pickedLatLng = null
+                                    pickedPoint = null
                                     radius = 150f
                                 }
                             }

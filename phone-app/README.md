@@ -4,15 +4,15 @@ App Android (Kotlin, Compose) per il genitore: mappa con l'ultima
 posizione del watch, storico spostamenti (ultime 48h), gestione zone
 (geofence), notifiche push su SOS/ingresso-uscita zona. Login con
 l'account Google del genitore (uno dei due pre-autorizzati, vedi
-`../CONTEXT.md`).
+`../CONTEXT.md`). Mappa **OpenStreetMap** (libreria osmdroid), non
+Google Maps: niente chiave API, niente fatturazione da collegare al
+progetto Google Cloud — coerente con la scelta fatta per tutto il resto
+dello stack (vedi CONTEXT.md, log decisioni).
 
-**Stato:** scaffolding completo, **non ancora compilato/testato** —
-stesso limite di `watch-app/` (nessun SDK Android/rete verso i
-repository Google Maven in questo ambiente). Richiede inoltre due
-passaggi di setup su Firebase Console che non posso più fare io da qui
-(vedi sotto): le credenziali della service account usate nella sessione
-precedente non sono più disponibili in questo ambiente (container
-effimero).
+**Stato:** setup Firebase completato, scaffolding completo,
+**non ancora compilato/testato** — nessun SDK Android/rete verso i
+repository Google Maven in questo ambiente (stesso limite di
+`watch-app/`).
 
 ## Struttura
 
@@ -21,15 +21,15 @@ phone-app/
   settings.gradle.kts
   build.gradle.kts              (root)
   gradle.properties
-  local.properties.example       Template config locale (chiave Maps)
+  debug.keystore                 Firma di debug fissa nel progetto (vedi Setup)
   gradlew / gradlew.bat / gradle/wrapper/   Gradle wrapper (riusato da watch-app)
   app/
     build.gradle.kts
-    google-services.json         DA SCARICARE da Firebase Console (vedi Setup)
+    google-services.json         Config Firebase reale (già presente, vedi Setup)
     src/main/
       AndroidManifest.xml
       kotlin/com/gwatch/childtracker/phone/
-        TrackerApplication.kt         Canale di notifica "alerts"
+        TrackerApplication.kt         Canale notifica "alerts" + init osmdroid
         auth/AuthRepository.kt        Login Google + Firebase Auth
         data/
           model/Models.kt             DeviceState, LocationPoint, GeofenceZone, DeviceEvent
@@ -39,8 +39,8 @@ phone-app/
           MainActivity.kt             NavHost login/mappa/zone
           AppViewModel.kt             Stato condiviso (StateFlow su Firestore)
           LoginScreen.kt
-          MapScreen.kt                Mappa + card stato + eventi recenti
-          GeofenceScreen.kt           Aggiungi/modifica/elimina zone
+          MapScreen.kt                Mappa (osmdroid) + card stato + eventi recenti
+          GeofenceScreen.kt           Aggiungi/modifica/elimina zone (tocco su mappa)
         util/
           Constants.kt                DEVICE_ID (deve combaciare col backend)
           TimeFormat.kt
@@ -56,6 +56,10 @@ phone-app/
   può leggere). La mappa si aggiorna da sola non appena il watch invia
   un nuovo punto, senza bisogno di un pulsante "aggiorna" o di una
   chiamata al backend.
+- **Mappa**: `MapView` di osmdroid incorporato in Compose via
+  `AndroidView` (osmdroid non ha una API Compose nativa). Tile
+  OpenStreetMap (MAPNIK), marker per l'ultima posizione, polyline per
+  lo storico, poligoni-cerchio per le geofence.
 - **Geofence**: uniche scritture dirette dal client. `GeofenceScreen`
   scrive/aggiorna/cancella documenti in `devices/figlio/geofences/`;
   il watch le legge poi da `/api/device-config` (nessuna sincronia
@@ -67,46 +71,33 @@ phone-app/
 - **Storico**: mostra solo le ultime 48h (`Constants.HISTORY_WINDOW_HOURS`)
   anche se il backend ne conserva 12 mesi, per restare leggibile/veloce.
 
-## Setup richiesto (una tantum, non fatto da questa sessione)
+## Setup Firebase — già fatto
 
-### 1. Registrare l'app Android su Firebase Console
+L'app Android è già registrata sul progetto Firebase reale
+(`child-tracker-7a1f1`, package `com.gwatch.childtracker.phone`), fatto
+via API con la service account che mi hai fornito (nessuna carta
+richiesta: Firestore/Auth restano sul piano Spark). Già presenti nel
+repo (entrambi ignorati da git, vedi `.gitignore` — restano solo sulla
+tua macchina):
 
-Progetto: `child-tracker-7a1f1`.
+- `app/google-services.json` — config reale scaricata da Firebase.
+- `debug.keystore` — keystore di debug generato per l'occasione, il cui
+  SHA-1 (`40:53:35:1C:55:9E:EB:45:FC:8C:21:1B:76:37:56:0A:25:9F:22:CC`)
+  è registrato su Firebase per far funzionare il login Google.
+  `app/build.gradle.kts` lo usa come firma di debug al posto di quello
+  di default in `~/.android/`, così la firma resta identica su
+  qualunque macchina tu compili — nessun passaggio "prendi la tua
+  SHA-1 e registrala" da fare a mano.
 
-1. Console Firebase → **Impostazioni progetto** → **Aggiungi app** → Android.
-2. Nome pacchetto: `com.gwatch.childtracker.phone` (deve combaciare
-   esattamente con `applicationId` in `app/build.gradle.kts`).
-3. **Importante per il login Google**: nello stesso step, aggiungi
-   l'impronta SHA-1 del certificato di debug. Da terminale, con Android
-   Studio/JDK installati:
-   ```
-   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
-   ```
-   copia la riga `SHA1:` nel campo richiesto dalla Console.
-4. Scarica `google-services.json` e mettilo in `phone-app/app/`
-   (è già ignorato da git, vedi `.gitignore`).
+**Non serve nessuna chiave Maps**: con osmdroid non c'è nulla da
+configurare per la mappa.
 
-Senza questo file l'app non compila (il plugin
-`com.google.gms.google-services` fallisce la build se manca).
-
-### 2. Chiave Google Maps
-
-1. Google Cloud Console (stesso progetto `child-tracker-7a1f1`) → API e
-   servizi → Libreria → abilita **Maps SDK for Android**.
-2. Crea una chiave API, ristretta per sicurezza a "Android apps" con il
-   nome pacchetto `com.gwatch.childtracker.phone` + la stessa SHA-1 del
-   punto precedente.
-3. Copia `local.properties.example` in `local.properties` e incolla la
-   chiave in `maps.api.key`.
-
-Rientra nel credito gratuito $200/mese di Google Maps Platform — per
-uso familiare (poche mappe caricate al giorno) resta a 0€.
-
-### 3. Compilare e testare
+## Compilare e testare
 
 1. Apri `phone-app/` in Android Studio.
 2. Sync Gradle.
-3. Esegui su un telefono/emulatore con Google Play Services.
+3. Esegui su un telefono/emulatore con Google Play Services (serve per
+   il login Google, non per la mappa).
 4. Accedi con **cristianozecchi@gmail.com** o
    **benedettagarofalo81@gmail.com** (gli unici due account
    pre-autorizzati in `parents/`, vedi `CONTEXT.md`) — con un altro
@@ -116,8 +107,9 @@ uso familiare (poche mappe caricate al giorno) resta a 0€.
 ## Cosa NON è ancora stato testato
 
 - Compilazione reale (nessun SDK Android in questo ambiente).
-- Login Google end-to-end (richiede SHA-1 registrata, vedi Setup).
-- Comportamento mappa/geofence/notifiche su dispositivo reale.
+- Login Google end-to-end (la SHA-1 è registrata correttamente, ma il
+  flusso completo va verificato su dispositivo).
+- Rendering mappa/geofence/notifiche su dispositivo reale.
 
 ## Note
 

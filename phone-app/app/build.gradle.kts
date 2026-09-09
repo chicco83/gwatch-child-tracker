@@ -1,14 +1,3 @@
-import java.util.Properties
-
-// Legge maps.api.key da local.properties (mai committato, vedi
-// ../local.properties.example) e la inietta come placeholder nel
-// manifest, cosi' la chiave non finisce mai nel sorgente/repo.
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
-val mapsApiKey: String = localProps.getProperty("maps.api.key", "")
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -25,11 +14,26 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+    }
 
-        manifestPlaceholders["mapsApiKey"] = mapsApiKey
+    // Keystore di debug fisso nel progetto (../debug.keystore, mai
+    // committato — vedi .gitignore) invece di quello di default in
+    // ~/.android/: cosi' la firma resta identica su qualunque macchina
+    // si compili, ed e' la stessa il cui SHA-1 e' stato registrato su
+    // Firebase per il login Google (vedi README.md).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }
@@ -82,8 +86,12 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
 
     implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.maps.android:maps-compose:4.3.3")
+
+    // Mappa OpenStreetMap (osmdroid) invece di Google Maps: nessuna API
+    // key, nessuna fatturazione da collegare al progetto Google Cloud —
+    // coerente con la scelta "mai una carta se evitabile" fatta per
+    // tutto il resto dello stack (vedi CONTEXT.md, log decisioni).
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 }

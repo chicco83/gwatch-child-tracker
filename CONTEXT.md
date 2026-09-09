@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.16.0
+**Versione contesto:** 0.17.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -42,8 +42,13 @@ da Family Link.
     (`/api/cleanup` chiamato una volta al giorno): i Cron Job nativi
     di Vercel bloccavano il deploy su piano Hobby, GitHub Actions è
     gratuito e senza questa dipendenza.
-- **Mappa:** Google Maps SDK (free tier $200/mese di credito Google,
-  sufficiente per uso familiare).
+- **Mappa:** OpenStreetMap via libreria **osmdroid**, non Google Maps
+  SDK. Motivo: Google Maps Platform richiede una fatturazione **attiva**
+  ad ogni chiamata (non basta crearla una volta e poi scollegare la
+  carta — verificano ad ogni richiesta), in conflitto con la scelta
+  "mai una carta se evitabile" fatta per tutto il resto dello stack.
+  osmdroid non richiede alcuna chiave API né fatturazione. Contropartita
+  accettata: mappa meno curata (niente vista satellite/traffico).
 - **Auth:** Firebase Authentication, legata all'account Google del
   genitore (non a quello "adulto" del watch, che resta solo login
   tecnico del dispositivo).
@@ -98,14 +103,17 @@ da Family Link.
   Gradle wrapper già generato. Da aprire in Android Studio per il
   primo build reale.
 - **phone-app/**: scaffolding completo (Android, Kotlin/Compose) —
-  login Google (solo genitori pre-autorizzati), mappa in tempo reale
-  via listener Firestore (nessun endpoint backend dedicato per la
-  lettura), gestione geofence (unica scrittura diretta dal client,
-  come da regole di sicurezza), notifiche push su SOS/geofence,
-  registrazione token FCM su `parents/{uid}`. **Non ancora
-  compilato/testato**: stesso limite di watch-app, più due passaggi di
-  setup manuale su Firebase/Google Cloud Console che questa sessione
-  non può più fare da sola (vedi log decisioni e `phone-app/README.md`).
+  login Google (solo genitori pre-autorizzati), mappa OpenStreetMap
+  (osmdroid) in tempo reale via listener Firestore (nessun endpoint
+  backend dedicato per la lettura), gestione geofence (unica scrittura
+  diretta dal client, come da regole di sicurezza), notifiche push su
+  SOS/geofence, registrazione token FCM su `parents/{uid}`. **Setup
+  Firebase completo**: app Android registrata sul progetto reale
+  (`com.gwatch.childtracker.phone`), `google-services.json` scaricato,
+  keystore di debug generato e il suo SHA-1 registrato per il login
+  Google — nessun passaggio manuale rimasto lato utente (vedi log
+  decisioni). **Non ancora compilato/testato**: stesso limite di
+  watch-app, nessun SDK Android/rete Google Maven in questo ambiente.
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -286,3 +294,25 @@ CHANGELOG.md  Storico versioni
   passaggi manuali richiesti (registrazione app + SHA-1 debug per il
   login Google, chiave Maps SDK). **Non compilato/testato** — stesso
   limite di watch-app (v0.16.0).
+- 2026-09-09: L'utente ha fornito una nuova chiave service account.
+  Usata per registrare via API l'app Android
+  (`com.gwatch.childtracker.phone`) sul progetto Firebase reale,
+  generare un keystore di debug fisso nel progetto e registrarne il
+  SHA-1 per il login Google, scaricare `google-services.json` — tutto
+  senza bisogno di alcun passaggio manuale da browser. **Scoperto un
+  conflitto con la priorità "mai una carta"**: Google Maps Platform
+  richiede una fatturazione attiva ad *ogni chiamata* dell'API, non
+  solo alla creazione della chiave (scollegare la carta dopo rompe la
+  mappa) — a differenza di Firestore/Auth (piano Spark) e di tutto il
+  resto dello stack, qui non c'è modo di restare a "zero carta" restando
+  su Google Maps. Chiesto esplicitamente all'utente, che ha scelto di
+  **sostituire Google Maps con OpenStreetMap (libreria osmdroid)**:
+  nessuna chiave API, nessuna fatturazione, mai. Riscritte
+  `ui/MapScreen.kt` e `ui/GeofenceScreen.kt` con `MapView` di osmdroid
+  incorporato in Compose via `AndroidView` (marker, polyline storico,
+  poligoni-cerchio per le geofence, tocco su mappa per sceglierne il
+  centro). Rimossa ogni dipendenza da Google Maps SDK/Play Services Maps
+  e la chiave `local.properties` (non più necessaria). Credenziali
+  service account cancellate dallo scratchpad subito dopo l'uso, come
+  da prassi. **Non ancora compilato/testato** — stesso limite di sempre
+  (v0.17.0).

@@ -1,11 +1,11 @@
 package com.gwatch.childtracker.phone.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -17,23 +17,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberCameraPositionState
+import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
@@ -41,6 +35,15 @@ import com.gwatch.childtracker.phone.util.formatRelativeTime
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polygon
+import org.osmdroid.views.overlay.Polyline
+
+// Roma come default finche' non arriva il primo fix dal watch.
+private val DEFAULT_POSITION = GeoPoint(41.9028, 12.4964)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,23 +57,21 @@ fun MapScreen(
     val geofences by viewModel.geofences.collectAsState()
     val events by viewModel.events.collectAsState()
 
-    // Roma come default finche' non arriva il primo fix dal watch.
-    val defaultPosition = LatLng(41.9028, 12.4964)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
+    val context = LocalContext.current
+    val mapView = remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(12.0)
+            controller.setCenter(DEFAULT_POSITION)
+        }
     }
+    DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
 
     // Centra la mappa sull'ultima posizione nota solo alla prima
     // ricezione: dopo, l'utente deve poter muovere liberamente la mappa
-    // senza che uno scatto GPS successivo la ricentri da sotto le dita.
+    // senza che un punto GPS successivo la "strappi" da sotto le dita.
     var centered by remember { mutableStateOf(false) }
-    LaunchedEffect(deviceState.lastLocation) {
-        val loc = deviceState.lastLocation
-        if (loc != null && !centered) {
-            cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(loc.lat, loc.lon), 15f)
-            centered = true
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -86,35 +87,51 @@ fun MapScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             StatusCard(deviceState)
 
-            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                ) {
+            AndroidView(
+                factory = { mapView },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                update = { map ->
+                    map.overlays.clear()
+
                     deviceState.lastLocation?.let { loc ->
-                        Marker(
-                            state = MarkerState(position = LatLng(loc.lat, loc.lon)),
-                            title = stringResource(R.string.last_known_position),
+                        val point = GeoPoint(loc.lat, loc.lon)
+                        map.overlays.add(
+                            Marker(map).apply {
+                                position = point
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                title = context.getString(R.string.last_known_position)
+                            },
                         )
-                    }
-                    if (history.size >= 2) {
-                        Polyline(points = history.map { LatLng(it.lat, it.lon) })
-                    }
-                    geofences.forEach { zone ->
-                        val color = if (zone.active) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outline
+                        if (!centered) {
+                            map.controller.setCenter(point)
+                            map.controller.setZoom(15.0)
+                            centered = true
                         }
-                        Circle(
-                            center = LatLng(zone.lat, zone.lon),
-                            radius = zone.radiusMeters,
-                            strokeColor = color,
-                            fillColor = color.copy(alpha = 0.15f),
+                    }
+
+                    if (history.size >= 2) {
+                        map.overlays.add(
+                            Polyline().apply {
+                                setPoints(history.map { GeoPoint(it.lat, it.lon) })
+                            },
                         )
                     }
-                }
-            }
+
+                    geofences.forEach { zone ->
+                        val center = GeoPoint(zone.lat, zone.lon)
+                        map.overlays.add(
+                            Polygon().apply {
+                                setPoints(Polygon.pointsAsCircle(center, zone.radiusMeters))
+                                fillColor = if (zone.active) 0x334285F4.toInt() else 0x339E9E9E.toInt()
+                                strokeColor = if (zone.active) 0xFF4285F4.toInt() else 0xFF9E9E9E.toInt()
+                                strokeWidth = 3f
+                            },
+                        )
+                    }
+
+                    map.invalidate()
+                },
+            )
 
             EventsList(events = events)
         }
