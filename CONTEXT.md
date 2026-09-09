@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.1.0
+**Versione contesto:** 0.2.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -42,6 +42,15 @@ da Family Link.
     Testing track (account sviluppatore già pagato). App privata,
     aggiornamenti automatici via Play Store, zero cavo dopo il primo
     setup.
+- **Integrazione Home Assistant:** pull-based, non push. HA interroga
+  (piattaforma `rest`, polling ogni N minuti) un endpoint HTTPS esposto
+  da una Cloud Function, protetto da token statico, che legge l'ultima
+  posizione/batteria da Firestore. Nessuna esposizione di Home Assistant
+  su internet (no VPN/tunnel/port-forwarding). Un'automazione HA chiama
+  `device_tracker.see` per aggiornare l'entità, inclusa in un `person.*`
+  → mappa, zone e notifiche sono native HA, nessun costo aggiuntivo.
+  Il SOS resta gestito lato nostra app/push diretto (serve latenza
+  minima, non compatibile con un polling a intervalli).
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -56,12 +65,21 @@ da Family Link.
 ## Backlog Fase 2 (dopo MVP)
 
 - Backup automatico storico su Google Drive
-- Alert batteria scarica del watch
+- Endpoint REST (Cloud Function) per polling da Home Assistant
+  (posizione/batteria correnti, autenticato con token statico)
 - Check-in volontario ("sto bene")
 - Alert "watch offline"
-- Modalità scuola (silenzia/limita notifiche in fasce orarie)
 - Riepilogo giornaliero/settimanale luoghi visitati
 - Multi-genitore (secondo account che vede lo stesso watch)
+
+## Delegato a Home Assistant (se disponibile, invece di svilupparlo in app)
+
+- Alert batteria scarica del watch → automazione su soglia sensore
+- Notifica ingresso/uscita geofence → gestita nativamente da HA (zone)
+- Modalità scuola (silenzia/limita in fasce orarie) → automazione HA
+  basata su orario + zona
+- Visualizzazione mappa → card Mappa nativa di HA (in aggiunta alla
+  mappa nella phone-app, non sostitutiva)
 
 ## Backlog Fase 3 (eventuale)
 
@@ -94,3 +112,10 @@ CHANGELOG.md  Storico versioni
   sicurezza) sono sproporzionati rispetto a un MVP personale. Rivalutare
   come progetto separato se in futuro serve.
 - 2026-09-09: Scaffolding iniziale del repository (v0.1.0).
+- 2026-09-09: Aggiunta integrazione Home Assistant (mappa, automazioni,
+  avvisi) come requisito. Scelto approccio pull via REST (HA interroga
+  un endpoint Cloud Function) invece di push/MQTT, per non dover
+  esporre Home Assistant su internet. Diverse voci di Fase 2/3 (alert
+  batteria, notifiche geofence, modalità scuola) spostate da "da
+  sviluppare in app" a "delegate ad automazioni HA", per ridurre lo
+  sviluppo custom (v0.2.0).
