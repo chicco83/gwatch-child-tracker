@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.2.0
+**Versione contesto:** 0.3.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -46,11 +46,15 @@ da Family Link.
   (piattaforma `rest`, polling ogni N minuti) un endpoint HTTPS esposto
   da una Cloud Function, protetto da token statico, che legge l'ultima
   posizione/batteria da Firestore. Nessuna esposizione di Home Assistant
-  su internet (no VPN/tunnel/port-forwarding). Un'automazione HA chiama
-  `device_tracker.see` per aggiornare l'entità, inclusa in un `person.*`
-  → mappa, zone e notifiche sono native HA, nessun costo aggiuntivo.
-  Il SOS resta gestito lato nostra app/push diretto (serve latenza
-  minima, non compatibile con un polling a intervalli).
+  su internet richiesta (no VPN/tunnel/port-forwarding), anche se
+  l'utente ha comunque HA raggiungibile via Nabu Casa.
+  **Vincolo esplicito: è un livello aggiuntivo opzionale.** L'app
+  (watch + phone + backend) deve funzionare in autonomia completa anche
+  senza Home Assistant configurato o raggiungibile — nessuna funzione di
+  sicurezza (SOS, geofence, alert batteria) può dipendere dalla sua
+  presenza. HA aggiunge solo una seconda vista/mappa e la possibilità di
+  automazioni personalizzate lato utente, in parallelo a quanto l'app
+  già fa nativamente.
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -65,21 +69,26 @@ da Family Link.
 ## Backlog Fase 2 (dopo MVP)
 
 - Backup automatico storico su Google Drive
-- Endpoint REST (Cloud Function) per polling da Home Assistant
-  (posizione/batteria correnti, autenticato con token statico)
+- Alert batteria scarica del watch (nativo in app, push FCM)
+- Modalità scuola (silenzia/limita notifiche in fasce orarie, nativo
+  in app)
 - Check-in volontario ("sto bene")
 - Alert "watch offline"
 - Riepilogo giornaliero/settimanale luoghi visitati
 - Multi-genitore (secondo account che vede lo stesso watch)
+- Endpoint REST (Cloud Function) per polling da Home Assistant
+  (posizione/batteria correnti, autenticato con token statico) — vedi
+  "Integrazione Home Assistant" sopra
 
-## Delegato a Home Assistant (se disponibile, invece di svilupparlo in app)
+## Integrazione Home Assistant (opzionale, aggiuntiva — non sostitutiva)
 
-- Alert batteria scarica del watch → automazione su soglia sensore
-- Notifica ingresso/uscita geofence → gestita nativamente da HA (zone)
-- Modalità scuola (silenzia/limita in fasce orarie) → automazione HA
-  basata su orario + zona
-- Visualizzazione mappa → card Mappa nativa di HA (in aggiunta alla
-  mappa nella phone-app, non sostitutiva)
+Tutte le funzioni sotto sono già coperte nativamente dall'app (vedi
+Fase 2). Chi ha Home Assistant può *in più*, se vuole, ricostruirle
+come automazioni proprie usando i dati esposti dall'endpoint REST:
+mappa/person entity, notifiche di ingresso/uscita zona, automazioni
+personalizzate. Nessuna di queste sostituisce l'equivalente nativo
+dell'app: se HA è spento o non configurato, sicurezza e alert dell'app
+continuano a funzionare senza alcuna degradazione.
 
 ## Backlog Fase 3 (eventuale)
 
@@ -119,3 +128,9 @@ CHANGELOG.md  Storico versioni
   batteria, notifiche geofence, modalità scuola) spostate da "da
   sviluppare in app" a "delegate ad automazioni HA", per ridurre lo
   sviluppo custom (v0.2.0).
+- 2026-09-09: **Corretto** il punto precedente — l'utente ha HA
+  raggiungibile via Nabu Casa ma non vuole che l'infrastruttura di
+  sicurezza dipenda da HA. Alert batteria, geofence e modalità scuola
+  tornano ad essere funzioni native dell'app (push FCM), non delegate.
+  L'integrazione HA resta come livello aggiuntivo opzionale in
+  parallelo, mai come dipendenza (v0.3.0).

@@ -7,6 +7,18 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-09
+
+### Changed
+- **Correzione** rispetto a v0.2.0: alert batteria scarica, notifiche
+  geofence e modalità scuola tornano ad essere funzioni **native
+  dell'app** (push FCM), non più delegate a Home Assistant. L'app deve
+  restare pienamente funzionante e sicura anche senza Home Assistant
+  configurato o raggiungibile.
+- L'integrazione Home Assistant è ora esplicitamente documentata in
+  `CONTEXT.md` come livello **opzionale e aggiuntivo**, mai come
+  dipendenza dell'infrastruttura core.
+
 ## [0.2.0] - 2026-09-09
 
 ### Added
