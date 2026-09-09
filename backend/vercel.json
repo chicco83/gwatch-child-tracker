@@ -2,10 +2,6 @@
   "functions": {
     "api/*.js": {
       "memory": 128,
-      "maxDuration": 10
-    },
-    "api/cleanup.js": {
-      "memory": 128,
       "maxDuration": 30
     }
   }

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.11.0
+**Versione contesto:** 0.12.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -234,3 +234,10 @@ CHANGELOG.md  Storico versioni
   (`.github/workflows/cleanup-cron.yml`, una volta al giorno, anche
   avviabile a mano) — gratuito, nessuna dipendenza da eleggibilità
   Vercel (v0.11.0).
+- 2026-09-09: Il deploy falliva ancora (nuovo errore, non più su
+  `crons`): `vercel.json` aveva sia `"api/*.js"` che `"api/cleanup.js"`
+  come pattern separati in `functions`. Vercel assegna ogni file al
+  primo pattern che lo matcha, quindi il wildcard consumava già
+  `cleanup.js`, lasciando la regola specifica successiva "senza nulla
+  da matchare" → build fallita. Unificato in un solo pattern
+  (`api/*.js`, `maxDuration: 30` per tutte le funzioni) (v0.12.0).

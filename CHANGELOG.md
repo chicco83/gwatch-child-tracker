@@ -7,6 +7,16 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-09
+
+### Fixed
+- Deploy Vercel ancora bloccato: `vercel.json` aveva sia `"api/*.js"`
+  che `"api/cleanup.js"` come pattern separati in `functions`, e
+  Vercel assegna ogni file al primo pattern che lo matcha — il
+  wildcard "consumava" già `cleanup.js`, lasciando la regola specifica
+  senza nulla da matchare. Unificato in un solo pattern `api/*.js` con
+  `maxDuration: 30` per tutte le funzioni.
+
 ## [0.11.0] - 2026-09-09
 
 ### Fixed
