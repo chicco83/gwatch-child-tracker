@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-09
+
+### Added
+- Supporto multi-genitore in `firestore.rules`: `isParent()` verifica
+  l'esistenza di un documento `parents/{uid}`, non più un UID
+  hardcoded — aggiungere un genitore non richiede redeploy.
+
+### Fixed
+- **Sicurezza**: impedita la creazione lato client dei documenti
+  `parents/{uid}` (`allow create: if false`). Nella prima stesura del
+  supporto multi-genitore, un client autenticato con un qualsiasi
+  account Google avrebbe potuto creare il proprio documento e
+  auto-autorizzarsi alla lettura della posizione del minore. Ora solo
+  admin (service account) può pre-creare un genitore autorizzato; il
+  genitore può poi solo leggere/aggiornare il proprio documento.
+
 ## [0.7.0] - 2026-09-09
 
 ### Added

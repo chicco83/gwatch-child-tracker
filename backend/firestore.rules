@@ -1,17 +1,29 @@
 // Regole di sicurezza Firestore — gwatch-child-tracker
-// Versione: 0.1.0
+// Versione: 0.2.0
 //
-// Modello MVP: un solo genitore, un solo dispositivo (watch). Tutte le
-// scritture "di dati" (posizione, batteria, eventi SOS) passano SOLO
-// dalle Cloud Functions tramite Admin SDK, che bypassa queste regole:
-// qui quindi le neghiamo sempre esplicitamente. L'unica scrittura
-// concessa direttamente al client è la configurazione delle geofence,
-// fatta dal genitore dalla phone-app.
+// Tutte le scritture "di dati" (posizione, batteria, eventi SOS)
+// passano SOLO dalle funzioni backend tramite Admin SDK, che bypassa
+// queste regole: qui quindi le neghiamo sempre esplicitamente.
+// L'unica scrittura concessa direttamente al client e' la
+// configurazione delle geofence, fatta dal genitore dalla phone-app.
 //
-// Da aggiornare quando si passerà a multi-genitore/multi-figlio
-// (Fase 2 backlog, vedi CONTEXT.md): la funzione isParent() andrà
-// sostituita con un controllo su una collezione "devices/{id}/parents"
-// invece dell'UID hardcoded.
+// Multi-genitore: chiunque abbia un documento in parents/{uid} e'
+// autorizzato (isParent() controlla solo che esista, non un UID
+// fisso) -- per aggiungere un secondo genitore basta creare un nuovo
+// documento, nessun redeploy delle regole necessario.
+//
+// Sicurezza: i documenti parents/{uid} possono essere CREATI solo da
+// admin (Admin SDK, bypassa le regole), mai dal client. Se un client
+// potesse creare il proprio documento in parents/, chiunque avesse un
+// account Google generico potrebbe auto-assegnarsi l'accesso alla
+// posizione del minore semplicemente autenticandosi e scrivendo il
+// proprio documento. Un genitore gia' pre-autorizzato puo' solo
+// leggere e aggiornare il proprio documento (es. il token FCM).
+//
+// Storico versioni:
+// - 0.1.0 (2026-09-09): MVP a genitore singolo, UID hardcoded in
+//   isParent(). Rimpiazzato per il problema di sicurezza sopra e per
+//   supportare piu' genitori senza redeploy.
 rules_version = '2';
 
 service cloud.firestore {
@@ -19,12 +31,12 @@ service cloud.firestore {
 
     function isParent() {
       return request.auth != null &&
-        request.auth.uid == "SOSTITUISCI_CON_UID_GENITORE";
+        exists(/databases/$(database)/documents/parents/$(request.auth.uid));
     }
 
     match /devices/{deviceId} {
       allow read: if isParent();
-      allow write: if false; // solo Admin SDK via Cloud Functions
+      allow write: if false; // solo Admin SDK via le funzioni backend
 
       match /locations/{locId} {
         allow read: if isParent();
@@ -43,8 +55,9 @@ service cloud.firestore {
     }
 
     match /parents/{parentId} {
-      // Il genitore gestisce solo il proprio documento (token FCM).
-      allow read, write: if request.auth != null && request.auth.uid == parentId;
+      allow create: if false; // solo admin puo' pre-autorizzare un genitore
+      allow read, update: if request.auth != null && request.auth.uid == parentId;
+      allow delete: if false;
     }
   }
 }

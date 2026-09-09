@@ -63,11 +63,18 @@ nel piano gratuito per questo volume).
 
 1. Progetto Firebase già creato: `child-tracker-7a1f1` (vedi
    `.firebaserc`). Database Firestore e regole già deployati.
-2. In `firestore.rules`, sostituisci `SOSTITUISCI_CON_UID_GENITORE`
-   con l'UID Firebase Auth reale del genitore, poi ridistribuisci:
+2. **Multi-genitore**: le regole autorizzano chiunque abbia un
+   documento in `parents/{uid}` — nessun UID hardcoded, nessun
+   redeploy delle regole per aggiungere un genitore. Il documento va
+   però creato SOLO da admin (mai dal client, per evitare che un
+   account Google qualsiasi si auto-autorizzi): per ogni genitore da
+   abilitare, creare via Admin SDK/service account:
    ```
-   firebase deploy --only firestore:rules --project child-tracker-7a1f1
+   parents/{uid}  { fcmTokens: [] }
    ```
+   L'UID si ottiene creando l'utente Firebase Auth (Console ->
+   Authentication, o `auth.createUser({ email })` via Admin SDK) se
+   non esiste già.
 3. Abilita la **TTL policy** su `devices/*/locations` sul campo
    `expiresAt` (una tantum):
    ```

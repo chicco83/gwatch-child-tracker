@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.7.0
+**Versione contesto:** 0.8.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -77,8 +77,12 @@ da Family Link.
   con token errato (401), accettata con token corretto e Firestore
   raggiunto correttamente (404 "device non trovato", atteso perché
   nessuna posizione ancora inviata — il watch-app non esiste ancora).
-  Restano da fare: UID genitore nelle regole Firestore, TTL policy
-  storico posizioni.
+  Multi-genitore supportato: le regole autorizzano chiunque abbia un
+  documento in `parents/{uid}` (nessun UID hardcoded), creabile solo
+  da admin per evitare auto-autorizzazione da parte di account Google
+  arbitrari. Restano da fare: pre-creare gli utenti Firebase Auth e i
+  documenti `parents/{uid}` per i due genitori, TTL policy storico
+  posizioni.
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
 
@@ -185,3 +189,14 @@ CHANGELOG.md  Storico versioni
 - 2026-09-09: Deploy backend su Vercel completato e verificato
   end-to-end (auth + connessione Firestore funzionanti) su
   https://gwatch-child-tracker.vercel.app (v0.7.0).
+- 2026-09-09: Richiesto supporto multi-genitore (padre + madre).
+  Riscritte le regole Firestore: `isParent()` ora controlla
+  l'esistenza di un documento `parents/{uid}` invece di un UID
+  hardcoded, così aggiungere un genitore non richiede più redeploy.
+  **Corretto un problema di sicurezza** introdotto da questo cambio
+  nella prima stesura: la creazione del documento `parents/{uid}` è
+  vietata dal client (`allow create: if false`), possibile solo da
+  admin — altrimenti chiunque avesse un account Google potrebbe
+  auto-crearsi il documento e ottenere accesso alla posizione del
+  minore. Il genitore può solo leggere/aggiornare il proprio documento
+  una volta pre-creato. Deployato (v0.8.0).
