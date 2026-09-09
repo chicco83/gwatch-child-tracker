@@ -3,6 +3,16 @@
     "api/*.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/cleanup.js": {
+      "memory": 128,
+      "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cleanup",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.9.0
+**Versione contesto:** 0.10.0
 **Ultimo aggiornamento:** 2026-09-09
 
 ---
@@ -81,7 +81,11 @@ da Family Link.
   documento in `parents/{uid}` (nessun UID hardcoded), creabile solo
   da admin per evitare auto-autorizzazione da parte di account Google
   arbitrari. I due genitori sono già pre-autorizzati (vedi log
-  decisioni). Resta da fare: TTL policy storico posizioni.
+  decisioni). Storico posizioni esteso a 12 mesi (margine ampio nel
+  piano gratuito, vedi log decisioni); pulizia automatica via Vercel
+  Cron (`/api/cleanup`) invece della TTL nativa Firestore, che
+  richiederebbe Blaze. Guardia di traffico giornaliera attiva su tutti
+  gli endpoint (SOS escluso).
 - **watch-app/**: non ancora implementata.
 - **phone-app/**: non ancora implementata.
 
@@ -205,3 +209,15 @@ CHANGELOG.md  Storico versioni
   evitare. Creati i due utenti genitore (`cristianozecchi@gmail.com`,
   `benedettagarofalo81@gmail.com`) e i relativi documenti
   `parents/{uid}` tramite service account (v0.9.0).
+- 2026-09-09: Richiesto di avere uno storico più lungo delle 48h
+  restando gratis, e di codificare nel programma limiti di traffico
+  invalicabili verso Firestore/Vercel. Calcolato che anche nello
+  scenario più pesante lo storage resta una piccola frazione del GB
+  gratuito: retention estesa da 48h a **12 mesi**. Aggiunta una guardia
+  di quota giornaliera (4.000 chiamate/giorno per dispositivo, molto
+  sotto le soglie gratuite reali) su tutti gli endpoint tranne l'SOS
+  (volutamente esente, funzione di sicurezza critica). Scoperto che
+  anche la **TTL policy nativa di Firestore richiede Blaze**: sostituita
+  con un Cron Job Vercel giornaliero (`/api/cleanup`, gratuito su
+  Hobby) che cancella i documenti scaduti. Indici collection-group
+  necessari deployati senza problemi di billing (v0.10.0).

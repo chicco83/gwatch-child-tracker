@@ -1,16 +1,23 @@
 /**
  * GET /api/device-config
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Restituisce al watch le geofence attive configurate dal genitore
  * dalla phone-app, per registrarle localmente con la Geofencing API
  * di Android (gestione a livello OS, risparmio batteria).
  *
  * Auth: header "X-Device-Token".
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-09): versione iniziale.
+ * - 0.2.0 (2026-09-09): aggiunta la guardia di quota giornaliera (vedi
+ *   _lib/quota.js) come rete di sicurezza contro le soglie gratuite di
+ *   Firestore/Vercel.
  */
 const { getFirestore } = require("firebase-admin/firestore");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { checkDeviceToken } = require("./_lib/auth");
+const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEVICE_ID = "figlio";
 
@@ -26,6 +33,13 @@ module.exports = async (req, res) => {
 
   getAdminApp();
   const db = getFirestore();
+
+  const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+  if (!allowed) {
+    res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
+    return;
+  }
+
   const snap = await db
     .collection("devices")
     .doc(DEVICE_ID)

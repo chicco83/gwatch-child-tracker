@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -8,15 +8,25 @@
  *
  * Auth: header "X-Device-Token".
  * Body: { points: [{ lat, lon, accuracy?, battery?, activity?, timestamp? }, ...] }
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-09): retention 48h.
+ * - 0.2.0 (2026-09-09): retention estesa a 12 mesi (il consumo di
+ *   storage resta comunque una piccola frazione del GB gratuito, vedi
+ *   CONTEXT.md); aggiunti un tetto massimo di punti per chiamata e la
+ *   guardia di quota giornaliera (vedi _lib/quota.js) come rete di
+ *   sicurezza contro le soglie gratuite di Firestore/Vercel.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { checkDeviceToken } = require("./_lib/auth");
+const { checkAndConsumeQuota } = require("./_lib/quota");
 
 // MVP: un solo dispositivo tracciato. Rendere dinamico quando si
 // passera' a multi-figlio (Fase 2 backlog, vedi CONTEXT.md).
 const DEVICE_ID = "figlio";
-const HISTORY_RETENTION_HOURS = 48;
+const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
+const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -33,9 +43,20 @@ module.exports = async (req, res) => {
     res.status(400).send("Bad Request: 'points' mancante o vuoto");
     return;
   }
+  if (points.length > MAX_POINTS_PER_REQUEST) {
+    res.status(400).send(`Bad Request: massimo ${MAX_POINTS_PER_REQUEST} punti per chiamata`);
+    return;
+  }
 
   getAdminApp();
   const db = getFirestore();
+
+  const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+  if (!allowed) {
+    res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
+    return;
+  }
+
   const deviceRef = db.collection("devices").doc(DEVICE_ID);
   const batch = db.batch();
   let last = null;

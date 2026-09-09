@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -13,11 +13,21 @@
  * Auth: header "X-Device-Token".
  * Body: { type: "sos" | "geofence_enter" | "geofence_exit", lat, lon,
  *         accuracy?, battery?, zoneName?, timestamp? }
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-09): versione iniziale.
+ * - 0.2.0 (2026-09-09): aggiunta la guardia di quota giornaliera (vedi
+ *   _lib/quota.js) come rete di sicurezza contro le soglie gratuite di
+ *   Firestore/Vercel. L'SOS ne e' volutamente ESENTE: e' la funzione
+ *   di sicurezza piu' critica dell'app, non deve mai poter essere
+ *   bloccata da un limite di traffico, nemmeno in caso di quota gia'
+ *   esaurita da un malfunzionamento altrove.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { checkDeviceToken } = require("./_lib/auth");
+const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEVICE_ID = "figlio";
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit"]);
@@ -53,6 +63,15 @@ module.exports = async (req, res) => {
 
   getAdminApp();
   const db = getFirestore();
+
+  if (type !== "sos") {
+    const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+    if (!allowed) {
+      res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
+      return;
+    }
+  }
+
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
 
   await db

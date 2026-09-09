@@ -24,6 +24,10 @@
 // - 0.1.0 (2026-09-09): MVP a genitore singolo, UID hardcoded in
 //   isParent(). Rimpiazzato per il problema di sicurezza sopra e per
 //   supportare piu' genitori senza redeploy.
+// - 0.3.0 (2026-09-09): aggiunta devices/{id}/quota, usata solo dal
+//   backend (guardia di traffico giornaliera, vedi
+//   backend/api/_lib/quota.js). Nessun client deve mai leggerla o
+//   scriverla direttamente.
 rules_version = '2';
 
 service cloud.firestore {
@@ -51,6 +55,10 @@ service cloud.firestore {
       match /events/{eventId} {
         allow read: if isParent();
         allow write: if false;
+      }
+
+      match /quota/{dayKey} {
+        allow read, write: if false; // solo Admin SDK via le funzioni backend
       }
     }
 

@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-09
+
+### Added
+- `api/_lib/quota.js`: guardia di traffico giornaliera (4.000
+  chiamate/giorno per dispositivo) su `ingest-location`,
+  `device-config`, `ha-status` e `trigger-event` (tranne i SOS,
+  volutamente esenti). Risponde `429` oltre soglia, molto sotto le
+  quote gratuite reali di Firestore/Vercel.
+- `api/cleanup.js` + Cron Job Vercel (`vercel.json`, una volta al
+  giorno): cancella i documenti scaduti in `locations` e `quota`,
+  sostituendo la TTL policy nativa di Firestore (che richiederebbe
+  Blaze). Autenticato via `CRON_SECRET`.
+- Limite di 100 punti per chiamata su `ingest-location` (difesa contro
+  batch anomali).
+- `firestore.indexes.json`: indici collection-group su `expiresAt`
+  (per `locations` e `quota`), necessari alla query di pulizia.
+- `devices/{id}/quota/{YYYY-MM-DD}` nel modello dati, esplicitamente
+  negato ai client nelle regole Firestore.
+
+### Changed
+- Retention storico posizioni: da 48h a **12 mesi** — il consumo di
+  storage resta comunque una piccola frazione del GB gratuito
+  Firestore anche nello scenario più pesante (vedi CONTEXT.md).
+
 ## [0.9.0] - 2026-09-09
 
 ### Added

@@ -26,18 +26,21 @@ backend/
     trigger-event.js          POST — SOS o transizione geofence + push FCM
     device-config.js          GET  — geofence attive per il watch
     ha-status.js               GET  — stato per il polling opzionale di Home Assistant
+    cleanup.js                  GET  — pulizia storico scaduto, invocata da Vercel Cron
     _lib/
       firebase-admin.js         Init condivisa dell'Admin SDK
       auth.js                    Verifica token device/HA
+      quota.js                    Guardia di traffico giornaliera (vedi sotto)
 ```
 
 ## Modello dati Firestore
 
 ```
 devices/{deviceId}                      stato corrente (lastLocation, battery, lastSeen, activity)
-devices/{deviceId}/locations/{autoId}    storico posizioni (retention 48h via TTL, vedi Setup)
+devices/{deviceId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
 devices/{deviceId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
 devices/{deviceId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
+devices/{deviceId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
 parents/{uid}                            token FCM del genitore per le push
 ```
 
@@ -57,6 +60,17 @@ La phone-app **non** passa da questi endpoint: legge/scrive Firestore
 direttamente via SDK con Firebase Auth (realtime, nessun costo extra
 nel piano gratuito per questo volume).
 
+## Limite di traffico (rete di sicurezza)
+
+Ogni endpoint (tranne l'SOS, volutamente esente — vedi
+`trigger-event.js`) è protetto da un tetto di **4.000 chiamate al
+giorno per dispositivo**, molto sotto le soglie gratuite reali
+(Firestore Spark: 20.000 scritture/giorno; Vercel Hobby: 100 GB-Hours
+di esecuzione/mese). Superato il tetto, l'endpoint risponde `429`
+invece di eseguire l'operazione — un margine di sicurezza fisso nel
+codice, non un tentativo di avvicinarsi alle quote reali. Implementato
+in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
+
 ## Setup
 
 ### Firestore (Firebase, piano Spark)
@@ -75,15 +89,11 @@ nel piano gratuito per questo volume).
    L'UID si ottiene creando l'utente Firebase Auth (Console ->
    Authentication, o `auth.createUser({ email })` via Admin SDK) se
    non esiste già.
-3. Abilita la **TTL policy** su `devices/*/locations` sul campo
-   `expiresAt` (una tantum):
-   ```
-   gcloud firestore fields ttl-configs create \
-     --collection-group=locations --field=expiresAt \
-     --project=child-tracker-7a1f1
-   ```
-   Così lo storico oltre le 48h viene eliminato automaticamente e
-   gratuitamente da Firestore.
+3. **Pulizia storico**: la TTL policy nativa di Firestore richiede il
+   piano Blaze (anche per un uso gratuito), quindi non la usiamo — la
+   pulizia gira invece via **Vercel Cron** (`/api/cleanup`, vedi sotto),
+   gratuito anche su Hobby. Gli indici collection-group su `expiresAt`
+   necessari alla query sono già deployati (`firestore.indexes.json`).
 
 ### Funzioni (Vercel)
 
@@ -95,10 +105,14 @@ nel piano gratuito per questo volume).
    `backend`. Nessuna carta richiesta per il piano Hobby gratuito.
 3. In *Project Settings -> Environment Variables* aggiungi (vedi
    `.env.example`): `FIREBASE_SERVICE_ACCOUNT_B64`, `DEVICE_TOKEN`
-   (generato es. con `openssl rand -hex 32`), `HA_STATUS_TOKEN`.
+   (generato es. con `openssl rand -hex 32`), `HA_STATUS_TOKEN`,
+   `CRON_SECRET` (altra stringa casuale — Vercel la usa da sola per
+   autenticare le chiamate del Cron Job, non serve altra
+   configurazione).
 4. Deploy: automatico ad ogni push su questo branch/repo una volta
    collegato il progetto — nessun comando manuale da rilanciare in
-   seguito.
+   seguito. Il Cron Job (`vercel.json`) parte automaticamente col
+   primo deploy, una volta al giorno alle 03:00 UTC.
 
 ## Sviluppo locale
 
