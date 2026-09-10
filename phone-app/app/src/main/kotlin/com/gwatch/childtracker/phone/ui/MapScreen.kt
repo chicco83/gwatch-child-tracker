@@ -1,11 +1,25 @@
 package com.gwatch.childtracker.phone.ui
 
-import androidx.compose.foundation.layout.Column
+// Storico versioni
+// v0.1.0 (2026-09-10): prima versione, layout a Column con
+//   Modifier.weight(1f) sull'AndroidView della mappa per farle occupare
+//   lo spazio restante fra StatusCard (sopra) e EventsList (sotto).
+// v0.2.0 (2026-09-10): stesso identico errore di compilazione già
+//   incontrato nel watch-app (vedi ChatScreen.kt): "Cannot access
+//   'weight': it is internal in 'androidx.compose.foundation.layout'"
+//   con le versioni di Compose fissate in questo progetto. Riscritto
+//   senza Modifier.weight: la mappa (AndroidView) ora riempie tutto lo
+//   Box con Modifier.fillMaxSize(), e StatusCard/EventsList sono
+//   sovrapposti sopra con Modifier.align (StatusCard in alto,
+//   EventsList in basso) invece di essere disposti in sequenza in una
+//   Column pesata.
+
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -23,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -86,12 +101,10 @@ fun MapScreen(
             )
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            StatusCard(deviceState)
-
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             AndroidView(
                 factory = { mapView },
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 update = { map ->
                     map.overlays.clear()
 
@@ -135,14 +148,15 @@ fun MapScreen(
                 },
             )
 
-            EventsList(events = events)
+            StatusCard(deviceState, modifier = Modifier.align(Alignment.TopCenter))
+            EventsList(events = events, modifier = Modifier.align(Alignment.BottomCenter))
         }
     }
 }
 
 @Composable
-private fun StatusCard(state: DeviceState) {
-    Card(modifier = Modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+private fun StatusCard(state: DeviceState, modifier: Modifier = Modifier) {
+    Card(modifier = modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = state.lastSeenMillis?.let { formatRelativeTime(it) }
@@ -160,10 +174,10 @@ private fun StatusCard(state: DeviceState) {
 }
 
 @Composable
-private fun EventsList(events: List<DeviceEvent>) {
+private fun EventsList(events: List<DeviceEvent>, modifier: Modifier = Modifier) {
     if (events.isEmpty()) return
     val formatter = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
-    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp).padding(horizontal = 12.dp)) {
+    LazyColumn(modifier = modifier.fillMaxWidth().heightIn(max = 160.dp).padding(horizontal = 12.dp)) {
         items(events) { event ->
             Text(
                 text = "${eventLabel(event.type, event.zoneName)} · ${formatter.format(Date(event.timestampMillis))}",

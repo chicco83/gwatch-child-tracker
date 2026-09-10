@@ -1,13 +1,39 @@
 package com.gwatch.childtracker.phone.ui
 
+// Storico versioni
+// v0.1.0 (2026-09-10): prima versione, layout a Column con
+//   Modifier.weight(1f) (lista messaggi sopra, riga di input sotto) e un
+//   secondo Modifier.weight(1f) nella Row di input per far espandere il
+//   campo di testo lasciando spazio fisso al pulsante "Invia".
+// v0.2.0 (2026-09-10): stesso errore di compilazione gia' incontrato in
+//   MapScreen.kt e nel watch-app (ChatScreen.kt li'): "Cannot access
+//   'weight': it is internal in 'androidx.compose.foundation.layout'"
+//   con le versioni di Compose fissate in questo progetto — vale per
+//   ogni uso di Modifier.weight, non solo quello nella Column. Riscritto
+//   senza Modifier.weight in nessun punto:
+//   - lista messaggi/stato vuoto ora riempie tutto lo schermo
+//     (Modifier.fillMaxSize() in un Box) con la riga di input "ancorata"
+//     sopra via Modifier.align(Alignment.BottomCenter) e uno sfondo
+//     opaco (stile barra di input delle app di chat); la lista ha un
+//     padding inferiore per non far restare l'ultimo messaggio nascosto
+//     sotto la barra.
+//   - il campo di testo nella riga di input non usa piu' Modifier.weight
+//     per espandersi: la larghezza disponibile viene letta con
+//     BoxWithConstraints (API stabile, gia' verificata funzionante in
+//     questo progetto a differenza di weight) e il campo prende quella
+//     larghezza meno lo spazio riservato al pulsante "Invia".
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,6 +64,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// Larghezza riservata al pulsante "Invia" nella riga di input, cosi' il
+// campo di testo (vedi BoxWithConstraints sotto) puo' prendersi il resto
+// senza bisogno di Modifier.weight.
+private val SEND_BUTTON_WIDTH = 88.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
@@ -57,9 +88,9 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (messages.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize().weight(1f)) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     Text(
                         text = stringResource(R.string.chat_no_messages),
                         modifier = Modifier.padding(16.dp),
@@ -69,32 +100,38 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentPadding = PaddingValues(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 76.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     items(messages) { message -> MessageBubble(message) }
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            BoxWithConstraints(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(12.dp),
             ) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    label = { Text(stringResource(R.string.chat_input_hint)) },
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    enabled = draft.isNotBlank(),
-                    onClick = {
-                        val text = draft
-                        draft = ""
-                        viewModel.sendMessage(text) {}
-                    },
-                ) { Text(stringResource(R.string.send)) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        label = { Text(stringResource(R.string.chat_input_hint)) },
+                        modifier = Modifier.width(maxWidth - SEND_BUTTON_WIDTH),
+                    )
+                    TextButton(
+                        enabled = draft.isNotBlank(),
+                        onClick = {
+                            val text = draft
+                            draft = ""
+                            viewModel.sendMessage(text) {}
+                        },
+                        modifier = Modifier.width(SEND_BUTTON_WIDTH),
+                    ) { Text(stringResource(R.string.send)) }
+                }
             }
         }
     }
