@@ -7,6 +7,15 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-09-10
+
+### Fixed
+- Nessun bug: primo build reale di `watch-app/` e `phone-app/` in
+  Android Studio, entrambi riusciti (sync Gradle + compilazione).
+  Aggiornato lo stato in `CONTEXT.md`/README da "non ancora
+  compilato/testato" a "build verificato". Ancora da testare su
+  hardware reale (Watch4/telefono) e da pushare il backend su Vercel.
+
 ## [0.18.0] - 2026-09-10
 
 ### Added

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.18.0
+**Versione contesto:** 0.18.1
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -112,10 +112,10 @@ da Family Link.
   dettatura vocale, niente tastiera). **Setup Firebase completo**: app
   Android registrata sul progetto reale (`com.gwatch.childtracker`),
   `google-services.json` scaricato via API (nessuna SHA-1 necessaria:
-  solo FCM, niente login Google sul watch). **Non ancora
-  compilato/testato**: nessun SDK Android né rete verso i repository
-  Google Maven in questo ambiente. Gradle wrapper già generato. Da
-  aprire in Android Studio per il primo build reale.
+  solo FCM, niente login Google sul watch). **Build verificato in
+  Android Studio (2026-09-10)**: sync Gradle e compilazione riusciti
+  sulla macchina dell'utente. Ancora da testare su hardware reale
+  (Watch4).
 - **phone-app/**: scaffolding completo (Android, Kotlin/Compose) —
   login Google (solo genitori pre-autorizzati), mappa OpenStreetMap
   (osmdroid) in tempo reale via listener Firestore (nessun endpoint
@@ -128,8 +128,9 @@ da Family Link.
   (`com.gwatch.childtracker.phone`), `google-services.json` scaricato,
   keystore di debug generato e il suo SHA-1 registrato per il login
   Google — nessun passaggio manuale rimasto lato utente (vedi log
-  decisioni). **Non ancora compilato/testato**: stesso limite di
-  watch-app, nessun SDK Android/rete Google Maven in questo ambiente.
+  decisioni). **Build verificato in Android Studio (2026-09-10)**: sync
+  Gradle e compilazione riusciti sulla macchina dell'utente. Ancora da
+  testare login Google/mappa/notifiche su device reale.
 - **backend/**: aggiunti 4 endpoint per la chat (`send-message`,
   `send-message-to-child`, `register-watch-token`, `messages`) e la
   sotto-collezione `devices/{id}/messages` (regole: lettura solo al

@@ -3,10 +3,8 @@
 App Wear OS (Kotlin) installata sul Galaxy Watch4 LTE del figlio.
 
 **Stato:** scaffolding completo, setup Firebase (chat) completato,
-**non ancora compilato/testato** — in questo ambiente non c'è l'SDK
-Android né rete verso i repository Google Maven, quindi non ho potuto
-verificare la build. Va aperto in Android Studio per il primo
-build/test reale.
+**build verificato in Android Studio (2026-09-10)** — sync Gradle e
+compilazione riusciti. Ancora da testare su hardware reale (Watch4).
 
 ## Struttura
 
@@ -115,9 +113,8 @@ la chat usa solo FCM, niente login Google sul watch.
 
 ## Cosa NON è ancora stato testato
 
-- Compilazione reale (nessun SDK Android in questo ambiente).
 - Comportamento su hardware reale (sampling adattivo, geofence,
-  consumo batteria).
+  consumo batteria, chat).
 - Flusso di richiesta permessi end-to-end.
 
 ## Note

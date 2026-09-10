@@ -11,9 +11,8 @@ scelta fatta per tutto il resto dello stack (vedi CONTEXT.md, log
 decisioni).
 
 **Stato:** setup Firebase completato, scaffolding completo,
-**non ancora compilato/testato** — nessun SDK Android/rete verso i
-repository Google Maven in questo ambiente (stesso limite di
-`watch-app/`).
+**build verificato in Android Studio (2026-09-10)** — sync Gradle e
+compilazione riusciti. Ancora da testare su device reale.
 
 ## Struttura
 
@@ -119,10 +118,9 @@ configurare per la mappa.
 
 ## Cosa NON è ancora stato testato
 
-- Compilazione reale (nessun SDK Android in questo ambiente).
 - Login Google end-to-end (la SHA-1 è registrata correttamente, ma il
   flusso completo va verificato su dispositivo).
-- Rendering mappa/geofence/notifiche su dispositivo reale.
+- Rendering mappa/geofence/notifiche/chat su dispositivo reale.
 
 ## Note
 
