@@ -22,6 +22,12 @@ package com.gwatch.childtracker.phone.ui
 //     BoxWithConstraints (API stabile, gia' verificata funzionante in
 //     questo progetto a differenza di weight) e il campo prende quella
 //     larghezza meno lo spazio riservato al pulsante "Invia".
+// v0.2.1 (2026-09-10): errore di compilazione "'val maxWidth: Dp' can't
+//   be called in this context by implicit receiver" — maxWidth veniva
+//   letto dentro alla Row annidata, dove il receiver implicito piu'
+//   vicino e' RowScope, non BoxWithConstraintsScope. Spostata la lettura
+//   di maxWidth (val fieldWidth = maxWidth - SEND_BUTTON_WIDTH) subito
+//   dentro il content di BoxWithConstraints, prima di aprire la Row.
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -115,12 +121,18 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(12.dp),
             ) {
+                // maxWidth va letto qui, nello scope diretto di
+                // BoxWithConstraints: dentro alla Row sotto, il compilatore
+                // Kotlin da' errore ("can't be called in this context by
+                // implicit receiver") perche' il receiver piu' vicino li'
+                // e' RowScope, non BoxWithConstraintsScope.
+                val fieldWidth = maxWidth - SEND_BUTTON_WIDTH
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = draft,
                         onValueChange = { draft = it },
                         label = { Text(stringResource(R.string.chat_input_hint)) },
-                        modifier = Modifier.width(maxWidth - SEND_BUTTON_WIDTH),
+                        modifier = Modifier.width(fieldWidth),
                     )
                     TextButton(
                         enabled = draft.isNotBlank(),
