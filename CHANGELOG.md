@@ -7,6 +7,23 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-10
+
+### Added
+- Ricerca indirizzo in `GeofenceScreen.kt` (nuovo `data/GeocodingClient.kt`,
+  Nominatim/OpenStreetMap): la mappa partiva sempre centrata su Roma,
+  senza modo di spostarsi rapidamente su un indirizzo vero. Selezionare
+  un risultato centra la mappa li' e apre direttamente il pannello di
+  creazione zona.
+
+### Changed
+- Il pannello di creazione/modifica zona e' ora ancorato in basso
+  invece che in alto: prima, toccando la mappa vicino alla cima dello
+  schermo, il pannello finiva esattamente sopra al punto appena scelto
+  nascondendolo.
+- Raggio minimo dello slider zona allargato da 50m a 20m (non era un
+  limite tecnico, solo il range scelto nel codice).
+
 ## [0.22.0] - 2026-09-10
 
 ### Added

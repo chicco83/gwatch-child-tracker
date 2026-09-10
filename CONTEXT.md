@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.22.0
+**Versione contesto:** 0.23.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -283,6 +283,36 @@ stessa sessione, dopo il primo giro di test sull'SOS ridisegnato:
   aggiunto lo stesso pattern ottimistico in `AppViewModel.kt`
   (`_optimisticMessages`, combinato col listener Firestore e
   deduplicato quando il messaggio reale arriva).
+
+Ulteriore giro di feedback su `GeofenceScreen.kt`, tre punti:
+
+1. **Ricerca indirizzo**: la mappa partiva sempre centrata su Roma
+   (coordinate fisse nel codice), nessun modo di spostarsi rapidamente
+   su un indirizzo vero. Aggiunto `data/GeocodingClient.kt` — chiama
+   **Nominatim** (OpenStreetMap), lo stesso servizio gratuito senza
+   chiave API dei tile della mappa (coerente con la scelta osmdroid di
+   v0.17.0, nessuna fatturazione Google). Barra di ricerca in alto:
+   selezionare un risultato centra la mappa li' e apre direttamente il
+   pannello di creazione zona su quel punto, come un tocco diretto.
+2. **Pannello di creazione zona che copriva il punto appena scelto**:
+   prima era ancorato in alto a schermo fisso — se si toccava la mappa
+   vicino alla cima, il pannello finiva esattamente sopra, nascondendo
+   marker e anteprima del raggio appena posizionati. Spostato in basso
+   (sostituisce la lista zone in quel momento, i due non possono stare
+   nello stesso posto e mentre si piazza una zona la lista non serve).
+3. **Raggio minimo 50m non era un limite tecnico**: ne' della
+   Geofencing API di Android ne' di osmdroid, solo il range scelto nel
+   codice dello Slider. Allargato a 20-2000m. Sotto ai 30-50m circa
+   aumenta il rischio di falsi ingressi/uscite per il solo rumore del
+   GPS (mitigato in parte dal loitering delay di 30s sull'uscita), quindi
+   il minimo resta comunque non-zero per default.
+
+Confermato dall'utente: le notifiche sono gia' abilitate sul watch
+(impostazioni di sistema) — il dubbio aperto sul perche' un messaggio
+in arrivo non mostri comunque una notifica (vedi voce precedente nel
+log decisioni) NON e' quindi un problema di permesso mancante, resta
+un punto da rivalutare con piu' attenzione se il sintomo si ripete dopo
+il fix dello scroll automatico appena fatto.
 
 ### Aperto/da fare (non ancora chiuso)
 
@@ -613,3 +643,13 @@ CHANGELOG.md  Storico versioni
   (aggiunto scroll automatico) e comparivano con ritardo sulla
   phone-app (aggiunto invio ottimistico, stesso pattern del watch)
   (v0.22.0).
+- 2026-09-10: Terzo giro di feedback su GeofenceScreen.kt: aggiunta
+  ricerca indirizzo (Nominatim/OpenStreetMap, GeocodingClient.kt —
+  prima la mappa partiva sempre da Roma), spostato il pannello di
+  creazione zona dall'alto al basso (prima copriva il punto appena
+  toccato quando vicino alla cima dello schermo), allargato il raggio
+  minimo dello slider da 50m a 20m (non era un limite tecnico, solo il
+  range scelto nel codice). Confermato che le notifiche sono gia'
+  abilitate sul watch — il dubbio sulla mancata notifica di un
+  messaggio in arrivo resta aperto, non e' un problema di permesso
+  (v0.23.0).

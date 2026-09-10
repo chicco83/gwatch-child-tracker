@@ -9,6 +9,8 @@
     <string name="sign_out">Esci</string>
     <string name="back">Indietro</string>
     <string name="geofence_tap_hint">Tocca la mappa per scegliere il centro di una nuova zona</string>
+    <string name="geofence_search_hint">Cerca un indirizzo</string>
+    <string name="geofence_search_button">Cerca</string>
     <string name="geofence_name_label">Nome zona (es. Casa, Scuola)</string>
     <string name="geofence_radius_label">Raggio: %d m</string>
     <string name="save_geofence">Salva zona</string>
