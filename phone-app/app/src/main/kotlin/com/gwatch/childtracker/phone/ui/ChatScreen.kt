@@ -34,9 +34,21 @@ package com.gwatch.childtracker.phone.ui
 //   svuotava comunque e sembrava che "i messaggi non partissero" senza
 //   nessun indizio del perche'. Aggiunto un Toast di
 //   successo/fallimento, stesso pattern del watch-app.
+// v0.4.0 (2026-09-10): richiesta utente — migliorare la visualizzazione
+//   della chat stile WhatsApp, replicata su entrambe le app. Bolle gia'
+//   colorate/allineate in precedenza (primaryContainer/
+//   secondaryContainer del tema Material) sono ora sui colori
+//   riconoscibili di WhatsApp (verde per i propri, bianco/grigio scuro
+//   per quelli ricevuti, con varianti light/dark — a differenza del
+//   watch qui il telefono segue il tema di sistema), piu' il nome del
+//   mittente sopra il testo per i messaggi ricevuti (solo "Bambino" per
+//   ora: coi campi attuali un messaggio "ricevuto" puo' venire solo dal
+//   figlio, ma se in futuro si tracciasse quale genitore ha scritto
+//   cosa nel multi-genitore, sarebbe la stessa etichetta a distinguerli).
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -47,12 +59,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -69,9 +80,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import java.text.SimpleDateFormat
@@ -168,29 +183,59 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     }
 }
 
+// Colori stile WhatsApp, con varianti light/dark (a differenza del
+// watch, sempre a sfondo nero, il telefono segue il tema di sistema —
+// vedi isSystemInDarkTheme() sotto). "FromParent" = i propri messaggi
+// su questa app (il genitore e' chi la usa).
+private val OwnBubbleLight = Color(0xFFDCF8C6)
+private val OwnBubbleDark = Color(0xFF005C4B)
+private val ReceivedBubbleLight = Color(0xFFFFFFFF)
+private val ReceivedBubbleDark = Color(0xFF202C33)
+private val SenderNameColor = Color(0xFF128C7E)
+
 @Composable
 private fun MessageBubble(message: ChatMessage) {
     val fromParent = message.sender == "parent"
+    val darkTheme = isSystemInDarkTheme()
     val formatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+
+    val bubbleColor = if (fromParent) {
+        if (darkTheme) OwnBubbleDark else OwnBubbleLight
+    } else {
+        if (darkTheme) ReceivedBubbleDark else ReceivedBubbleLight
+    }
+    val textColor = if (darkTheme) Color.White else Color.Black
+    val bubbleShape = RoundedCornerShape(
+        topStart = 12.dp,
+        topEnd = 12.dp,
+        bottomStart = if (fromParent) 12.dp else 2.dp,
+        bottomEnd = if (fromParent) 2.dp else 12.dp,
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (fromParent) Arrangement.End else Arrangement.Start,
     ) {
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (fromParent) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                },
-            ),
+        Box(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .clip(bubbleShape)
+                .background(bubbleColor)
+                .padding(10.dp),
         ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-                Text(text = message.text, style = MaterialTheme.typography.bodyMedium)
+            Column {
+                if (!fromParent) {
+                    Text(
+                        text = stringResource(R.string.chat_sender_child),
+                        color = SenderNameColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                    )
+                }
+                Text(text = message.text, color = textColor, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = formatter.format(Date(message.timestampMillis)),
+                    color = textColor.copy(alpha = 0.6f),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.31.0
+**Versione contesto:** 0.32.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -869,3 +869,18 @@ CHANGELOG.md  Storico versioni
   questo Galaxy Watch4, non ulteriormente risolvibile lato app —
   chiudere il punto dopo la prossima verifica, qualunque sia l'esito
   (v0.31.0).
+- 2026-09-10: **Confermato dall'utente**: icona reale + tap ok, notifica
+  watch chiusa come capitolo. Nuova richiesta: migliorare la
+  visualizzazione della chat su entrambe le app replicando lo stile
+  WhatsApp (mittente/destinatario), documentandosi prima sul pattern
+  reale di WhatsApp. Implementato su entrambe: bolle colorate
+  allineate a destra/sinistra (verde per i propri messaggi, bianco o
+  grigio scuro per i ricevuti secondo il tema — sul watch sempre
+  variante scura, essendo Wear OS sempre a sfondo nero), angolo
+  "a fumetto" meno arrotondato dal lato del mittente, nome del
+  mittente in grassetto colorato sopra il testo solo per i messaggi
+  ricevuti. Nome hardcoded ("Genitore" sul watch, "Bambino" sul
+  telefono) perche' il modello dati attuale non distingue quale
+  genitore specifico abbia scritto un messaggio nel caso multi-genitore
+  — se in futuro si aggiunge quel tracciamento, la stessa etichetta
+  passerebbe a mostrare il nome vero (v0.32.0).

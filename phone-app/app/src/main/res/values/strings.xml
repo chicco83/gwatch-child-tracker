@@ -40,6 +40,13 @@
     <string name="send">Invia</string>
     <string name="chat_send_success">Messaggio inviato</string>
     <string name="chat_send_failed">Invio fallito, riprova</string>
+    <!-- v0.4.0 (2026-09-10): bolle stile WhatsApp — nome mittente sopra
+         i messaggi ricevuti (utile qui perche' col multi-genitore un
+         messaggio "ricevuto" potrebbe non essere ovvio chi l'abbia
+         scritto se in futuro si aggiunge il nome del genitore; per ora
+         mostra sempre "Bambino" dato che l'unico mittente "ricevuto"
+         possibile e' il figlio) -->
+    <string name="chat_sender_child">Bambino</string>
 
     <!-- v0.3.0 (2026-09-10): controlli mappa — aggiorna posizione on-demand
          e switch posizione attuale / percorso 24h -->

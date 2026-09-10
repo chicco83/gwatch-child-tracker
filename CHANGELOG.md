@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-09-10
+
+### Changed
+- Migliorata la visualizzazione della chat su entrambe le app,
+  replicando lo stile WhatsApp (richiesta utente, dopo essersi
+  documentati sul suo pattern mittente/destinatario): bolle colorate
+  invece del testo piatto/del contenitore generico Material, allineate
+  a destra (propri messaggi, verde) o sinistra (ricevuti, bianco/grigio
+  scuro secondo il tema), con angolo meno arrotondato dal lato del
+  "mittente" per dare l'effetto fumetto. Aggiunto il nome del mittente
+  in grassetto colorato sopra il testo, solo per i messaggi ricevuti
+  (utile soprattutto in prospettiva multi-genitore, dove "ricevuto" non
+  e' sempre ovviamente riconducibile a una sola persona).
+  - Watch (`ChatScreen.kt`): colori del tema scuro di WhatsApp (schermo
+    sempre nero su Wear OS), nome mittente "Genitore".
+  - Phone (`ChatScreen.kt`): colori chiari/scuri secondo il tema di
+    sistema (`isSystemInDarkTheme()`), nome mittente "Bambino".
+
 ## [0.31.0] - 2026-09-10
 
 ### Fixed
