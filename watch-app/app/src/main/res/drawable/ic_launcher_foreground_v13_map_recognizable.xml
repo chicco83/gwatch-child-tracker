@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 13 - Mappa ridisegnata sulla
+     convenzione grafica realmente usata dalle icone "map" note
+     (Material Icons, Google Maps): foglio con angoli arrotondati,
+     due pieghe a zig-zag ben visibili (non un semplice divisore) e
+     un percorso che porta al marker, invece dei bordi a
+     "strappo" del v12 (poco riconoscibili). Sul marker, il bustino
+     del bambino. -->
+<!-- v1.0 precedente (v12, sostituito qui): foglio con bordi a
+     zig-zag/strappo e pieghe verticali molto tenui (opacita' 0.35),
+     giudicato poco riconoscibile come mappa. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Foglio mappa, rettangolo con angoli arrotondati -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,18 H86 A6,6 0 0 1 92,24 V84 A6,6 0 0 1 86,90 H22 A6,6 0 0 1 16,84 V24 A6,6 0 0 1 22,18 Z" />
+    <!-- Piega 1, a zig-zag (convenzione mappa piegata) -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.55"
+        android:fillColor="#00000000"
+        android:pathData="M38,18 L44,54 L38,90" />
+    <!-- Piega 2, a zig-zag -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.55"
+        android:fillColor="#00000000"
+        android:pathData="M64,18 L58,54 L64,90" />
+    <!-- Percorso che porta al marker -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2.2"
+        android:strokeAlpha="0.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M24,80 Q40,60 54,50" />
+    <!-- Pin/marker (blu) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,24c-11.6,0 -21,9.4 -21,21c0,15.75 21,39 21,39s21,-23.25 21,-39C75,33.4 65.6,24 54,24z" />
+    <!-- Testa del bambino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,47m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- Bustino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,68 C46,61 49,58 54,58 C59,58 62,61 62,68 Z" />
+</vector>
