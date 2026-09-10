@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Informativa privacy — Family Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  footer { margin-top: 3rem; font-size: 0.85rem; color: #666; }
+</style>
+</head>
+<body>
+<!--
+  Storico versioni
+  v0.1.0 (2026-09-10): prima versione, richiesta per la pubblicazione
+    su Play Console (Internal Testing) — Google richiede un URL di
+    informativa privacy pubblico per qualunque app che dichiari
+    permessi sensibili (posizione, in questo caso anche in background),
+    anche per canali di test privati non pubblici. Pagina statica
+    servita da Vercel insieme al resto del backend (root directory
+    "backend", nessun costo aggiuntivo) — vedi backend/vercel.json.
+-->
+<h1>Informativa privacy — Family Tracker</h1>
+<p><em>Ultimo aggiornamento: 10 settembre 2026</em></p>
+
+<p>
+Family Tracker è un'app privata a uso familiare, non distribuita al
+pubblico: le due app (watch e telefono) permettono a un genitore di
+localizzare lo smartwatch di un figlio minorenne e di comunicare con
+lui via messaggi di testo.
+</p>
+
+<h2>Quali dati vengono raccolti</h2>
+<p>
+Posizione GPS e livello di batteria dello smartwatch, inviati a
+intervalli regolari; messaggi di testo scambiati tra il genitore e il
+watch; token di notifica push (Firebase Cloud Messaging) per
+recapitare avvisi (allarmi, ingresso/uscita da zone geografiche
+configurate, SOS, messaggi).
+</p>
+
+<h2>Come vengono usati</h2>
+<p>
+Esclusivamente per mostrare la posizione del figlio al genitore
+autorizzato, generare avvisi di sicurezza (SOS, geofence) e abilitare
+la chat tra le due app. Nessun dato viene usato per pubblicità,
+profilazione o venduto/condiviso con terzi.
+</p>
+
+<h2>Dove vengono conservati</h2>
+<p>
+Su infrastruttura Google Firebase (Firestore), nella stessa area
+geografica del progetto. Lo storico posizioni viene conservato fino a
+12 mesi e poi cancellato automaticamente; i messaggi di chat vengono
+cancellati automaticamente dopo 24 ore.
+</p>
+
+<h2>Chi può accedere</h2>
+<p>
+Solo gli account genitore esplicitamente autorizzati dall'amministratore
+del progetto (nessuna registrazione libera). L'accesso richiede login
+con account Google.
+</p>
+
+<h2>Contatti</h2>
+<p>
+Per qualunque richiesta relativa a questi dati (accesso, cancellazione):
+<a href="mailto:cristianozecchi@gmail.com">cristianozecchi@gmail.com</a>
+</p>
+
+<footer>Family Tracker — progetto privato, nessuna distribuzione pubblica.</footer>
+</body>
+</html>

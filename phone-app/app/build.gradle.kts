@@ -1,3 +1,26 @@
+import java.util.Properties
+
+// Storico versioni (firma release/Play Console)
+// v0.1.0 (2026-09-10): aggiunta signingConfig "release", letta da
+//   local.properties (mai committato — stesso pattern gia' in uso in
+//   watch-app/app/build.gradle.kts per device.token/backend.base.url):
+//   release.storeFile/storePassword/keyAlias/keyPassword. Necessaria
+//   per generare un Android App Bundle (.aab) firmato da caricare su
+//   Play Console → Internal Testing (vedi CONTEXT.md, "Distribuzione
+//   app"). Se le chiavi non sono presenti (caso normale per un build
+//   di sviluppo), la signingConfig "release" non viene creata e
+//   buildTypes.release resta senza firma, come prima — nessun impatto
+//   sui build di debug quotidiani in Android Studio.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val releaseStoreFile: String = localProps.getProperty("release.storeFile", "")
+val releaseStorePassword: String = localProps.getProperty("release.storePassword", "")
+val releaseKeyAlias: String = localProps.getProperty("release.keyAlias", "")
+val releaseKeyPassword: String = localProps.getProperty("release.keyPassword", "")
+val hasReleaseSigning: Boolean = releaseStoreFile.isNotBlank()
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -28,6 +51,14 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -36,6 +67,9 @@ android {
         }
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

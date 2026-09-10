@@ -1,13 +1,6 @@
 # Copia questo file in "local.properties" (stessa cartella, già
-# ignorato da git) e compila i valori. Oltre a "sdk.dir" (aggiunto in
-# automatico da Android Studio), servono le due chiavi custom lette da
-# app/build.gradle.kts e iniettate come BuildConfig:
-
-# Deve combaciare con DEVICE_TOKEN impostato su Vercel (backend/.env.example)
-device.token=
-
-# URL del backend, senza slash finale
-backend.base.url=https://gwatch-child-tracker.vercel.app
+# ignorato da git). "sdk.dir" viene aggiunto in automatico da Android
+# Studio al primo sync — non va toccato a mano qui.
 
 # Facoltative, solo per generare un .aab firmato da caricare su Play
 # Console (Internal Testing) — vedi app/build.gradle.kts. Il file

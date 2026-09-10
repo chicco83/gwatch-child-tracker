@@ -7,6 +7,32 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-09-10
+
+### Added
+- Predisposizione per la pubblicazione su **Play Console → Internal
+  Testing** (richiesta utente, per far provare l'app anche alla
+  mamma): `signingConfig` "release" in entrambe le app
+  (`phone-app/app/build.gradle.kts`, `watch-app/app/build.gradle.kts`),
+  letta da chiavi facoltative in `local.properties` (mai committato,
+  stesso pattern gia' in uso per `device.token`) — se assenti, il
+  build "release" resta semplicemente senza firma, nessun impatto sui
+  build di sviluppo. Aggiornati entrambi i `local.properties.example`
+  con le nuove chiavi (`release.storeFile/storePassword/keyAlias/
+  keyPassword`) e il comando `keytool` per generare il keystore.
+- `backend/privacy.html`: informativa privacy statica, servita da
+  Vercel a costo zero insieme al resto del backend — richiesta da
+  Google Play anche per canali di test privati/non pubblici quando
+  l'app dichiara permessi sensibili (posizione).
+
+### Note
+- La generazione del keystore di release, il build del `.aab` firmato
+  (Android Studio → Build → Generate Signed App Bundle) e i passaggi
+  su Play Console (creazione app, Internal Testing, Data Safety form,
+  aggiunta email tester) restano manuali lato utente: non sono
+  automatizzabili da qui (servizio esterno con login personale, nessun
+  accesso da questo ambiente).
+
 ## [0.33.0] - 2026-09-10
 
 ### Fixed

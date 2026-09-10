@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.33.0
+**Versione contesto:** 0.34.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -893,3 +893,24 @@ CHANGELOG.md  Storico versioni
   mai applicato pero' al percorso "Modifica zona esistente"). Corretto
   riusando la stessa chiamata (`animateTo` + zoom 17) dentro `onEdit`
   (v0.33.0).
+- 2026-09-10: Richiesta utente: pubblicare le app su **Play Console →
+  Internal Testing** per far provare l'app anche alla mamma (secondo
+  genitore, gia' pre-autorizzato in `parents/{uid}`), e chiesto se i
+  messaggi dal watch notificano entrambi i genitori. **Verificato nel
+  codice** (`backend/api/send-message.js`): si', la push FCM alla
+  ricezione di un messaggio dal watch va a *tutti* i documenti in
+  `parents/` (multicast su tutti gli `fcmTokens` registrati), non solo
+  a chi ha inviato l'ultimo comando — quindi funziona gia' oggi per
+  entrambi, a condizione che anche la mamma abbia fatto login sulla
+  phone-app col proprio account pre-autorizzato (cosi' il suo token
+  FCM viene registrato). **Predisposizione pubblicazione** (v0.34.0):
+  aggiunta `signingConfig` "release" opzionale (letta da
+  `local.properties`, mai un keystore/password nel repo) a entrambe le
+  app, e una pagina statica `backend/privacy.html` (richiesta da
+  Google Play anche per test privati quando l'app usa la posizione).
+  **Limite esplicito**: l'attivazione vera e propria (generare il
+  keystore, compilare l'`.aab` firmato in Android Studio, creare le
+  app su Play Console, compilare il Data Safety form, aggiungere
+  l'email della mamma come tester) resta fuori dalla portata di questo
+  ambiente — nessun accesso a Play Console/Android SDK qui, sempre
+  fatto lato utente come per ogni build finora in questo progetto.
