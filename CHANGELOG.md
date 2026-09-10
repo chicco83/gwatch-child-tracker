@@ -26,22 +26,19 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   navigare subito alla Chat, sia ad app fredda sia gia' aperta
   (`launchMode="singleTop"` + `onNewIntent`).
 
-### Known limitations
-- Sospetto forte, non confermabile da qui: la schermata Chat parte
-  sempre vuota sulla phone-app (nessuno storico) mentre lo storico
-  chat sul watch e' completo. Le regole di sicurezza Firestore
-  (`backend/firestore.rules`) NON si deployano automaticamente ad ogni
-  push — sono un target separato (progetto Firebase, comando
-  `firebase deploy --only firestore:rules` dalla cartella `backend/`,
-  vedi `backend/firebase.json`). Se la regola per `devices/{id}/messages`
-  (aggiunta insieme alla chat) non e' mai stata pubblicata sul
-  progetto Firebase live, ogni lettura client di quella sottocollezione
-  fallisce silenziosamente con permission-denied (solo loggato,
-  `DeviceRepository.kt` la cattura e restituisce una lista vuota) —
-  spiegherebbe perfettamente il sintomo. Da verificare ripubblicando le
-  regole; nessuna modifica di codice possibile da qui per confermarlo
-  o escluderlo (serve accesso al progetto Firebase live, non
-  disponibile in questa sessione).
+### Fixed (infrastruttura, non codice)
+- **Confermato dall'utente**: la schermata Chat vuota sulla phone-app
+  era causata dalle regole Firestore mai pubblicate sul progetto
+  Firebase live da quando la sottocollezione `devices/{id}/messages`
+  era stata aggiunta (`backend/firestore.rules` v0.4.0) — le regole
+  NON si deployano automaticamente ad ogni push (target separato dal
+  deploy Vercel, richiede `firebase deploy --only firestore:rules` da
+  `backend/`, o incollarle a mano in Console Firebase > Firestore >
+  Regole). Ogni lettura della chat falliva quindi in silenzio con
+  permission-denied. Risolto ripubblicando le regole dalla Console —
+  nessuna modifica di codice necessaria. **Promemoria per il futuro**:
+  ogni modifica a `backend/firestore.rules` richiede questo passaggio
+  manuale in piu', il repo/Vercel da soli non bastano.
 
 ## [0.26.0] - 2026-09-10
 

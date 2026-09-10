@@ -779,3 +779,16 @@ CHANGELOG.md  Storico versioni
   silenzio (permission-denied, solo loggato) restituendo lista vuota,
   spiegando esattamente il sintomo. Segnalato all'utente di
   ripubblicare le regole e verificare (v0.27.0).
+- 2026-09-10: **Confermato dall'utente**: ripubblicate le regole
+  Firestore dalla Console (copia-incolla manuale, senza CLI — l'utente
+  non aveva Firebase CLI installato), la chat sulla phone-app ora
+  mostra lo storico completo. Causa quindi definitivamente accertata:
+  le regole non erano mai state pubblicate sul progetto live da quando
+  la sottocollezione `messages` era stata aggiunta. **Promemoria
+  strutturale**: le regole Firestore sono un deploy target separato,
+  NON coperto dal deploy automatico Vercel ne' da nessuna pipeline CI
+  di questo progetto — ogni modifica a `backend/firestore.rules` va
+  ripubblicata a mano (Console Firebase > Firestore > Regole > incolla
+  > Pubblica, oppure `firebase deploy --only firestore:rules` da
+  `backend/` per chi ha la CLI) o resta silenziosamente senza effetto.
+  Nessuna azione di codice richiesta per questo fix.
