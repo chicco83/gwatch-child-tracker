@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.23.0
+**Versione contesto:** 0.23.1
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -653,3 +653,16 @@ CHANGELOG.md  Storico versioni
   abilitate sul watch — il dubbio sulla mancata notifica di un
   messaggio in arrivo resta aperto, non e' un problema di permesso
   (v0.23.0).
+- 2026-09-10: Chiesto se le geofence potessero avere forme diverse dal
+  cerchio (rettangolo/forma libera). Spiegato il vincolo: le zone
+  circolari usano la Geofencing API nativa di Android
+  (`setCircularRegion`), che supporta solo cerchi ed e' il motivo del
+  risparmio batteria (valutazione dei confini a livello OS, GPS non
+  tenuto acceso a controllare di continuo). Poligoni/rettangoli
+  richiederebbero un controllo "punto nel poligono" calcolato dall'app
+  sul sampling GPS gia' attivo, meno efficiente del check nativo.
+  Opzioni proposte: solo cerchio (invariato), poligono solo per le
+  nuove zone che lo richiedono (cerchi restano nativi), o tutto a
+  poligono (sconsigliata, perde il risparmio batteria ovunque). Scelto
+  restare **solo cerchio** — nessuna modifica al codice, decisione
+  registrata qui per non doverla rivalutare da capo in futuro (v0.23.1).
