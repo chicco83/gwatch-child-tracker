@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 14 - Il v13 descriveva pieghe "ben
+     visibili", ma erano solo sottili linee colorate: a schermo
+     piccolo (icona a 40dp) diventano quasi invisibili perche'
+     l'occhio le perde nella scalatura, mentre la descrizione
+     prometteva un effetto piu' marcato. Qui la piega e' scolpita
+     nella silhouette stessa (intaccatura a V sul bordo superiore e
+     inferiore del foglio, non solo una linea sopra), quindi resta
+     leggibile a qualsiasi dimensione perche' non dipende dal
+     contrasto di colore di un tratto sottile. -->
+<!-- v1.0 precedente (v13, sostituito qui): foglio con angoli
+     arrotondati ma pieghe = due semplici linee sottili (stroke 2,
+     opacita' 0.55) sopra un rettangolo pieno, poco percepibili
+     nella resa reale. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Foglio mappa: il bordo stesso ha due intaccature a V
+         (piega fisica), non solo linee sopra -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,18 L34,18 L36,23 L38,18 L70,18 L72,23 L74,18 L86,18 A6,6 0 0 1 92,24 L92,84 A6,6 0 0 1 86,90 L74,90 L72,85 L70,90 L38,90 L36,85 L34,90 L22,90 A6,6 0 0 1 16,84 L16,24 A6,6 0 0 1 22,18 Z" />
+    <!-- Piega 1 (crea la profondita' tra le due intaccature) -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M36,23 L36,85" />
+    <!-- Piega 2 -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M72,23 L72,85" />
+    <!-- Percorso che porta al marker -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="3"
+        android:strokeAlpha="0.65"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M24,84 Q38,64 50,52" />
+    <!-- Pin/marker (blu) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,24c-11.6,0 -21,9.4 -21,21c0,15.75 21,39 21,39s21,-23.25 21,-39C75,33.4 65.6,24 54,24z" />
+    <!-- Testa del bambino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,47m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- Bustino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,68 C46,61 49,58 54,58 C59,58 62,61 62,68 Z" />
+</vector>
