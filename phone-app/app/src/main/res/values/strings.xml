@@ -50,4 +50,8 @@
     <string name="sos_banner_deactivate">Disattiva</string>
     <string name="sos_deactivate_success">SOS disattivato</string>
     <string name="sos_deactivate_failed">Disattivazione fallita, riprova</string>
+
+    <!-- v0.25.0 (2026-09-10): esenzione ottimizzazioni batteria, per
+         ricevere le notifiche dal watch anche ad app in background -->
+    <string name="battery_optimization_hint">Per ricevere le notifiche dal watch anche con l\'app in background, consenti l\'esecuzione senza restrizioni nella prossima schermata.</string>
 </resources>

@@ -7,6 +7,27 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-09-10
+
+### Fixed
+- Segnalato: la phone-app doveva restare aperta in primo piano per
+  ricevere le notifiche dal watch (chat, SOS, geofence). Con FCM non
+  dovrebbe servire (le push "data" svegliano il processo anche in
+  background) — causa piu' probabile: Android (specie Samsung, coerente
+  con l'uso di un Galaxy Watch4) sospende il processo per risparmio
+  batteria e nega la sveglia a un'app "ottimizzata". `MainActivity.kt`
+  ora chiede esplicitamente, una tantum all'avvio, l'esenzione dalle
+  ottimizzazioni batteria (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
+
+### Known limitations
+- Sui telefoni Samsung esiste una seconda lista, separata dalle
+  ottimizzazioni batteria standard di Android e non gestibile da
+  codice: "Metti in sospensione le app inutilizzate" (Impostazioni >
+  Cura del dispositivo > Batteria > Limiti di utilizzo in background).
+  Va disattivata manualmente per questa app se il problema persiste
+  dopo aver concesso l'esenzione richiesta dall'app.
+- Non ancora confermato dall'utente su hardware reale.
+
 ## [0.24.0] - 2026-09-10
 
 ### Added

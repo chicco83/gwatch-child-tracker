@@ -11,6 +11,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+    <!-- v0.25.0 (2026-09-10): l'utente segnalava che l'app doveva restare
+         aperta in primo piano per ricevere le notifiche dal watch. Causa
+         piu' probabile: Android (specie Samsung) sospende il processo e
+         nega la sveglia di FCM ad app "ottimizzate" in background. Questo
+         permesso abilita la richiesta di esenzione fatta in
+         MainActivity.kt (requestIgnoreBatteryOptimizations). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <application
         android:name=".TrackerApplication"
         android:allowBackup="true"

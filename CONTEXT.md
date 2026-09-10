@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.24.0
+**Versione contesto:** 0.25.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -709,3 +709,18 @@ CHANGELOG.md  Storico versioni
   (source "child") non ancora marcato. Chiarito che la resa esatta a
   schermo della card a comparsa resta decisa da Wear OS, non e'
   impostabile pixel per pixel dall'app (v0.24.0).
+- 2026-09-10: Segnalato che la phone-app doveva restare aperta in
+  primo piano per ricevere le notifiche dal watch. Con FCM (push
+  "data") non dovrebbe servire: il processo viene svegliato anche in
+  background. Causa piu' probabile individuata per esclusione: Android
+  (specie Samsung, coerente con l'uso di un Galaxy Watch4) sospende il
+  processo per risparmio batteria e nega la sveglia FCM a un'app
+  "ottimizzata" — nessuna richiesta di esenzione era mai stata fatta.
+  Aggiunta `requestIgnoreBatteryOptimizations()` in MainActivity.kt,
+  eseguita una tantum all'avvio (Toast esplicativo + intent di sistema
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, richiede conferma
+  esplicita dell'utente, non e' auto-concessa). Segnalato all'utente
+  che sui Samsung esiste anche una seconda lista distinta e non
+  gestibile da codice ("Metti in sospensione le app inutilizzate", Cura
+  del dispositivo > Batteria) da disattivare a mano se il problema
+  persiste dopo l'esenzione (v0.25.0).
