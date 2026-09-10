@@ -7,6 +7,48 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-10
+
+### Added
+- Pulsante "Invia posizione attuale" sul watch + "Aggiorna posizione"
+  sulla phone-app (`backend/api/request-location.js`): richiede al
+  watch un fix GPS immediato via push FCM, senza aspettare l'upload
+  periodico a 15 minuti.
+- Switch "Percorso 24h" sulla mappa della phone-app (prima si vedeva
+  solo l'ultima posizione).
+- Scadenza automatica dello storico chat a 24h (stesso meccanismo
+  `expiresAt` + cron GitHub Actions gia' usato per posizioni/quota).
+- **SOS ridisegnato**: ora richiede conferma esplicita sul watch prima
+  di attivarsi (evita attivazioni accidentali) e, da attivo, invia la
+  posizione ogni 30 secondi (`backend/api/sos-heartbeat.js`) finche' il
+  genitore non lo disattiva dalla phone-app (banner rosso "SOS ATTIVO"
+  + `backend/api/cancel-sos.js`), invece del precedente invio one-shot.
+  Notifica push inviata solo al primo evento SOS dell'episodio, non ad
+  ogni ping successivo.
+
+### Fixed
+- `Modifier.weight` non risolveva a build reale ne' nel watch-app ne'
+  nella phone-app ("it is internal in
+  androidx.compose.foundation.layout", causa esatta mai isolata con
+  certezza): riscritti tutti i layout coinvolti (`MapScreen.kt`,
+  `ChatScreen.kt` della phone-app) senza `weight`, pattern Box+align o
+  `BoxWithConstraints`.
+- SOS e "Invia posizione" scrivevano l'evento ma non aggiornavano
+  `devices/figlio.lastLocation`: il pin sulla mappa della phone-app non
+  si muoveva fino al prossimo upload periodico.
+- Il pulsante "Invia" della chat sulla phone-app ignorava l'esito
+  dell'invio (nessun feedback su fallimento) — probabile causa del
+  sintomo "i messaggi non partono" riportato dall'utente. Aggiunto un
+  Toast di esito e logging esplicito degli errori nei listener
+  Firestore di `DeviceRepository` (prima ignorati silenziosamente).
+
+### Known limitations
+- Test su hardware reale del ridisegno SOS (conferma + tracking
+  continuo) non ancora fatto — solo verificato a livello di build.
+- `devices/{id}/events` non ha ancora retention/pulizia automatica
+  (a differenza di locations/quota/messages): da aggiungere a
+  `cleanup.js` in Fase 2 se il volume cresce.
+
 ## [0.18.1] - 2026-09-10
 
 ### Fixed

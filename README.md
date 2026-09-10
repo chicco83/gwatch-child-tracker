@@ -19,8 +19,14 @@ Firebase (piano gratuito).
 ## Stack
 
 - Watch: Wear OS (Kotlin), Google Play Services (FusedLocationProvider,
-  Geofencing API, ActivityRecognitionClient)
-- Phone: Android (Kotlin), Google Maps SDK
-- Backend: Firebase Spark (Firestore, Cloud Functions, FCM)
+  Geofencing API, ActivityRecognitionClient), chat/comandi remoti via
+  push FCM.
+- Phone: Android (Kotlin/Compose), mappa **OpenStreetMap (osmdroid)** —
+  non Google Maps SDK, sostituito in v0.17.0 per evitare una
+  fatturazione Google Cloud permanentemente attiva (vedi CONTEXT.md).
+- Backend: Firebase Spark (Firestore, FCM) + **Vercel Functions**
+  (Node.js/`firebase-admin`) al posto delle Cloud Functions di
+  Firebase, che richiederebbero il piano Blaze — migrato in v0.6.0
+  (vedi CONTEXT.md).
 - Distribuzione: ADB via WiFi in sviluppo, Play Console Internal
   Testing per il watch in uso
