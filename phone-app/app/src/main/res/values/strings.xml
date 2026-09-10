@@ -19,4 +19,14 @@
     <string name="chat_no_messages">Nessun messaggio ancora</string>
     <string name="chat_input_hint">Scrivi un messaggio</string>
     <string name="send">Invia</string>
+    <string name="chat_send_success">Messaggio inviato</string>
+    <string name="chat_send_failed">Invio fallito, riprova</string>
+
+    <!-- v0.3.0 (2026-09-10): controlli mappa — aggiorna posizione on-demand
+         e switch posizione attuale / percorso 24h -->
+    <string name="map_show_path">Percorso 24h</string>
+    <string name="map_request_location">Aggiorna posizione</string>
+    <string name="map_requesting_location">Richiesta in corso…</string>
+    <string name="map_request_location_sent">Richiesta inviata al watch</string>
+    <string name="map_request_location_failed">Richiesta fallita (watch non raggiungibile)</string>
 </resources>

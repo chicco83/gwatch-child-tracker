@@ -13,8 +13,19 @@ package com.gwatch.childtracker.phone.ui
 //   sovrapposti sopra con Modifier.align (StatusCard in alto,
 //   EventsList in basso) invece di essere disposti in sequenza in una
 //   Column pesata.
+// v0.3.0 (2026-09-10): aggiunti i controlli richiesti dall'utente dopo
+//   il primo test su device reale: (1) un pulsante "Aggiorna posizione"
+//   che chiede subito al watch un fix GPS via push (vedi
+//   AppViewModel.requestLocation/backend/api/request-location.js),
+//   invece di dover aspettare il prossimo upload periodico; (2) uno
+//   switch per passare fra "solo posizione attuale" (comportamento di
+//   prima) e "percorso ultime 24h" (disegna la polyline sullo storico
+//   filtrato alle ultime 24h, invece di disegnarla sempre come prima).
 
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -27,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -60,6 +72,12 @@ import org.osmdroid.views.overlay.Polyline
 // Roma come default finche' non arriva il primo fix dal watch.
 private val DEFAULT_POSITION = GeoPoint(41.9028, 12.4964)
 
+// Finestra del percorso mostrato quando lo switch "Percorso 24h" e'
+// attivo. Filtra lato client la stessa `history` gia' caricata da
+// AppViewModel (finestra piu' ampia, Constants.HISTORY_WINDOW_HOURS),
+// senza bisogno di una query Firestore separata.
+private const val PATH_WINDOW_HOURS = 24L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -88,6 +106,8 @@ fun MapScreen(
     // ricezione: dopo, l'utente deve poter muovere liberamente la mappa
     // senza che un punto GPS successivo la "strappi" da sotto le dita.
     var centered by remember { mutableStateOf(false) }
+    var showFullPath by remember { mutableStateOf(false) }
+    var requestingLocation by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -124,12 +144,16 @@ fun MapScreen(
                         }
                     }
 
-                    if (history.size >= 2) {
-                        map.overlays.add(
-                            Polyline().apply {
-                                setPoints(history.map { GeoPoint(it.lat, it.lon) })
-                            },
-                        )
+                    if (showFullPath) {
+                        val cutoff = System.currentTimeMillis() - PATH_WINDOW_HOURS * 3_600_000L
+                        val recentHistory = history.filter { it.timestampMillis >= cutoff }
+                        if (recentHistory.size >= 2) {
+                            map.overlays.add(
+                                Polyline().apply {
+                                    setPoints(recentHistory.map { GeoPoint(it.lat, it.lon) })
+                                },
+                            )
+                        }
                     }
 
                     geofences.forEach { zone ->
@@ -148,8 +172,55 @@ fun MapScreen(
                 },
             )
 
-            StatusCard(deviceState, modifier = Modifier.align(Alignment.TopCenter))
+            Column(modifier = Modifier.align(Alignment.TopCenter)) {
+                StatusCard(deviceState)
+                MapControls(
+                    showFullPath = showFullPath,
+                    onToggleFullPath = { showFullPath = it },
+                    requesting = requestingLocation,
+                    onRequestLocation = {
+                        requestingLocation = true
+                        viewModel.requestLocation { ok ->
+                            requestingLocation = false
+                            val feedbackRes = if (ok) {
+                                R.string.map_request_location_sent
+                            } else {
+                                R.string.map_request_location_failed
+                            }
+                            Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            }
             EventsList(events = events, modifier = Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@Composable
+private fun MapControls(
+    showFullPath: Boolean,
+    onToggleFullPath: (Boolean) -> Unit,
+    requesting: Boolean,
+    onRequestLocation: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.map_show_path), style = MaterialTheme.typography.bodySmall)
+                Switch(checked = showFullPath, onCheckedChange = onToggleFullPath)
+            }
+            TextButton(onClick = onRequestLocation, enabled = !requesting) {
+                Text(
+                    stringResource(
+                        if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                    ),
+                )
+            }
         }
     }
 }

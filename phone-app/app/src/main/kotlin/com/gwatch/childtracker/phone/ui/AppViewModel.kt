@@ -94,6 +94,24 @@ class AppViewModel(
         }
     }
 
+    /**
+     * Chiede al watch di inviare subito la posizione attuale (push FCM,
+     * vedi backend/api/request-location.js), invece di aspettare il
+     * prossimo upload periodico. onResult(true) se il backend ha
+     * accettato la richiesta — la posizione vera e propria arriva poi
+     * come aggiornamento separato di deviceState via Firestore.
+     */
+    fun requestLocation(onResult: (Boolean) -> Unit) {
+        val user = _user.value ?: return onResult(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.requestLocation(idToken)
+            }.getOrDefault(false)
+            onResult(ok)
+        }
+    }
+
     class Factory(
         private val authRepository: AuthRepository,
         private val deviceRepository: DeviceRepository,

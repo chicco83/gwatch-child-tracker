@@ -28,7 +28,14 @@ package com.gwatch.childtracker.phone.ui
 //   vicino e' RowScope, non BoxWithConstraintsScope. Spostata la lettura
 //   di maxWidth (val fieldWidth = maxWidth - SEND_BUTTON_WIDTH) subito
 //   dentro il content di BoxWithConstraints, prima di aprire la Row.
+// v0.3.0 (2026-09-10): il pulsante "Invia" ignorava l'esito del backend
+//   (onSent(Boolean) -> {}), quindi un fallimento (token scaduto, quota
+//   giornaliera, rete) spariva senza nessun feedback: il campo si
+//   svuotava comunque e sembrava che "i messaggi non partissero" senza
+//   nessun indizio del perche'. Aggiunto un Toast di
+//   successo/fallimento, stesso pattern del watch-app.
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +69,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.gwatch.childtracker.phone.R
@@ -81,6 +89,7 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val messages by viewModel.messages.collectAsState()
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
@@ -137,9 +146,19 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     TextButton(
                         enabled = draft.isNotBlank(),
                         onClick = {
+                            // v0.3.0 (2026-09-10): prima l'esito veniva
+                            // ignorato ({} come onSent) — un fallimento
+                            // (401/429/rete) spariva senza nessun segnale,
+                            // il campo si svuotava comunque e sembrava
+                            // "non essere partito niente". Ora mostra un
+                            // Toast in entrambi i casi, stesso pattern
+                            // gia' usato nel watch-app (ChatScreen.kt li').
                             val text = draft
                             draft = ""
-                            viewModel.sendMessage(text) {}
+                            viewModel.sendMessage(text) { ok ->
+                                val feedbackRes = if (ok) R.string.chat_send_success else R.string.chat_send_failed
+                                Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
+                            }
                         },
                         modifier = Modifier.width(SEND_BUTTON_WIDTH),
                     ) { Text(stringResource(R.string.send)) }

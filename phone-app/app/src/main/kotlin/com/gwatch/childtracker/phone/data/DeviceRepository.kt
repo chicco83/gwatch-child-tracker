@@ -1,5 +1,14 @@
 package com.gwatch.childtracker.phone.data
 
+// v0.3.0 (2026-09-10): tutti i listener Firestore qui sotto ignoravano
+// silenziosamente il secondo parametro (l'errore) di addSnapshotListener
+// — un permission-denied o un indice mancante sparivano senza lasciare
+// traccia, mostrando solo una lista vuota (es. "sezione messaggi"
+// sempre vuota nonostante il backend scriva/notifichi correttamente).
+// Aggiunto un log esplicito per ogni listener cosi' un errore reale e'
+// almeno visibile in logcat invece di sembrare "nessun dato".
+
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -31,7 +40,8 @@ class DeviceRepository {
     private val deviceRef = db.collection("devices").document(Constants.DEVICE_ID)
 
     fun observeDeviceState(): Flow<DeviceState> = callbackFlow {
-        val registration = deviceRef.addSnapshotListener { snap, _ ->
+        val registration = deviceRef.addSnapshotListener { snap, error ->
+            if (error != null) Log.e(TAG, "observeDeviceState", error)
             if (snap == null || !snap.exists()) {
                 trySend(DeviceState())
                 return@addSnapshotListener
@@ -59,7 +69,8 @@ class DeviceRepository {
                 .whereGreaterThan("timestamp", since)
                 .orderBy("timestamp", Query.Direction.ASCENDING)
 
-            val registration = query.addSnapshotListener { snap, _ ->
+            val registration = query.addSnapshotListener { snap, error ->
+                if (error != null) Log.e(TAG, "observeHistory", error)
                 if (snap == null) {
                     trySend(emptyList())
                     return@addSnapshotListener
@@ -85,7 +96,8 @@ class DeviceRepository {
         }
 
     fun observeGeofences(): Flow<List<GeofenceZone>> = callbackFlow {
-        val registration = deviceRef.collection("geofences").addSnapshotListener { snap, _ ->
+        val registration = deviceRef.collection("geofences").addSnapshotListener { snap, error ->
+            if (error != null) Log.e(TAG, "observeGeofences", error)
             if (snap == null) {
                 trySend(emptyList())
                 return@addSnapshotListener
@@ -110,7 +122,8 @@ class DeviceRepository {
         val registration = deviceRef.collection("events")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit)
-            .addSnapshotListener { snap, _ ->
+            .addSnapshotListener { snap, error ->
+                if (error != null) Log.e(TAG, "observeRecentEvents", error)
                 if (snap == null) {
                     trySend(emptyList())
                     return@addSnapshotListener
@@ -138,7 +151,8 @@ class DeviceRepository {
         val registration = deviceRef.collection("messages")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit)
-            .addSnapshotListener { snap, _ ->
+            .addSnapshotListener { snap, error ->
+                if (error != null) Log.e(TAG, "observeMessages", error)
                 if (snap == null) {
                     trySend(emptyList())
                     return@addSnapshotListener
@@ -186,5 +200,9 @@ class DeviceRepository {
         db.collection("parents").document(uid)
             .update("fcmTokens", FieldValue.arrayUnion(token))
             .await()
+    }
+
+    companion object {
+        private const val TAG = "DeviceRepository"
     }
 }
