@@ -31,6 +31,19 @@ package com.gwatch.childtracker.ui
 // v0.2.4 (2026-09-10): mancava conferma visiva dell'invio riuscito —
 //   c'era solo un Toast in caso di fallimento. Aggiunto Toast anche
 //   sul successo ("Messaggio inviato").
+// v0.3.0 (2026-09-10): riordino su richiesta utente dopo test su
+//   device reale — "Indietro" era il primo elemento in alto, ma e'
+//   un'azione secondaria (lo swipe di sistema, gia' gestito da
+//   BackHandler in MainActivity.kt, copre gia' il caso comune).
+//   Spostato in fondo alle azioni primarie (dettatura/risposte
+//   rapide), come CompactChip piu' piccolo e di colore secondario
+//   (ChipDefaults.secondaryChipColors) per non competere visivamente
+//   con le azioni principali — pattern Wear OS standard per le azioni
+//   di navigazione/secondarie. Aggiunta una Divider e un'intestazione
+//   ("Messaggi inviati") a separare i pulsanti dallo storico
+//   sottostante. Anche qui il testo dei Chip era allineato a
+//   sinistra: centrato con CenteredChipLabel (condivisa con
+//   MainActivity.kt, stesso package).
 
 import android.app.Activity
 import android.content.Context
@@ -43,6 +56,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -55,6 +69,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
+import androidx.wear.compose.material.Divider
 import androidx.wear.compose.material.Text
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.data.MessageStore
@@ -104,18 +121,8 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
         contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp, start = 10.dp, end = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        item {
-            Chip(onClick = onBack, modifier = Modifier.fillMaxWidth(), label = {
-                Text(stringResourceCompat(R.string.back))
-            })
-        }
-
-        if (messages.isEmpty()) {
-            item { Text(stringResourceCompat(R.string.chat_no_messages)) }
-        } else {
-            items(messages) { message -> MessageRow(message) }
-        }
-
+        // Azioni primarie in cima: dettatura e risposte rapide, quelle
+        // che si usano davvero per rispondere.
         item {
             Chip(onClick = {
                 voiceLauncher.launch(
@@ -126,12 +133,33 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
                         )
                     },
                 )
-            }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResourceCompat(R.string.chat_voice_reply)) })
+            }, modifier = Modifier.fillMaxWidth(), label = { CenteredChipLabel(stringResourceCompat(R.string.chat_voice_reply)) })
         }
 
         item { QuickReplyButton(R.string.chat_quick_reply_ok, backendClient, scope, context) }
         item { QuickReplyButton(R.string.chat_quick_reply_coming, backendClient, scope, context) }
         item { QuickReplyButton(R.string.chat_quick_reply_call_me, backendClient, scope, context) }
+
+        // Indietro e' secondaria: piu' piccola, colore diverso, in
+        // fondo alle azioni primarie (lo swipe di sistema resta la via
+        // principale per tornare al menu, vedi BackHandler).
+        item {
+            CompactChip(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ChipDefaults.secondaryChipColors(),
+                label = { CenteredChipLabel(stringResourceCompat(R.string.back)) },
+            )
+        }
+
+        item { Divider(modifier = Modifier.padding(vertical = 4.dp)) }
+
+        item { Text(stringResourceCompat(R.string.chat_history_header)) }
+        if (messages.isEmpty()) {
+            item { Text(stringResourceCompat(R.string.chat_no_messages)) }
+        } else {
+            items(messages) { message -> MessageRow(message) }
+        }
     }
 }
 
@@ -146,7 +174,7 @@ private fun QuickReplyButton(
     Chip(
         onClick = { sendChatMessage(label, backendClient, scope, context) },
         modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
+        label = { CenteredChipLabel(label) },
     )
 }
 
@@ -175,6 +203,5 @@ private fun sendChatMessage(
     }
 }
 
-@Composable
-private fun stringResourceCompat(id: Int): String =
-    androidx.compose.ui.res.stringResource(id)
+// stringResourceCompat e CenteredChipLabel sono condivise da
+// MainActivity.kt (stesso package com.gwatch.childtracker.ui).

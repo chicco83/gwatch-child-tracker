@@ -1,6 +1,6 @@
 /**
  * POST /api/send-message-to-child
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Messaggio di chat inviato dal genitore (phone-app) verso il watch.
  * A differenza delle geofence, il messaggio NON viene scritto
@@ -11,6 +11,11 @@
  *
  * Auth: header "Authorization: Bearer <Firebase ID token genitore>".
  * Body: { text }
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-09): versione iniziale.
+ * - 0.2.0 (2026-09-10): aggiunto "expiresAt" (24h dal messaggio),
+ *   stesso motivo/meccanismo di send-message.js.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -20,6 +25,7 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEVICE_ID = "figlio";
 const MAX_TEXT_LENGTH = 500;
+const MESSAGE_RETENTION_HOURS = 24;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -54,8 +60,9 @@ module.exports = async (req, res) => {
 
   const deviceRef = db.collection("devices").doc(DEVICE_ID);
   const ts = Timestamp.now();
+  const expiresAt = Timestamp.fromMillis(ts.toMillis() + MESSAGE_RETENTION_HOURS * 3_600_000);
 
-  await deviceRef.collection("messages").add({ sender: "parent", text, timestamp: ts });
+  await deviceRef.collection("messages").add({ sender: "parent", text, timestamp: ts, expiresAt });
 
   const deviceSnap = await deviceRef.get();
   const watchToken = deviceSnap.data()?.fcmToken;

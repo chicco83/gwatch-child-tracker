@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -18,6 +18,11 @@
  * - 0.1.0 (2026-09-09): invocazione via Vercel Cron.
  * - 0.2.0 (2026-09-09): spostata su GitHub Actions (Vercel Cron
  *   bloccava il deploy su piano Hobby).
+ * - 0.3.0 (2026-09-10): aggiunta la pulizia di "messages" (storico
+ *   chat, retention 24h invece delle 12 mesi di locations — vedi
+ *   send-message.js/send-message-to-child.js, che scrivono
+ *   "expiresAt" allo stesso modo di ingest-location.js). Stesso
+ *   meccanismo, nessun cron/endpoint separato necessario.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getAdminApp } = require("./_lib/firebase-admin");
@@ -57,10 +62,11 @@ module.exports = async (req, res) => {
   getAdminApp();
   const db = getFirestore();
 
-  const [locationsDeleted, quotaDeleted] = await Promise.all([
+  const [locationsDeleted, quotaDeleted, messagesDeleted] = await Promise.all([
     purgeExpired(db, "locations"),
     purgeExpired(db, "quota"),
+    purgeExpired(db, "messages"),
   ]);
 
-  res.status(200).json({ ok: true, locationsDeleted, quotaDeleted });
+  res.status(200).json({ ok: true, locationsDeleted, quotaDeleted, messagesDeleted });
 };

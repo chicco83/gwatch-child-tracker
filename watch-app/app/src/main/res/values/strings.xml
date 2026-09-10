@@ -15,6 +15,12 @@
     <string name="status_last_sync">Ultimo invio: %1$s</string>
     <string name="status_battery">Batteria: %1$d%%</string>
 
+    <!-- v0.3.0 (2026-09-10): pulsante "Invia posizione attuale" -->
+    <string name="location_button">Invia posizione</string>
+    <string name="location_sending">Invio posizione in corso…</string>
+    <string name="location_sent">Posizione inviata</string>
+    <string name="location_failed">Invio posizione fallito</string>
+
     <!-- v0.2.0: chat -->
     <string name="chat_button">Messaggi</string>
     <string name="chat_notification_title">Nuovo messaggio</string>
@@ -25,5 +31,8 @@
     <string name="chat_voice_reply">🎤 Rispondi</string>
     <string name="chat_send_failed">Invio fallito, riprova</string>
     <string name="chat_send_success">Messaggio inviato</string>
+    <!-- v0.3.0 (2026-09-10): intestazione dello storico, spostato sotto
+         il separatore che segue i pulsanti azione (vedi ChatScreen.kt) -->
+    <string name="chat_history_header">Messaggi inviati</string>
     <string name="back">Indietro</string>
 </resources>

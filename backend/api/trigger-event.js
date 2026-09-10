@@ -11,8 +11,9 @@
  * questi eventi non serve comunque disaccoppiarli).
  *
  * Auth: header "X-Device-Token".
- * Body: { type: "sos" | "geofence_enter" | "geofence_exit", lat, lon,
- *         accuracy?, battery?, zoneName?, timestamp? }
+ * Body: { type: "sos" | "geofence_enter" | "geofence_exit" |
+ *         "location_request", lat, lon, accuracy?, battery?,
+ *         zoneName?, timestamp? }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-09): versione iniziale.
@@ -22,6 +23,12 @@
  *   di sicurezza piu' critica dell'app, non deve mai poter essere
  *   bloccata da un limite di traffico, nemmeno in caso di quota gia'
  *   esaurita da un malfunzionamento altrove.
+ * - 0.3.0 (2026-09-10): aggiunto "location_request" — pulsante
+ *   "Invia posizione attuale" sul watch (invio manuale su richiesta
+ *   del bambino, a differenza del tracking periodico automatico di
+ *   ingest-location.js). Riusa lo stesso evento+push del SOS/geofence
+ *   invece di un endpoint dedicato: stessa scrittura in
+ *   devices/{id}/events e stessa notifica FCM al genitore.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -30,7 +37,7 @@ const { checkDeviceToken } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEVICE_ID = "figlio";
-const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit"]);
+const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
 
 function buildNotification(type, zoneName) {
   if (type === "sos") {
@@ -42,7 +49,13 @@ function buildNotification(type, zoneName) {
   if (type === "geofence_enter") {
     return { title: "Ingresso zona", body: `Entrato in "${zoneName ?? "zona"}".` };
   }
-  return { title: "Uscita zona", body: `Uscito da "${zoneName ?? "zona"}".` };
+  if (type === "geofence_exit") {
+    return { title: "Uscita zona", body: `Uscito da "${zoneName ?? "zona"}".` };
+  }
+  return {
+    title: "Posizione aggiornata",
+    body: "Il bambino ha inviato la posizione attuale.",
+  };
 }
 
 module.exports = async (req, res) => {

@@ -1,6 +1,6 @@
 /**
  * POST /api/send-message
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Messaggio di chat inviato dal watch verso il genitore. Scrive il
  * messaggio e invia subito la push FCM a tutti i genitori nella stessa
@@ -9,6 +9,13 @@
  *
  * Auth: header "X-Device-Token".
  * Body: { text, timestamp? }
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-10): versione iniziale.
+ * - 0.2.0 (2026-09-10): aggiunto "expiresAt" (24h dal messaggio) —
+ *   lo storico chat viene ora svuotato ogni 24h dallo stesso cron
+ *   giornaliero che gia' pulisce posizioni/quota scadute, vedi
+ *   backend/api/cleanup.js e firestore.indexes.json.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -18,6 +25,7 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEVICE_ID = "figlio";
 const MAX_TEXT_LENGTH = 500;
+const MESSAGE_RETENTION_HOURS = 24;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -49,12 +57,13 @@ module.exports = async (req, res) => {
   }
 
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
+  const expiresAt = Timestamp.fromMillis(ts.toMillis() + MESSAGE_RETENTION_HOURS * 3_600_000);
 
   await db
     .collection("devices")
     .doc(DEVICE_ID)
     .collection("messages")
-    .add({ sender: "child", text, timestamp: ts });
+    .add({ sender: "child", text, timestamp: ts, expiresAt });
 
   const parentSnap = await db.collection("parents").get();
   const tokens = [];

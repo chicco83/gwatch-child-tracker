@@ -178,5 +178,6 @@ private fun eventLabel(type: String, zoneName: String?): String = when (type) {
     "sos" -> "🆘 SOS"
     "geofence_enter" -> "→ Entrato in ${zoneName ?: "zona"}"
     "geofence_exit" -> "← Uscito da ${zoneName ?: "zona"}"
+    "location_request" -> "📍 Posizione inviata su richiesta"
     else -> type
 }

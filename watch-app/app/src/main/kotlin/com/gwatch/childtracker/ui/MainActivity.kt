@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -39,6 +42,7 @@ import androidx.wear.compose.material.Text
 import com.google.firebase.messaging.FirebaseMessaging
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.geofence.GeofenceSyncWorker
+import com.gwatch.childtracker.location.LocationRequestWorker
 import com.gwatch.childtracker.location.LocationTrackingService
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.sos.SosWorker
@@ -85,7 +89,11 @@ class MainActivity : ComponentActivity() {
                         BackHandler { screen = "main" }
                         ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
                     }
-                    else -> MainScreen(onSosClick = ::sendSos, onChatClick = { screen = "chat" })
+                    else -> MainScreen(
+                        onSosClick = ::sendSos,
+                        onLocationClick = ::sendLocationNow,
+                        onChatClick = { screen = "chat" },
+                    )
                 }
             }
         }
@@ -200,10 +208,39 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // v0.3.0 (2026-09-10): pulsante "Invia posizione attuale" — invio
+    // manuale su richiesta del bambino (a differenza dell'upload
+    // periodico automatico, vedi LocationUploadWorker). Stessa logica
+    // di conferma di sendSos(): Toast solo sull'esito reale del
+    // WorkInfo, non alla sola messa in coda.
+    private fun sendLocationNow() {
+        val work = OneTimeWorkRequestBuilder<LocationRequestWorker>().build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            LocationRequestWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            work,
+        )
+        Toast.makeText(this, getString(R.string.location_sending), Toast.LENGTH_SHORT).show()
+
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(work.id).observe(this) { info ->
+            when (info?.state) {
+                WorkInfo.State.SUCCEEDED ->
+                    Toast.makeText(this, getString(R.string.location_sent), Toast.LENGTH_LONG).show()
+                WorkInfo.State.FAILED ->
+                    Toast.makeText(this, getString(R.string.location_failed), Toast.LENGTH_LONG).show()
+                else -> Unit
+            }
+        }
+    }
 }
 
 @Composable
-private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
+private fun MainScreen(
+    onSosClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onChatClick: () -> Unit,
+) {
     // v0.2.2 (2026-09-10): Button (Wear Compose) e' un tondo per icone
     // a dimensione fissa, non per etichette di testo — su device reale
     // "SOS"/"Messaggi" apparivano come cerchietti col testo troncato.
@@ -214,9 +251,17 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
     // v0.2.6 (2026-09-10): SOS e Messaggi avevano lo stesso colore,
     // indistinguibili a colpo d'occhio. SOS ora rosso (emergenza),
     // Messaggi resta il colore di default del tema.
+    // v0.3.0 (2026-09-10): il testo nei Chip risultava allineato a
+    // sinistra invece che centrato — estratta CenteredChipLabel, usata
+    // in tutti i Chip di questa schermata e di ChatScreen.kt. Aggiunto
+    // anche il terzo pulsante "Invia posizione attuale": con tre Chip
+    // pieni il contenuto puo' non stare piu' su schermi piccoli, per
+    // cui la Column e' ora scorrevole (stessa lezione imparata in
+    // ChatScreen.kt sui layout non scrollabili su device reale).
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
@@ -226,14 +271,32 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
             onClick = onSosClick,
             modifier = Modifier.fillMaxWidth(),
             colors = ChipDefaults.chipColors(backgroundColor = Color.Red, contentColor = Color.White),
-            label = { Text(text = stringResourceCompat(R.string.sos_button)) },
+            label = { CenteredChipLabel(stringResourceCompat(R.string.sos_button)) },
         )
-        Chip(onClick = onChatClick, modifier = Modifier.fillMaxWidth(), label = {
-            Text(text = stringResourceCompat(R.string.chat_button))
-        })
+        Chip(
+            onClick = onLocationClick,
+            modifier = Modifier.fillMaxWidth(),
+            label = { CenteredChipLabel(stringResourceCompat(R.string.location_button)) },
+        )
+        Chip(
+            onClick = onChatClick,
+            modifier = Modifier.fillMaxWidth(),
+            label = { CenteredChipLabel(stringResourceCompat(R.string.chat_button)) },
+        )
     }
 }
 
+/**
+ * Testo centrato per il label di un Chip/CompactChip: di default Wear
+ * Compose lo allinea a sinistra, che su device reale risultava
+ * incoerente/poco leggibile su bottoni a larghezza piena. Condivisa
+ * con ChatScreen.kt.
+ */
 @Composable
-private fun stringResourceCompat(id: Int): String =
+internal fun CenteredChipLabel(text: String) {
+    Text(text = text, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+}
+
+@Composable
+internal fun stringResourceCompat(id: Int): String =
     androidx.compose.ui.res.stringResource(id)
