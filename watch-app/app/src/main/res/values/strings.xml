@@ -44,4 +44,12 @@
     <string name="sos_cancel_confirm_button">Annulla</string>
     <string name="sos_tracking_notification_title">SOS attivo</string>
     <string name="sos_tracking_notification_text">Invio posizione ogni 30 secondi</string>
+
+    <!-- v0.6.0 (2026-09-10): banner "SOS attivo" sulla schermata
+         principale (prima nessun riscontro visivo, ne' dopo la conferma
+         ne' quando il genitore disattiva da remoto) + notifica quando
+         il genitore disattiva -->
+    <string name="sos_active_banner">🆘 SOS ATTIVO</string>
+    <string name="sos_deactivated_title">SOS disattivato</string>
+    <string name="sos_deactivated_text">Il genitore ha disattivato l\'SOS.</string>
 </resources>

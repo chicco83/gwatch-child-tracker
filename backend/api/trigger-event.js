@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.6.0
+ * Versione: 0.7.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -13,7 +13,8 @@
  * Auth: header "X-Device-Token".
  * Body: { type: "sos" | "geofence_enter" | "geofence_exit" |
  *         "location_request", lat, lon, accuracy?, battery?,
- *         zoneId?, timestamp? }
+ *         zoneId?, source? ("child" | "parent", solo per
+ *         "location_request"), timestamp? }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-09): versione iniziale.
@@ -60,6 +61,13 @@
  *   default notifyOnEnter/notifyOnExit = true (comportamento
  *   invariato), alarmOnExit = false (funzione opt-in, mai attiva senza
  *   scelta esplicita).
+ * - 0.7.0 (2026-09-10): aggiunto "source" al body di "location_request"
+ *   ("child" | "parent") — prima un invio manuale del bambino (pulsante
+ *   sul watch) e una richiesta remota del genitore ("Aggiorna
+ *   posizione" sulla phone-app) mandavano lo stesso identico evento:
+ *   la notifica al genitore diceva sempre "il bambino ha inviato la
+ *   posizione", anche quando l'aveva chiesta lui stesso. source assente
+ *   (client watch non aggiornato) si comporta come "child", invariato.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -70,7 +78,7 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 const DEVICE_ID = "figlio";
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
 
-function buildNotification(type, zoneName) {
+function buildNotification(type, zoneName, source) {
   if (type === "sos") {
     return {
       title: "SOS ricevuto",
@@ -82,6 +90,14 @@ function buildNotification(type, zoneName) {
   }
   if (type === "geofence_exit") {
     return { title: "Uscita zona", body: `Uscito da "${zoneName}".` };
+  }
+  // "location_request": source distingue un invio manuale del bambino
+  // (pulsante sul watch) da una richiesta remota del genitore
+  // ("Aggiorna posizione" sulla phone-app) — prima la notifica diceva
+  // sempre "il bambino ha inviato la posizione", anche quando l'aveva
+  // chiesta il genitore stesso.
+  if (source === "parent") {
+    return { title: "Posizione aggiornata", body: "Posizione aggiornata su tua richiesta." };
   }
   return {
     title: "Posizione aggiornata",
@@ -109,7 +125,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, timestamp } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, source, timestamp } = req.body || {};
   if (!VALID_TYPES.has(type) || typeof lat !== "number" || typeof lon !== "number") {
     res.status(400).send("Bad Request: 'type'/'lat'/'lon' mancanti o non validi");
     return;
@@ -193,7 +209,7 @@ module.exports = async (req, res) => {
     const tokens = await fetchParentFcmTokens(db);
     if (tokens.length > 0) {
       if (shouldNotify) {
-        const { title, body } = buildNotification(type, zoneName);
+        const { title, body } = buildNotification(type, zoneName, source);
         await getMessaging().sendEachForMulticast({
           tokens,
           notification: { title, body },

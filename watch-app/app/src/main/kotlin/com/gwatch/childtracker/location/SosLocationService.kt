@@ -16,6 +16,7 @@ import com.gwatch.childtracker.R
 import com.gwatch.childtracker.TrackerApplication
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.network.SosHeartbeatResult
+import com.gwatch.childtracker.sos.SosState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,12 @@ class SosLocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildNotification())
+        // v0.5.0 (2026-09-10): prima l'attivazione/disattivazione
+        // dell'SOS non aveva alcun riscontro sulla UI del watch — ne'
+        // dopo la conferma ne' quando il genitore lo disattiva da
+        // remoto. MainActivity osserva questo stato per mostrare/
+        // nascondere il banner "SOS ATTIVO" sulla schermata principale.
+        SosState.setActive(true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -64,6 +71,7 @@ class SosLocationService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         loopJob?.cancel()
+        SosState.setActive(false)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

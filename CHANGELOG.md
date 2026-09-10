@@ -7,6 +7,28 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-10
+
+### Added
+- Banner "🆘 SOS ATTIVO" sulla schermata principale del watch, e
+  notifica "SOS disattivato" quando il genitore lo disattiva da remoto
+  (`sos/SosState.kt`, nuovo): prima l'SOS non aveva alcun riscontro
+  visivo sul watch dopo la conferma, ne' un modo di sapere se fosse
+  ancora attivo o se il genitore lo avesse gia' disattivato.
+- Campo "source" ("child" | "parent") su `trigger-event.js` per
+  "location_request": la notifica ora distingue "Il bambino ha inviato
+  la posizione attuale" da "Posizione aggiornata su tua richiesta"
+  invece di mostrare sempre lo stesso testo indipendentemente da chi
+  ha avviato l'invio.
+- Scroll automatico all'ultimo messaggio nella chat del watch
+  (`ChatScreen.kt`): un messaggio in arrivo finiva in fondo alla lista
+  senza alcuno scroll automatico, invisibile senza scorrere a mano.
+- Invio ottimistico dei messaggi nella chat della phone-app
+  (`AppViewModel.kt`): un messaggio appena inviato dal genitore ora
+  appare subito, senza aspettare il giro completo scrittura-backend ->
+  lettura del listener Firestore (stesso pattern gia' in uso sul
+  watch-app).
+
 ## [0.21.0] - 2026-09-10
 
 ### Added

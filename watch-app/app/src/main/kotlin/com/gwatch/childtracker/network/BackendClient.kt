@@ -68,6 +68,12 @@ class BackendClient {
      * leggendo la zona da Firestore con questo id — necessario comunque
      * per leggere i nuovi toggle per-zona notifyOnEnter/notifyOnExit/
      * alarmOnExit (vedi CONTEXT.md).
+     * v0.6.0 (2026-09-10): aggiunto "source" (usato solo da
+     * "location_request", vedi LocationRequestWorker.kt) — distingue
+     * lato backend un invio manuale del bambino da una richiesta remota
+     * del genitore, cosi' la notifica non dice sempre "il bambino ha
+     * inviato la posizione" anche quando l'aveva chiesta il genitore
+     * stesso.
      */
     suspend fun triggerEvent(
         type: String,
@@ -76,6 +82,7 @@ class BackendClient {
         accuracy: Float?,
         battery: Int?,
         zoneId: String? = null,
+        source: String? = null,
         timestampMillis: Long = System.currentTimeMillis(),
     ): Boolean {
         val body = JSONObject().apply {
@@ -85,6 +92,7 @@ class BackendClient {
             accuracy?.let { put("accuracy", it.toDouble()) }
             battery?.let { put("battery", it) }
             zoneId?.let { put("zoneId", it) }
+            source?.let { put("source", it) }
             put("timestamp", timestampMillis)
         }
         val request = Request.Builder()

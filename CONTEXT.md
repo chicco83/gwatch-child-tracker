@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.21.0
+**Versione contesto:** 0.22.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -249,6 +249,40 @@ passiva. Implementazione:
   mai cambiare nome/raggio/notifiche) — pulsante "Modifica" in lista
   che precarica il pannello, "Salva" aggiorna lo stesso documento
   invece di crearne uno nuovo.
+
+Bug di test reale (continuazione SOS + chat) trovati e corretti nella
+stessa sessione, dopo il primo giro di test sull'SOS ridisegnato:
+
+- **SOS senza riscontro visivo sul watch**: la conferma e l'invio
+  funzionavano (Toast "SOS inviato"), ma non c'era alcun modo di
+  vedere sul watch se l'SOS fosse attivo, ne' quando il genitore lo
+  disattivava da remoto (nessun cambiamento visibile). Aggiunto
+  `sos/SosState.kt` (StateFlow osservabile, stesso pattern di
+  MessageStore), aggiornato da `SosLocationService` al proprio avvio/
+  arresto: un banner rosso "🆘 SOS ATTIVO" compare/scompare sulla
+  schermata principale del watch, e una notifica esplicita "SOS
+  disattivato" viene mostrata quando arriva la push di cancellazione
+  dal genitore.
+- **Notifica "Posizione aggiornata" ambigua**: quando il genitore
+  premeva "Aggiorna posizione" dalla phone-app, la notifica diceva
+  sempre "Il bambino ha inviato la posizione attuale" — stesso identico
+  evento di quando era davvero il bambino a premere il pulsante sul
+  watch, perche' i due percorsi (LocationRequestWorker invocato dal
+  pulsante locale o dalla push "location_request") non erano
+  distinguibili lato backend. Aggiunto un campo "source" ("child" |
+  "parent") end-to-end: la notifica ora dice "Posizione aggiornata su
+  tua richiesta" quando e' stato il genitore a chiederla.
+- **Messaggi della chat "non si vedono"**: sul watch, un messaggio in
+  arrivo finiva in fondo alla LazyColumn (dopo pulsanti azione e
+  intestazione storico) senza scroll automatico — invisibile se non si
+  scorreva a mano fino in fondo. Aggiunto scroll automatico all'ultimo
+  messaggio (stesso pattern gia' in uso nella phone-app). Sulla
+  phone-app, un messaggio appena inviato dal genitore compariva solo
+  dopo il giro completo scrittura-backend -> lettura del listener
+  Firestore (a differenza del watch, che ha gia' un invio ottimistico):
+  aggiunto lo stesso pattern ottimistico in `AppViewModel.kt`
+  (`_optimisticMessages`, combinato col listener Firestore e
+  deduplicato quando il messaggio reale arriva).
 
 ### Aperto/da fare (non ancora chiuso)
 
@@ -569,3 +603,13 @@ CHANGELOG.md  Storico versioni
   data-only per partire anche ad app in background/uccisa). Aggiunta
   anche la modifica di una zona esistente in GeofenceScreen.kt, prima
   impossibile (v0.21.0).
+- 2026-09-10: Secondo giro di test reale sull'SOS ridisegnato e sulla
+  chat. Trovati e corretti: nessun riscontro visivo sul watch dello
+  stato SOS attivo/disattivo (aggiunto SosState.kt + banner + notifica
+  di disattivazione); la notifica "Aggiorna posizione" dal genitore
+  diceva sempre "il bambino ha inviato la posizione" (aggiunto un campo
+  "source" end-to-end per distinguere richiesta locale/remota); i
+  messaggi chat non erano visibili senza scroll manuale sul watch
+  (aggiunto scroll automatico) e comparivano con ritardo sulla
+  phone-app (aggiunto invio ottimistico, stesso pattern del watch)
+  (v0.22.0).

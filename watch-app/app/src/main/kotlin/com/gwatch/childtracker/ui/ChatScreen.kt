@@ -48,6 +48,14 @@ package com.gwatch.childtracker.ui
 //   Divider risultava "Unresolved reference" con la versione di
 //   compose-material di questo progetto (1.3.1) — sostituito con
 //   HorizontalSeparator(), una riga disegnata a mano (Box sottile).
+// v0.4.0 (2026-09-10): bug segnalato dall'utente dopo test reale — un
+//   messaggio in arrivo compariva in fondo alla LazyColumn (dopo i
+//   pulsanti azione e l'intestazione storico) senza alcuno scroll
+//   automatico: se non si entrava in "Messaggi" e non si scorreva a
+//   mano fino in fondo, il nuovo messaggio restava invisibile.
+//   Aggiunto rememberLazyListState() + scroll automatico all'ultimo
+//   messaggio quando la lista cambia, stesso pattern gia' in uso nella
+//   ChatScreen.kt della phone-app.
 
 import android.app.Activity
 import android.content.Context
@@ -66,6 +74,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,10 +113,22 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
     val messages by MessageStore.messages.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         val history = backendClient.fetchMessages()
         if (history.isNotEmpty()) MessageStore.replaceAll(history)
+    }
+
+    // Scorre automaticamente all'ultimo messaggio quando la lista
+    // cambia (apertura schermo con storico gia' presente, o nuovo
+    // messaggio in arrivo via push) — FIXED_HEADER_ITEMS e' il numero
+    // di elementi fissi sopra lo storico nella LazyColumn sotto
+    // (dettatura, 3 risposte rapide, indietro, separatore, intestazione).
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(FIXED_HEADER_ITEMS + messages.size - 1)
+        }
     }
 
     val voiceLauncher = rememberLauncherForActivityResult(
@@ -124,6 +145,7 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp, start = 10.dp, end = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -228,6 +250,10 @@ private fun sendChatMessage(
         Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
     }
 }
+
+// Elementi fissi sopra lo storico nella LazyColumn di ChatScreen:
+// dettatura, 3 risposte rapide, indietro, separatore, intestazione.
+private const val FIXED_HEADER_ITEMS = 7
 
 // stringResourceCompat e CenteredChipLabel sono condivise da
 // MainActivity.kt (stesso package com.gwatch.childtracker.ui).

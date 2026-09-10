@@ -18,10 +18,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+// v0.22.0 (2026-09-10): bug segnalato dall'utente — "i messaggi partono
+// e compare il banner di invio ma non si vedono, devono comparire come
+// una chat di wa". Prima "messages" veniva popolato solo dal listener
+// Firestore: un messaggio appena inviato compariva solo dopo il giro
+// completo scrittura-backend -> lettura-listener, invece che subito
+// come nel watch-app (che ha gia' un invio ottimistico in
+// ChatScreen.kt, MessageStore.append prima della chiamata di rete).
+// Aggiunto lo stesso pattern qui: _optimisticMessages tiene i messaggi
+// mandati dal genitore non ancora confermati dal listener, "messages"
+// li combina con quelli reali e scarta i duplicati quando il listener
+// li recupera (stesso sender+testo).
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
@@ -43,8 +55,16 @@ class AppViewModel(
     val events: StateFlow<List<DeviceEvent>> = deviceRepository.observeRecentEvents()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val messages: StateFlow<List<ChatMessage>> = deviceRepository.observeMessages()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val _optimisticMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+
+    val messages: StateFlow<List<ChatMessage>> = combine(
+        deviceRepository.observeMessages(),
+        _optimisticMessages,
+    ) { remote, optimistic ->
+        val remoteKeys = remote.map { it.sender to it.text }.toSet()
+        val stillPending = optimistic.filterNot { (it.sender to it.text) in remoteKeys }
+        (remote + stillPending).sortedBy { it.timestampMillis }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun signInIntent(): Intent = authRepository.signInIntent()
 
@@ -82,14 +102,25 @@ class AppViewModel(
         viewModelScope.launch { runCatching { deviceRepository.deleteGeofence(id) } }
     }
 
-    /** onSent(true) se il messaggio e' stato accettato dal backend. */
+    /**
+     * onSent(true) se il messaggio e' stato accettato dal backend.
+     * Ottimista: il messaggio appare subito in "messages" (vedi sopra),
+     * senza aspettare che il listener Firestore lo recuperi — se
+     * l'invio fallisce viene tolto di nuovo, non e' mai partito
+     * davvero.
+     */
     fun sendMessage(text: String, onSent: (Boolean) -> Unit) {
         val user = _user.value ?: return onSent(false)
+        val optimistic = ChatMessage(sender = "parent", text = text, timestampMillis = System.currentTimeMillis())
+        _optimisticMessages.value = _optimisticMessages.value + optimistic
         viewModelScope.launch {
             val ok = runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
                 backendClient.sendMessageToChild(idToken, text)
             }.getOrDefault(false)
+            if (!ok) {
+                _optimisticMessages.value = _optimisticMessages.value.filterNot { it === optimistic }
+            }
             onSent(ok)
         }
     }

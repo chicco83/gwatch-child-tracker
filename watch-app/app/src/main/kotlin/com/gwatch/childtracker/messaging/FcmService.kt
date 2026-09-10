@@ -15,6 +15,16 @@ package com.gwatch.childtracker.messaging
 //   questa push per fermare subito SosLocationService (i ping ogni 30",
 //   vedi location/SosLocationService.kt) invece di aspettare che il
 //   watch se ne accorga da solo al prossimo ping rifiutato con 409.
+// v0.4.0 (2026-09-10): "sos_cancel" ora mostra anche una notifica
+//   "SOS disattivato" — prima fermava il service senza alcun riscontro
+//   visibile sul watch (il banner "SOS ATTIVO" su MainActivity sparisce
+//   gia' da solo, ma una notifica esplicita e' piu' difficile da perdere
+//   se il bambino non ha la app in primo piano). "location_request" ora
+//   passa source=SOURCE_PARENT a LocationRequestWorker, per distinguere
+//   lato backend una richiesta remota del genitore da un invio manuale
+//   del bambino (stesso identico worker, vedi LocationRequestWorker.kt) —
+//   prima la notifica al genitore diceva sempre "il bambino ha inviato
+//   la posizione", anche quando l'aveva chiesta lui stesso.
 
 import android.app.NotificationManager
 import android.content.Intent
@@ -22,6 +32,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.gwatch.childtracker.R
@@ -58,7 +69,7 @@ class FcmService : FirebaseMessagingService() {
         when (message.data["type"]) {
             "chat" -> handleChatMessage(message.data)
             "location_request" -> handleLocationRequest()
-            "sos_cancel" -> stopService(Intent(this, SosLocationService::class.java))
+            "sos_cancel" -> handleSosCancel()
         }
     }
 
@@ -83,11 +94,26 @@ class FcmService : FirebaseMessagingService() {
     }
 
     private fun handleLocationRequest() {
-        val work = OneTimeWorkRequestBuilder<LocationRequestWorker>().build()
+        val work = OneTimeWorkRequestBuilder<LocationRequestWorker>()
+            .setInputData(workDataOf(LocationRequestWorker.KEY_SOURCE to LocationRequestWorker.SOURCE_PARENT))
+            .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
             LocationRequestWorker.WORK_NAME,
             ExistingWorkPolicy.REPLACE,
             work,
         )
+    }
+
+    private fun handleSosCancel() {
+        stopService(Intent(this, SosLocationService::class.java))
+
+        val manager = getSystemService(NotificationManager::class.java)
+        val builder = NotificationCompat.Builder(this, TrackerApplication.MESSAGES_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(getString(R.string.sos_deactivated_title))
+            .setContentText(getString(R.string.sos_deactivated_text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+        manager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 }

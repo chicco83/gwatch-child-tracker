@@ -15,12 +15,23 @@ import com.gwatch.childtracker.network.BackendClient
 import kotlinx.coroutines.tasks.await
 
 /**
- * Invio manuale della posizione attuale su richiesta del bambino
- * (pulsante "Invia posizione" in MainActivity), a differenza del
- * tracking periodico automatico (LocationUploadWorker). Stessa logica
- * di SosWorker (stesso evento "prioritario" lato backend, vedi
- * trigger-event.js type "location_request"), ma senza setExpedited:
- * non e' un'emergenza, puo' aspettare la coda normale di WorkManager.
+ * Invio manuale/su richiesta remota della posizione attuale — pulsante
+ * "Invia posizione" in MainActivity (il bambino) oppure push
+ * "location_request" da FcmService (il genitore preme "Aggiorna
+ * posizione" sulla phone-app) — a differenza del tracking periodico
+ * automatico (LocationUploadWorker). Stessa logica di SosWorker (stesso
+ * evento "prioritario" lato backend, vedi trigger-event.js type
+ * "location_request"), ma senza setExpedited: non e' un'emergenza, puo'
+ * aspettare la coda normale di WorkManager.
+ *
+ * v0.2.0 (2026-09-10): aggiunto KEY_SOURCE. Prima le due chiamate
+ * (bambino/genitore) mandavano lo stesso identico evento al backend,
+ * che quindi non poteva distinguerle: la notifica al genitore diceva
+ * sempre "il bambino ha inviato la posizione", anche quando l'aveva
+ * chiesta lui stesso da remoto. Default SOURCE_CHILD se non impostato,
+ * cosi' un eventuale enqueue senza input data (non dovrebbe succedere,
+ * entrambi i chiamanti lo passano sempre) resta sul comportamento
+ * precedente invece di fallire silenziosamente.
  */
 class LocationRequestWorker(
     private val appContext: Context,
@@ -34,6 +45,8 @@ class LocationRequestWorker(
             Manifest.permission.ACCESS_FINE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
         if (!hasPermission) return Result.failure()
+
+        val source = inputData.getString(KEY_SOURCE) ?: SOURCE_CHILD
 
         val location = try {
             LocationServices.getFusedLocationProviderClient(appContext)
@@ -56,6 +69,7 @@ class LocationRequestWorker(
             lon = location.longitude,
             accuracy = if (location.hasAccuracy()) location.accuracy else null,
             battery = battery,
+            source = source,
         )
         return if (ok) Result.success() else Result.retry()
     }
@@ -69,5 +83,8 @@ class LocationRequestWorker(
 
     companion object {
         const val WORK_NAME = "location-request"
+        const val KEY_SOURCE = "source"
+        const val SOURCE_CHILD = "child"
+        const val SOURCE_PARENT = "parent"
     }
 }

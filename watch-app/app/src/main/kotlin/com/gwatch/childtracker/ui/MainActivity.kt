@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -35,6 +37,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
@@ -47,6 +50,7 @@ import com.gwatch.childtracker.location.LocationRequestWorker
 import com.gwatch.childtracker.location.LocationTrackingService
 import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
+import com.gwatch.childtracker.sos.SosState
 import com.gwatch.childtracker.sos.SosWorker
 import com.gwatch.childtracker.upload.LocationUploadWorker
 import java.util.concurrent.TimeUnit
@@ -250,8 +254,17 @@ class MainActivity : ComponentActivity() {
     // periodico automatico, vedi LocationUploadWorker). Stessa logica
     // di conferma di sendSos(): Toast solo sull'esito reale del
     // WorkInfo, non alla sola messa in coda.
+    // v0.6.0 (2026-09-10): passa source=KEY_SOURCE_CHILD — prima questo
+    // pulsante e la richiesta remota del genitore (FcmService, push
+    // "location_request") mandavano lo stesso identico evento al
+    // backend, che quindi non poteva distinguerli: la notifica al
+    // genitore diceva sempre "il bambino ha inviato la posizione" anche
+    // quando era stato lui stesso a chiederla da "Aggiorna posizione"
+    // sulla phone-app. Vedi LocationRequestWorker.kt.
     private fun sendLocationNow() {
-        val work = OneTimeWorkRequestBuilder<LocationRequestWorker>().build()
+        val work = OneTimeWorkRequestBuilder<LocationRequestWorker>()
+            .setInputData(workDataOf(LocationRequestWorker.KEY_SOURCE to LocationRequestWorker.SOURCE_CHILD))
+            .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
             LocationRequestWorker.WORK_NAME,
             ExistingWorkPolicy.REPLACE,
@@ -294,6 +307,11 @@ private fun MainScreen(
     // pieni il contenuto puo' non stare piu' su schermi piccoli, per
     // cui la Column e' ora scorrevole (stessa lezione imparata in
     // ChatScreen.kt sui layout non scrollabili su device reale).
+    // v0.6.0 (2026-09-10): aggiunto il banner "SOS ATTIVO" — prima non
+    // c'era alcun modo di vedere sul watch se l'SOS fosse attivo, ne'
+    // dopo la conferma ne' quando il genitore lo disattiva da remoto
+    // (vedi SosState.kt/SosLocationService.kt).
+    val sosActive by SosState.active.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -303,6 +321,15 @@ private fun MainScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
         Text(text = stringResourceCompat(R.string.app_name))
+        if (sosActive) {
+            Text(
+                text = stringResourceCompat(R.string.sos_active_banner),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                color = Color.Red,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         Chip(
             onClick = onSosClick,
             modifier = Modifier.fillMaxWidth(),
