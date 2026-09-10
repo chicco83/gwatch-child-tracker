@@ -1,5 +1,22 @@
 package com.gwatch.childtracker.ui
 
+// Storico versioni
+// v0.2.0 (2026-09-10): prima versione, layout a Column con
+//   Modifier.weight(1f) per dare alla lista messaggi lo spazio
+//   restante sopra ai pulsanti. In build reale (Android Studio,
+//   dependency androidx.wear.compose:compose-foundation:1.3.1 +
+//   androidx.compose.ui:ui:1.6.8) dava errore di compilazione:
+//   "Cannot access 'weight': it is internal in
+//   'androidx.compose.foundation.layout'" — non risolto nemmeno
+//   fissando esplicitamente androidx.compose.foundation:foundation
+//   alla stessa versione 1.6.8 (vedi build.gradle.kts). Causa esatta
+//   non isolabile senza un ambiente di build reale a disposizione.
+// v0.2.1 (2026-09-10): rimosso ogni uso di Modifier.weight. Layout
+//   riscritto con Box + Modifier.align(...) al posto di Column
+//   pesato: stesso risultato visivo (lista messaggi al centro,
+//   pulsante indietro in alto, dettatura/risposte rapide in basso),
+//   ma senza dipendere da quell'API.
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -8,11 +25,12 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -21,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -69,21 +88,30 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-        Button(onClick = onBack) { Text(stringResourceCompat(R.string.back)) }
-
+    Box(modifier = Modifier.fillMaxSize()) {
         if (messages.isEmpty()) {
             Text(
                 text = stringResourceCompat(R.string.chat_no_messages),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.align(Alignment.Center).padding(8.dp),
             )
         } else {
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().fillMaxWidth(),
+                contentPadding = PaddingValues(top = 32.dp, bottom = 132.dp, start = 8.dp, end = 8.dp),
+            ) {
                 items(messages) { message -> MessageRow(message) }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Button(
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+        ) { Text(stringResourceCompat(R.string.back)) }
+
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).padding(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Button(onClick = {
                 voiceLauncher.launch(
                     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
