@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -29,8 +30,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.google.firebase.messaging.FirebaseMessaging
@@ -169,6 +172,13 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // v0.2.6 (2026-09-10): il Toast "SOS inviato" partiva subito dopo
+    // l'accodamento del lavoro, non dopo l'invio effettivo al backend
+    // (poteva mentire: il worker puo' fallire/ritentare dopo). Ora si
+    // osserva l'esito reale del WorkInfo — conferma solo a consegna
+    // avvenuta (SUCCEEDED) o fallimento definitivo (FAILED, es.
+    // permesso posizione mancante); i tentativi (RETRY) restano
+    // silenziosi, il worker ritenta da solo in background.
     private fun sendSos() {
         val work = OneTimeWorkRequestBuilder<SosWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -178,7 +188,17 @@ class MainActivity : ComponentActivity() {
             ExistingWorkPolicy.REPLACE, // un nuovo SOS ha sempre priorita' su uno in coda
             work,
         )
-        Toast.makeText(this, getString(R.string.sos_sent), Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.sos_sending), Toast.LENGTH_SHORT).show()
+
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(work.id).observe(this) { info ->
+            when (info?.state) {
+                WorkInfo.State.SUCCEEDED ->
+                    Toast.makeText(this, getString(R.string.sos_sent), Toast.LENGTH_LONG).show()
+                WorkInfo.State.FAILED ->
+                    Toast.makeText(this, getString(R.string.sos_failed), Toast.LENGTH_LONG).show()
+                else -> Unit
+            }
+        }
     }
 }
 
@@ -191,6 +211,9 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
     // testo (rettangolare, si adatta alla larghezza).
     // v0.2.3 (2026-09-10): aggiunta spaziatura fra i due Chip, che su
     // device reale risultavano attaccati senza margine.
+    // v0.2.6 (2026-09-10): SOS e Messaggi avevano lo stesso colore,
+    // indistinguibili a colpo d'occhio. SOS ora rosso (emergenza),
+    // Messaggi resta il colore di default del tema.
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -199,9 +222,12 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
         Text(text = stringResourceCompat(R.string.app_name))
-        Chip(onClick = onSosClick, modifier = Modifier.fillMaxWidth(), label = {
-            Text(text = stringResourceCompat(R.string.sos_button))
-        })
+        Chip(
+            onClick = onSosClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ChipDefaults.chipColors(backgroundColor = Color.Red, contentColor = Color.White),
+            label = { Text(text = stringResourceCompat(R.string.sos_button)) },
+        )
         Chip(onClick = onChatClick, modifier = Modifier.fillMaxWidth(), label = {
             Text(text = stringResourceCompat(R.string.chat_button))
         })
