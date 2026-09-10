@@ -39,3 +39,10 @@ data class DeviceEvent(
     val zoneName: String? = null,
     val timestampMillis: Long = 0L,
 )
+
+data class ChatMessage(
+    val id: String = "",
+    val sender: String = "parent", // "parent" | "child"
+    val text: String = "",
+    val timestampMillis: Long = 0L,
+)

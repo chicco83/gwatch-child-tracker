@@ -12,8 +12,8 @@ android {
         applicationId = "com.gwatch.childtracker.phone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai
@@ -94,4 +94,9 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // v0.2.0 (chat): unica chiamata REST verso il backend (invio
+    // messaggio al watch, serve la push FCM), vedi data/BackendClient.kt.
+    // Stessa versione di watch-app/app/build.gradle.kts.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

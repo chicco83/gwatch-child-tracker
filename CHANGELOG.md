@@ -7,6 +7,45 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-10
+
+### Added
+- Chat testuale genitore↔watch, consegnata via **push FCM** invece che
+  a polling: scelta fatta esplicitamente per il consumo di batteria
+  (con FCM il radio del watch resta a riposo tra un messaggio e
+  l'altro; il polling lo terrebbe sveglio a intervalli fissi anche
+  senza nulla di nuovo).
+  - `backend/`: nuovi endpoint `send-message.js` (watch → genitore),
+    `send-message-to-child.js` (genitore → watch, auth via ID token
+    Firebase invece del token statico del watch), `register-watch-token.js`
+    (registra il token FCM del watch), `messages.js` (storico recente,
+    usato dal watch che non ha un SDK Firestore completo). Nuova
+    sotto-collezione `devices/{id}/messages` (regole: lettura solo
+    genitore, scrittura sempre negata al client — ogni messaggio passa
+    dal backend perché deve anche innescare la push, stesso motivo di
+    `trigger-event.js`). Aggiunta `checkParentAuth` in `_lib/auth.js`.
+  - `watch-app/`: registrata una nuova app Android Firebase
+    (`com.gwatch.childtracker`, nessuna SHA-1 necessaria — solo
+    `firebase-messaging`, niente login Google sul watch).
+    `messaging/FcmService.kt` riceve i messaggi (sempre payload
+    "data") e li mette in `data/MessageStore.kt`; `ui/ChatScreen.kt`
+    li mostra con solo risposte rapide preimpostate e dettatura vocale
+    (`RecognizerIntent`) — niente tastiera, impraticabile su un
+    display così piccolo per un bambino.
+  - `phone-app/`: `ui/ChatScreen.kt` (campo di testo libero, lettura
+    via listener Firestore come il resto dell'app). Nuovo
+    `data/BackendClient.kt` (OkHttp, unica chiamata REST della
+    phone-app) per l'invio, che deve passare dal backend invece che da
+    una scrittura Firestore diretta — serve per innescare la push FCM
+    nella stessa chiamata (nessun trigger `onDocumentCreated`
+    disponibile su Vercel).
+
+### Known limitations
+- Non compilato/testato/deployato: backend da pushare su Vercel,
+  entrambe le app da aprire in Android Studio per il primo build
+  reale (stesso limite di sempre, nessun SDK Android/rete Google
+  Maven in questo ambiente).
+
 ## [0.17.0] - 2026-09-09
 
 ### Added

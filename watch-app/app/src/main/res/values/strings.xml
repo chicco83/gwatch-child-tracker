@@ -8,4 +8,15 @@
     <string name="sos_failed">Invio fallito, riprovo…</string>
     <string name="status_last_sync">Ultimo invio: %1$s</string>
     <string name="status_battery">Batteria: %1$d%%</string>
+
+    <!-- v0.2.0: chat -->
+    <string name="chat_button">Messaggi</string>
+    <string name="chat_notification_title">Nuovo messaggio</string>
+    <string name="chat_no_messages">Nessun messaggio</string>
+    <string name="chat_quick_reply_ok">Tutto ok</string>
+    <string name="chat_quick_reply_coming">Sto arrivando</string>
+    <string name="chat_quick_reply_call_me">Chiamami</string>
+    <string name="chat_voice_reply">🎤 Rispondi</string>
+    <string name="chat_send_failed">Invio fallito, riprova</string>
+    <string name="back">Indietro</string>
 </resources>

@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                     MapScreen(
                         viewModel = viewModel,
                         onOpenGeofences = { navController.navigate("geofences") },
+                        onOpenChat = { navController.navigate("chat") },
                         onSignOut = {
                             viewModel.signOut()
                             navController.navigate("login") { popUpTo("map") { inclusive = true } }
@@ -67,6 +68,9 @@ class MainActivity : ComponentActivity() {
                 }
                 composable("geofences") {
                     GeofenceScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                }
+                composable("chat") {
+                    ChatScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.17.0
-**Ultimo aggiornamento:** 2026-09-09
+**Versione contesto:** 0.18.0
+**Ultimo aggiornamento:** 2026-09-10
 
 ---
 
@@ -52,6 +52,16 @@ da Family Link.
 - **Auth:** Firebase Authentication, legata all'account Google del
   genitore (non a quello "adulto" del watch, che resta solo login
   tecnico del dispositivo).
+- **Chat testuale genitore↔watch:** consegna via **push FCM**, non
+  polling. Motivo: con FCM il radio del watch resta a riposo e si
+  sveglia solo quando arriva un messaggio; il polling lo terrebbe
+  sveglio a intervalli fissi anche senza nulla di nuovo, consumo
+  batteria significativo su un dispositivo LTE standalone. Per
+  simmetria con `trigger-event.js` (niente trigger Firestore
+  `onDocumentCreated` disponibile su Vercel), ogni invio passa da un
+  endpoint backend che scrive il messaggio *e* invia la push nella
+  stessa chiamata — mai una scrittura diretta su Firestore dal client,
+  a differenza delle geofence.
 - **Backup storico:** esportazione periodica su Google Drive del
   genitore (sfrutta l'abbonamento Google One già pagato, nessun costo
   aggiuntivo). Da implementare in Fase 2.
@@ -98,22 +108,36 @@ da Family Link.
   di traffico giornaliera attiva su tutti gli endpoint (SOS escluso).
 - **watch-app/**: scaffolding completo (Wear OS, Kotlin) — sampling
   GPS adattivo, upload a batch, geofence, SOS espedito, gestione
-  permessi/riavvio. **Non ancora compilato/testato**: nessun SDK
-  Android né rete verso i repository Google Maven in questo ambiente.
-  Gradle wrapper già generato. Da aprire in Android Studio per il
-  primo build reale.
+  permessi/riavvio, **chat testuale via push FCM** (risposte rapide +
+  dettatura vocale, niente tastiera). **Setup Firebase completo**: app
+  Android registrata sul progetto reale (`com.gwatch.childtracker`),
+  `google-services.json` scaricato via API (nessuna SHA-1 necessaria:
+  solo FCM, niente login Google sul watch). **Non ancora
+  compilato/testato**: nessun SDK Android né rete verso i repository
+  Google Maven in questo ambiente. Gradle wrapper già generato. Da
+  aprire in Android Studio per il primo build reale.
 - **phone-app/**: scaffolding completo (Android, Kotlin/Compose) —
   login Google (solo genitori pre-autorizzati), mappa OpenStreetMap
   (osmdroid) in tempo reale via listener Firestore (nessun endpoint
   backend dedicato per la lettura), gestione geofence (unica scrittura
-  diretta dal client, come da regole di sicurezza), notifiche push su
-  SOS/geofence, registrazione token FCM su `parents/{uid}`. **Setup
-  Firebase completo**: app Android registrata sul progetto reale
+  diretta dal client, come da regole di sicurezza), **chat testuale**
+  col watch (lettura via listener Firestore, invio via endpoint
+  backend per la push FCM), notifiche push su SOS/geofence/chat,
+  registrazione token FCM su `parents/{uid}`. **Setup Firebase
+  completo**: app Android registrata sul progetto reale
   (`com.gwatch.childtracker.phone`), `google-services.json` scaricato,
   keystore di debug generato e il suo SHA-1 registrato per il login
   Google — nessun passaggio manuale rimasto lato utente (vedi log
   decisioni). **Non ancora compilato/testato**: stesso limite di
   watch-app, nessun SDK Android/rete Google Maven in questo ambiente.
+- **backend/**: aggiunti 4 endpoint per la chat (`send-message`,
+  `send-message-to-child`, `register-watch-token`, `messages`) e la
+  sotto-collezione `devices/{id}/messages` (regole: lettura solo al
+  genitore, scrittura sempre negata al client). Nuovo meccanismo di
+  auth per `send-message-to-child`: ID token Firebase del genitore
+  (`checkParentAuth`, verificato con l'Admin SDK), diverso dal token
+  statico usato dal watch — non ancora deployato su Vercel (serve un
+  push del branch).
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -316,3 +340,25 @@ CHANGELOG.md  Storico versioni
   service account cancellate dallo scratchpad subito dopo l'uso, come
   da prassi. **Non ancora compilato/testato** — stesso limite di sempre
   (v0.17.0).
+- 2026-09-10: Richiesta chat testuale genitore↔watch. Chiesto
+  esplicitamente se conveniva riusare il polling già esistente
+  (BackendClient/WorkManager) o passare a push FCM: differenza reale
+  sul consumo batteria (radio a riposo con FCM, sveglia a intervalli
+  fissi col polling), l'utente ha scelto **FCM**. Registrata via API
+  (stessa service account, poi ricancellata) una nuova app Android
+  Firebase per il watch (`com.gwatch.childtracker`, pacchetto separato
+  da `phone-app`) — nessuna SHA-1 richiesta, solo `firebase-messaging`
+  (niente Firestore/Auth completi sul watch, coerente con la scelta
+  "meno pezzi in movimento" già fatta per OkHttp). Aggiunti 4 endpoint
+  backend (`send-message`, `send-message-to-child`,
+  `register-watch-token`, `messages`) e `devices/{id}/messages` alle
+  regole Firestore (lettura solo genitore, scrittura sempre negata al
+  client — ogni messaggio passa dal backend perché deve anche
+  innescare la push, stesso motivo di `trigger-event.js`). Aggiunta
+  `checkParentAuth` (verifica ID token Firebase via Admin SDK) per
+  l'endpoint chiamato dalla phone-app, diverso dal token statico del
+  watch. UI: `ChatScreen` su entrambe le app — sul watch solo risposte
+  rapide preimpostate + dettatura vocale (niente tastiera, impraticabile
+  su un display così piccolo per un bambino), sul telefono un campo di
+  testo libero. **Non ancora compilato/testato/deployato** — stesso
+  limite di sempre, backend da pushare su Vercel (v0.18.0).

@@ -27,9 +27,13 @@ backend/
     device-config.js          GET  — geofence attive per il watch
     ha-status.js               GET  — stato per il polling opzionale di Home Assistant
     cleanup.js                  GET  — pulizia storico scaduto, invocata da GitHub Actions
+    send-message.js             POST — messaggio chat dal watch al genitore + push FCM
+    send-message-to-child.js    POST — messaggio chat dal genitore al watch + push FCM
+    register-watch-token.js     POST — registra il token FCM del watch
+    messages.js                  GET  — storico chat recente (usato dal watch)
     _lib/
       firebase-admin.js         Init condivisa dell'Admin SDK
-      auth.js                    Verifica token device/HA
+      auth.js                    Verifica token device/HA/genitore
       quota.js                    Guardia di traffico giornaliera (vedi sotto)
 ```
 
@@ -40,9 +44,14 @@ devices/{deviceId}                      stato corrente (lastLocation, battery, l
 devices/{deviceId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
 devices/{deviceId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
 devices/{deviceId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
+devices/{deviceId}/messages/{autoId}     chat testuale (sender: "parent"|"child", text, timestamp)
 devices/{deviceId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
 parents/{uid}                            token FCM del genitore per le push
 ```
+
+`devices/{deviceId}.fcmToken` (campo sul documento principale, non una
+sotto-collezione): token FCM del watch, per svegliarlo quando il
+genitore scrive in chat (vedi `register-watch-token.js`).
 
 MVP: un solo dispositivo (`devices/figlio`), un solo genitore.
 Multi-figlio/multi-genitore è in backlog Fase 2 (vedi `../CONTEXT.md`).
@@ -55,10 +64,20 @@ Multi-figlio/multi-genitore è in backlog Fase 2 (vedi `../CONTEXT.md`).
 | `/api/trigger-event` | POST | header `X-Device-Token` | watch-app (SOS, ingresso/uscita geofence) — scrive l'evento e invia la push FCM nella stessa chiamata |
 | `/api/device-config` | GET | header `X-Device-Token` | watch-app (legge geofence attive) |
 | `/api/ha-status` | GET | header `Authorization: Bearer <token>` | Home Assistant (polling opzionale) |
+| `/api/send-message` | POST | header `X-Device-Token` | watch-app (chat: messaggio verso il genitore) — scrive + invia la push FCM nella stessa chiamata |
+| `/api/send-message-to-child` | POST | header `Authorization: Bearer <Firebase ID token>` | phone-app (chat: messaggio verso il watch) — scrive + invia la push FCM (solo dati, sveglia l'app) nella stessa chiamata |
+| `/api/register-watch-token` | POST | header `X-Device-Token` | watch-app (registra il token FCM per ricevere la chat) |
+| `/api/messages` | GET | header `X-Device-Token` | watch-app (storico chat recente, per recuperare messaggi persi ad app chiusa) |
 
-La phone-app **non** passa da questi endpoint: legge/scrive Firestore
-direttamente via SDK con Firebase Auth (realtime, nessun costo extra
-nel piano gratuito per questo volume).
+Quasi tutta la phone-app legge/scrive Firestore direttamente via SDK
+con Firebase Auth (realtime, nessun costo extra nel piano gratuito per
+questo volume) **senza** passare da questi endpoint — l'eccezione è
+l'invio dei messaggi di chat (`send-message-to-child`): serve un
+passaggio dal backend perché è l'unico posto da cui si può inviare
+anche la push FCM che sveglia il watch (su Vercel non c'è un trigger
+Firestore equivalente a `onDocumentCreated`, vedi `trigger-event.js`).
+La lettura della chat resta invece un listener Firestore diretto,
+come tutto il resto.
 
 ## Limite di traffico (rete di sicurezza)
 

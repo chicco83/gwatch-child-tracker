@@ -50,6 +50,7 @@ private val DEFAULT_POSITION = GeoPoint(41.9028, 12.4964)
 fun MapScreen(
     viewModel: AppViewModel,
     onOpenGeofences: () -> Unit,
+    onOpenChat: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val deviceState by viewModel.deviceState.collectAsState()
@@ -78,6 +79,7 @@ fun MapScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    TextButton(onClick = onOpenChat) { Text(stringResource(R.string.chat_title)) }
                     TextButton(onClick = onOpenGeofences) { Text(stringResource(R.string.geofences_title)) }
                     TextButton(onClick = onSignOut) { Text(stringResource(R.string.sign_out)) }
                 },

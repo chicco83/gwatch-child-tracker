@@ -1,6 +1,7 @@
 package com.gwatch.childtracker.network
 
 import com.gwatch.childtracker.config.BackendConfig
+import com.gwatch.childtracker.network.model.ChatMessage
 import com.gwatch.childtracker.network.model.GeofenceZone
 import com.gwatch.childtracker.network.model.LocationPoint
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -92,6 +93,50 @@ class BackendClient {
             val json = JSONObject(responseBody)
             val arr = json.getJSONArray("geofences")
             (0 until arr.length()).map { GeofenceZone.fromJson(arr.getJSONObject(it)) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Messaggio di chat verso il genitore. true se accettato (HTTP 2xx). */
+    suspend fun sendMessage(text: String, timestampMillis: Long = System.currentTimeMillis()): Boolean {
+        val body = JSONObject().apply {
+            put("text", text)
+            put("timestamp", timestampMillis)
+        }
+        val request = Request.Builder()
+            .url("${BackendConfig.baseUrl}/api/send-message")
+            .header("X-Device-Token", BackendConfig.deviceToken)
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        return executeForSuccess(request)
+    }
+
+    /** Registra/aggiorna il token FCM del watch, per ricevere la chat. */
+    suspend fun registerFcmToken(token: String): Boolean {
+        val body = JSONObject().apply { put("token", token) }
+        val request = Request.Builder()
+            .url("${BackendConfig.baseUrl}/api/register-watch-token")
+            .header("X-Device-Token", BackendConfig.deviceToken)
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        return executeForSuccess(request)
+    }
+
+    /** Storico chat recente. Lista vuota se la chiamata fallisce. */
+    suspend fun fetchMessages(): List<ChatMessage> {
+        val request = Request.Builder()
+            .url("${BackendConfig.baseUrl}/api/messages")
+            .header("X-Device-Token", BackendConfig.deviceToken)
+            .get()
+            .build()
+
+        val responseBody = executeForBody(request) ?: return emptyList()
+        return try {
+            val arr = JSONObject(responseBody).getJSONArray("messages")
+            (0 until arr.length()).map { ChatMessage.fromJson(arr.getJSONObject(it)) }
         } catch (e: Exception) {
             emptyList()
         }

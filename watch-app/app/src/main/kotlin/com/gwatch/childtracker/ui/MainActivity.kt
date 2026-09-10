@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -26,12 +31,16 @@ import androidx.work.WorkManager
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import com.google.firebase.messaging.FirebaseMessaging
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.geofence.GeofenceSyncWorker
 import com.gwatch.childtracker.location.LocationTrackingService
+import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.sos.SosWorker
 import com.gwatch.childtracker.upload.LocationUploadWorker
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
 
@@ -54,14 +63,32 @@ class MainActivity : ComponentActivity() {
         startTrackingAndScheduleWork()
     }
 
+    private val backendClient = BackendClient()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                MainScreen(onSosClick = ::sendSos)
+                var screen by remember { mutableStateOf("main") }
+                when (screen) {
+                    "chat" -> ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
+                    else -> MainScreen(onSosClick = ::sendSos, onChatClick = { screen = "chat" })
+                }
             }
         }
         requestPermissionsAndStart()
+        registerFcmToken()
+    }
+
+    // Ad ogni avvio, non solo su onNewToken: cosi' un token gia'
+    // generato prima che il servizio fosse registrato sul backend (es.
+    // primo avvio dopo l'aggiornamento a questa versione) viene comunque
+    // inviato. Idempotente lato backend (set con merge).
+    private fun registerFcmToken() {
+        lifecycleScope.launch {
+            runCatching { FirebaseMessaging.getInstance().token.await() }
+                .onSuccess { token -> backendClient.registerFcmToken(token) }
+        }
     }
 
     private fun requestPermissionsAndStart() {
@@ -146,7 +173,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainScreen(onSosClick: () -> Unit) {
+private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -157,6 +184,9 @@ private fun MainScreen(onSosClick: () -> Unit) {
         Text(text = stringResourceCompat(R.string.app_name))
         Button(onClick = onSosClick) {
             Text(text = stringResourceCompat(R.string.sos_button))
+        }
+        Button(onClick = onChatClick) {
+            Text(text = stringResourceCompat(R.string.chat_button))
         }
     }
 }

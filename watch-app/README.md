@@ -2,10 +2,11 @@
 
 App Wear OS (Kotlin) installata sul Galaxy Watch4 LTE del figlio.
 
-**Stato:** scaffolding completo, **non ancora compilato/testato** — in
-questo ambiente non c'è l'SDK Android né rete verso i repository
-Google Maven, quindi non ho potuto verificare la build. Va aperto in
-Android Studio per il primo build/test reale.
+**Stato:** scaffolding completo, setup Firebase (chat) completato,
+**non ancora compilato/testato** — in questo ambiente non c'è l'SDK
+Android né rete verso i repository Google Maven, quindi non ho potuto
+verificare la build. Va aperto in Android Studio per il primo
+build/test reale.
 
 ## Struttura
 
@@ -18,15 +19,18 @@ watch-app/
   gradlew / gradlew.bat / gradle/wrapper/   Gradle wrapper già generato
   app/
     build.gradle.kts
+    google-services.json         Config Firebase reale (solo per la chat, vedi Setup)
     src/main/
       AndroidManifest.xml
       kotlin/com/gwatch/childtracker/
-        TrackerApplication.kt        Canale di notifica
+        TrackerApplication.kt        Canali di notifica (tracking, messaggi)
         config/BackendConfig.kt      Legge i BuildConfig (device token, URL)
         network/
-          BackendClient.kt           Client verso i 3 endpoint del watch
-          model/                     LocationPoint, GeofenceZone
-        data/PendingLocationStore.kt Buffer locale posizioni non ancora inviate
+          BackendClient.kt           Client verso gli endpoint del watch
+          model/                     LocationPoint, GeofenceZone, ChatMessage
+        data/
+          PendingLocationStore.kt      Buffer locale posizioni non ancora inviate
+          MessageStore.kt              Stato chat in memoria (letto da ChatScreen)
         location/
           LocationTrackingService.kt   Foreground service, sampling adattivo
           ActivityTransitionReceiver.kt Rileva fermo/in movimento
@@ -36,8 +40,11 @@ watch-app/
           GeofenceBroadcastReceiver.kt  Riceve ingresso/uscita zona
           GeofenceEventWorker.kt        Invia l'evento al backend
         sos/SosWorker.kt              Fix posizione + invio SOS (espedito)
+        messaging/FcmService.kt       Riceve la chat in push, registra il token
         boot/BootReceiver.kt          Riavvia service/geofence dopo reboot
-        ui/MainActivity.kt            Permessi + UI (pulsante SOS)
+        ui/
+          MainActivity.kt              Permessi + navigazione main/chat
+          ChatScreen.kt                 Chat: risposte rapide + dettatura vocale
       res/
 ```
 
@@ -61,6 +68,29 @@ watch-app/
 - **SOS**: bottone in `MainActivity` → `SosWorker` (lavoro *espedito*,
   bypassa Doze/App Standby) prende un fix ad alta precisione e chiama
   `/api/trigger-event` con `type: "sos"`.
+- **Chat**: push FCM, non polling — scelta per il consumo batteria
+  (con FCM il radio resta a riposo tra un messaggio e l'altro; il
+  polling lo terrebbe sveglio a intervalli fissi anche senza nulla di
+  nuovo, vedi CONTEXT.md). `FcmService` riceve i messaggi del genitore
+  (sempre payload "data", mai "notification": la notifica va costruita
+  a mano, vedi commento nel file) e li mette in `MessageStore`, letto
+  da `ChatScreen`. Niente tastiera (impraticabile su un display così
+  piccolo): solo risposte rapide preimpostate e dettatura vocale
+  (`RecognizerIntent`, gestito dall'app di sistema). Allo stesso modo
+  di `GeofenceSyncWorker`, il token FCM viene registrato via
+  `/api/register-watch-token`; lo storico recente arriva da
+  `/api/messages` all'apertura della `ChatScreen` (il watch non ha un
+  SDK Firestore completo, solo `firebase-messaging` per la push).
+
+## Setup Firebase (chat) — già fatto
+
+L'app è registrata sul progetto Firebase reale (`child-tracker-7a1f1`,
+package `com.gwatch.childtracker`), fatto via API con la stessa
+service account già usata per `phone-app/` (vedi `../CONTEXT.md`,
+log decisioni). Il file `app/google-services.json` è già presente nel
+repo locale (ignorato da git, vedi `.gitignore` — resta solo sulla tua
+macchina). A differenza della phone-app, **non serve nessuna SHA-1**:
+la chat usa solo FCM, niente login Google sul watch.
 
 ## Setup per compilare/testare (stasera)
 

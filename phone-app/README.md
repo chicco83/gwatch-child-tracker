@@ -2,12 +2,13 @@
 
 App Android (Kotlin, Compose) per il genitore: mappa con l'ultima
 posizione del watch, storico spostamenti (ultime 48h), gestione zone
-(geofence), notifiche push su SOS/ingresso-uscita zona. Login con
-l'account Google del genitore (uno dei due pre-autorizzati, vedi
-`../CONTEXT.md`). Mappa **OpenStreetMap** (libreria osmdroid), non
-Google Maps: niente chiave API, niente fatturazione da collegare al
-progetto Google Cloud — coerente con la scelta fatta per tutto il resto
-dello stack (vedi CONTEXT.md, log decisioni).
+(geofence), chat testuale col watch, notifiche push su SOS/ingresso-
+uscita zona/messaggi. Login con l'account Google del genitore (uno dei
+due pre-autorizzati, vedi `../CONTEXT.md`). Mappa **OpenStreetMap**
+(libreria osmdroid), non Google Maps: niente chiave API, niente
+fatturazione da collegare al progetto Google Cloud — coerente con la
+scelta fatta per tutto il resto dello stack (vedi CONTEXT.md, log
+decisioni).
 
 **Stato:** setup Firebase completato, scaffolding completo,
 **non ancora compilato/testato** — nessun SDK Android/rete verso i
@@ -32,17 +33,19 @@ phone-app/
         TrackerApplication.kt         Canale notifica "alerts" + init osmdroid
         auth/AuthRepository.kt        Login Google + Firebase Auth
         data/
-          model/Models.kt             DeviceState, LocationPoint, GeofenceZone, DeviceEvent
+          model/Models.kt             DeviceState, LocationPoint, GeofenceZone, DeviceEvent, ChatMessage
           DeviceRepository.kt         Listener Firestore in tempo reale + scrittura geofence
-        messaging/FcmService.kt       Ricezione push SOS/geofence, registra il token
+          BackendClient.kt            Unica chiamata REST (invio chat, serve la push FCM)
+        messaging/FcmService.kt       Ricezione push SOS/geofence/chat, registra il token
         ui/
-          MainActivity.kt             NavHost login/mappa/zone
+          MainActivity.kt             NavHost login/mappa/zone/chat
           AppViewModel.kt             Stato condiviso (StateFlow su Firestore)
           LoginScreen.kt
           MapScreen.kt                Mappa (osmdroid) + card stato + eventi recenti
           GeofenceScreen.kt           Aggiungi/modifica/elimina zone (tocco su mappa)
+          ChatScreen.kt               Chat testuale col watch
         util/
-          Constants.kt                DEVICE_ID (deve combaciare col backend)
+          Constants.kt                DEVICE_ID, BACKEND_BASE_URL (deve combaciare col backend)
           TimeFormat.kt
       res/
 ```
@@ -70,6 +73,16 @@ phone-app/
   token registrati quando arriva un SOS o una transizione di zona.
 - **Storico**: mostra solo le ultime 48h (`Constants.HISTORY_WINDOW_HOURS`)
   anche se il backend ne conserva 12 mesi, per restare leggibile/veloce.
+- **Chat**: unica scrittura che passa dal backend invece che da
+  Firestore direttamente (`BackendClient.sendMessageToChild`, header
+  `Authorization: Bearer <ID token Firebase>`) — serve per inviare
+  anche la push FCM che sveglia il watch nella stessa chiamata, cosa
+  che il solo scrivere su Firestore non farebbe (nessun trigger
+  `onDocumentCreated` su Vercel, vedi `backend/api/send-message-to-child.js`).
+  La lettura resta invece un listener Firestore diretto
+  (`DeviceRepository.observeMessages`), come tutto il resto. Scelta
+  FCM invece del polling anche qui: risparmio batteria sul watch (vedi
+  `CONTEXT.md`, log decisioni).
 
 ## Setup Firebase — già fatto
 

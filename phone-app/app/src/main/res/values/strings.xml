@@ -13,4 +13,10 @@
     <string name="geofence_radius_label">Raggio: %d m</string>
     <string name="save_geofence">Salva zona</string>
     <string name="delete">Elimina</string>
+
+    <!-- v0.2.0: chat -->
+    <string name="chat_title">Messaggi</string>
+    <string name="chat_no_messages">Nessun messaggio ancora</string>
+    <string name="chat_input_hint">Scrivi un messaggio</string>
+    <string name="send">Invia</string>
 </resources>

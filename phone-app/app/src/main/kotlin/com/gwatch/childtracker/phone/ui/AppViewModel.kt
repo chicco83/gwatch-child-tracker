@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.messaging.FirebaseMessaging
 import com.gwatch.childtracker.phone.auth.AuthRepository
+import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
+import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
@@ -23,6 +25,7 @@ import kotlinx.coroutines.tasks.await
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
+    private val backendClient: BackendClient = BackendClient(),
 ) : ViewModel() {
 
     private val _user = MutableStateFlow(authRepository.currentUser)
@@ -38,6 +41,9 @@ class AppViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val events: StateFlow<List<DeviceEvent>> = deviceRepository.observeRecentEvents()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val messages: StateFlow<List<ChatMessage>> = deviceRepository.observeMessages()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun signInIntent(): Intent = authRepository.signInIntent()
@@ -74,6 +80,18 @@ class AppViewModel(
 
     fun deleteGeofence(id: String) {
         viewModelScope.launch { runCatching { deviceRepository.deleteGeofence(id) } }
+    }
+
+    /** onSent(true) se il messaggio e' stato accettato dal backend. */
+    fun sendMessage(text: String, onSent: (Boolean) -> Unit) {
+        val user = _user.value ?: return onSent(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.sendMessageToChild(idToken, text)
+            }.getOrDefault(false)
+            onSent(ok)
+        }
     }
 
     class Factory(

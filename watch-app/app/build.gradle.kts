@@ -14,6 +14,9 @@ val backendBaseUrl: String =
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    // v0.2.0 (2026-09-10): chat via push FCM invece di polling, per
+    // consumo batteria (vedi CONTEXT.md, log decisioni)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -24,8 +27,8 @@ android {
         applicationId = "com.gwatch.childtracker"
         minSdk = 30 // Wear OS 3 (Galaxy Watch4 e successivi)
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
@@ -79,4 +82,11 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // Solo per la push della chat (v0.2.0): niente Firestore/Auth qui,
+    // il watch continua a parlare col backend solo via BackendClient
+    // (OkHttp) — stessa scelta "meno pezzi in movimento" di sempre.
+    // Stesso BOM version di phone-app, per coerenza.
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
 }

@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
@@ -125,6 +126,33 @@ class DeviceRepository {
                             timestampMillis = d.getTimestamp("timestamp")?.toDate()?.time ?: 0L,
                         )
                     },
+                )
+            }
+        awaitClose { registration.remove() }
+    }
+
+    // Sola lettura: l'invio passa da BackendClient.sendMessageToChild
+    // (serve la push FCM nella stessa chiamata, vedi
+    // backend/api/send-message-to-child.js), non da qui.
+    fun observeMessages(limit: Long = 50): Flow<List<ChatMessage>> = callbackFlow {
+        val registration = deviceRef.collection("messages")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(limit)
+            .addSnapshotListener { snap, _ ->
+                if (snap == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                trySend(
+                    snap.documents.mapNotNull { d ->
+                        val ts = d.getTimestamp("timestamp")?.toDate()?.time ?: return@mapNotNull null
+                        ChatMessage(
+                            id = d.id,
+                            sender = d.getString("sender") ?: "parent",
+                            text = d.getString("text") ?: "",
+                            timestampMillis = ts,
+                        )
+                    }.reversed(), // ordine cronologico per la UI
                 )
             }
         awaitClose { registration.remove() }

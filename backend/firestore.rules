@@ -28,6 +28,12 @@
 //   backend (guardia di traffico giornaliera, vedi
 //   backend/api/_lib/quota.js). Nessun client deve mai leggerla o
 //   scriverla direttamente.
+// - 0.4.0 (2026-09-10): aggiunta devices/{id}/messages (chat testuale
+//   genitore<->watch). Scrittura sempre negata al client, a differenza
+//   delle geofence: ogni messaggio deve sempre passare da un endpoint
+//   backend perche' e' li' che parte anche la push FCM che sveglia il
+//   destinatario (stesso motivo per cui locations/events sono
+//   backend-only, vedi backend/api/trigger-event.js).
 rules_version = '2';
 
 service cloud.firestore {
@@ -59,6 +65,11 @@ service cloud.firestore {
 
       match /quota/{dayKey} {
         allow read, write: if false; // solo Admin SDK via le funzioni backend
+      }
+
+      match /messages/{messageId} {
+        allow read: if isParent();
+        allow write: if false; // solo Admin SDK, vedi send-message*.js
       }
     }
 
