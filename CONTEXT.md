@@ -825,3 +825,17 @@ CHANGELOG.md  Storico versioni
   "Messaggi" disattivato a mano in Impostazioni > App > Family Tracker
   > Notifiche sul watch) — da verificare direttamente sul dispositivo,
   non piu' diagnosticabile da qui (v0.29.0).
+- 2026-09-10: Chiarito dall'utente il sintomo esatto: la notifica
+  arriva regolarmente (visibile nel pannello), ma Wear OS non mostra
+  mai la card interruttiva a schermo intero ne' accende lo schermo se
+  spento. Confermato che siamo al limite di quanto controllabile da
+  codice — indicato il checklist di verifica sul dispositivo, in
+  ordine di probabilita': (1) **Risparmio energetico** attivo
+  (sospetto principale: su Samsung disattiva esplicitamente i
+  popup/wake per risparmiare batteria), (2) Non disturbare/Modalita'
+  teatro, (3) toggle popup separato da "vibra" in Impostazioni > App >
+  Family Tracker > Notifiche, (4) eventuale opzione "Riattiva schermo
+  per notifiche" in Display/Avanzate. Nessuna ulteriore modifica di
+  codice fatta in questo giro: serve conferma dall'utente su quale di
+  queste impostazioni fosse la causa, prima di considerare il problema
+  chiuso.
