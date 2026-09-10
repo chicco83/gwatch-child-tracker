@@ -17,6 +17,16 @@ package com.gwatch.childtracker.phone.ui
 //   Limiti di utilizzo in background) che non e' coperta da questo
 //   permesso standard Android: va disattivata a mano per questa app,
 //   va segnalato all'utente perche' non e' automatizzabile da codice.
+// v0.26.1 (2026-09-10): bug segnalato — toccando la notifica di un
+//   messaggio dal watch si apriva la Home (mappa) invece della chat.
+//   FcmService.kt non impostava nessun contentIntent sulla notifica:
+//   senza, il tocco non porta a nessuna destinazione specifica.
+//   Aggiunto un extra booleano sull'Intent che avvia MainActivity
+//   (EXTRA_OPEN_CHAT); letto sia a freddo (onCreate) sia ad app gia'
+//   aperta (onNewIntent, richiede launchMode="singleTop" nel Manifest
+//   per non ricreare l'Activity) tramite un MutableStateFlow collezionato
+//   in Compose, che innesca la navigazione verso "chat" non appena il
+//   NavController esiste.
 
 import android.Manifest
 import android.content.Intent
@@ -40,8 +50,12 @@ import androidx.navigation.compose.rememberNavController
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.auth.AuthRepository
 import com.gwatch.childtracker.phone.data.DeviceRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class MainActivity : ComponentActivity() {
+
+    private val openChatRequested = MutableStateFlow(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +64,7 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
         }
         requestIgnoreBatteryOptimizations()
+        handleIntent(intent)
 
         val authRepository = AuthRepository(this)
         val deviceRepository = DeviceRepository()
@@ -60,12 +75,20 @@ class MainActivity : ComponentActivity() {
             )
             val navController = rememberNavController()
             val user by viewModel.user.collectAsState()
+            val openChat by openChatRequested.asStateFlow().collectAsState()
 
             val signInLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartActivityForResult(),
             ) { result ->
                 viewModel.onSignInResult(result.data) {
                     Toast.makeText(this, "Login fallito, riprova", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            LaunchedEffect(openChat, user) {
+                if (openChat && user != null) {
+                    navController.navigate("chat")
+                    openChatRequested.value = false
                 }
             }
 
@@ -116,5 +139,21 @@ class MainActivity : ComponentActivity() {
             data = Uri.parse("package:$packageName")
         }
         runCatching { startActivity(intent) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_CHAT, false) == true) {
+            openChatRequested.value = true
+        }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_CHAT = "open_chat"
     }
 }

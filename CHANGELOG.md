@@ -7,6 +7,42 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-09-10
+
+### Fixed
+- **Deploy Vercel bloccato da 3 commit** (5af2c9a, f7da87a, 7a1a84a mai
+  andati online): `backend/api/` era arrivato a 13 file, il piano
+  Hobby di Vercel ne permette al massimo 12 per deployment ("No more
+  than 12 Serverless Functions..."). Accorpati
+  `send-message-to-child.js`, `request-location.js`, `cancel-sos.js`
+  e `ack-event.js` in un unico `backend/api/parent-command.js`
+  (dispatch su un campo "action" nel body) — tornati a 10 file, con
+  margine per il futuro. `phone-app/.../data/BackendClient.kt`
+  aggiornato per chiamare il nuovo endpoint unico.
+- Toccando la notifica di un messaggio dal watch, la phone-app apriva
+  la Home (mappa) invece della schermata Chat: `FcmService.kt` non
+  impostava alcun `contentIntent` sulla notifica. Aggiunto un
+  `PendingIntent` verso `MainActivity` con un extra che ora fa
+  navigare subito alla Chat, sia ad app fredda sia gia' aperta
+  (`launchMode="singleTop"` + `onNewIntent`).
+
+### Known limitations
+- Sospetto forte, non confermabile da qui: la schermata Chat parte
+  sempre vuota sulla phone-app (nessuno storico) mentre lo storico
+  chat sul watch e' completo. Le regole di sicurezza Firestore
+  (`backend/firestore.rules`) NON si deployano automaticamente ad ogni
+  push — sono un target separato (progetto Firebase, comando
+  `firebase deploy --only firestore:rules` dalla cartella `backend/`,
+  vedi `backend/firebase.json`). Se la regola per `devices/{id}/messages`
+  (aggiunta insieme alla chat) non e' mai stata pubblicata sul
+  progetto Firebase live, ogni lettura client di quella sottocollezione
+  fallisce silenziosamente con permission-denied (solo loggato,
+  `DeviceRepository.kt` la cattura e restituisce una lista vuota) —
+  spiegherebbe perfettamente il sintomo. Da verificare ripubblicando le
+  regole; nessuna modifica di codice possibile da qui per confermarlo
+  o escluderlo (serve accesso al progetto Firebase live, non
+  disponibile in questa sessione).
+
 ## [0.26.0] - 2026-09-10
 
 ### Fixed

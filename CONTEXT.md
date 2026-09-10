@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.26.0
+**Versione contesto:** 0.27.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -747,3 +747,35 @@ CHANGELOG.md  Storico versioni
   abbastanza interruttiva una notifica cosi' configurata per riattivare
   lo schermo da sola. Aggiunto `enableVibration(true)` + pattern
   esplicito sul canale in `TrackerApplication.kt` (v0.26.0).
+- 2026-09-10: L'utente ha condiviso lo screenshot del pannello Vercel:
+  "Build Failed — No more than 12 Serverless Functions can be added to
+  a Deployment on the Hobby plan". `backend/api/` era a 13 file
+  (superato quando ack-event.js si e' aggiunto agli altri 12) — il
+  deploy falliva da 3 commit (5af2c9a, f7da87a, 7a1a84a) senza che
+  nessuno se ne accorgesse: NESSUNA delle modifiche backend di quei
+  commit era mai realmente andata online, incluso il fix "chat
+  data-only" appena fatto per il bug precedente. Causa root della
+  segnalazione "il messaggio ricevuto dal watch non appare in chat" —
+  quella era solo un sintomo, la vera causa era che il backend live
+  era ancora la versione vecchia. Risolto accorpando
+  send-message-to-child.js, request-location.js, cancel-sos.js e
+  ack-event.js in un unico backend/api/parent-command.js (dispatch su
+  "action" nel body) — tornati a 10 file. **Lezione per il futuro:
+  ogni nuovo file in backend/api/ e' una Serverless Function separata
+  sul piano Hobby (limite 12) — prima di aggiungerne uno nuovo,
+  valutare se accorparlo a un endpoint esistente invece di crearne
+  uno nuovo.**
+  Insieme, altri due bug segnalati: (1) toccare la notifica di un
+  messaggio apriva la Home invece della Chat (FcmService.kt non
+  impostava contentIntent) — aggiunto PendingIntent + gestione
+  dell'extra in MainActivity.kt (a freddo e via onNewIntent). (2) La
+  Chat sulla phone-app parte sempre vuota, a differenza del watch che
+  mostra lo storico completo. Ipotesi forte non verificabile da questa
+  sessione: le regole Firestore (backend/firestore.rules) si
+  deployano SOLO manualmente (`firebase deploy --only firestore:rules`
+  da backend/, vedi backend/firebase.json), mai automaticamente sui
+  push — se la regola per devices/{id}/messages non e' mai stata
+  pubblicata sul progetto Firebase live, ogni lettura fallisce in
+  silenzio (permission-denied, solo loggato) restituendo lista vuota,
+  spiegando esattamente il sintomo. Segnalato all'utente di
+  ripubblicare le regole e verificare (v0.27.0).

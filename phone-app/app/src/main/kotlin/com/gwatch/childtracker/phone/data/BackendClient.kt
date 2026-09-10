@@ -11,6 +11,14 @@ package com.gwatch.childtracker.phone.data
 //   Aggiunto requestLocation, stesso stile/endpoint pattern, per il
 //   pulsante "Aggiorna posizione" sulla mappa (vedi
 //   backend/api/request-location.js).
+// v0.3.0 (2026-09-10): backend/api/ era arrivato a 13 file — il piano
+//   Hobby di Vercel ne permette al massimo 12 per deployment, il build
+//   falliva da 3 commit senza che nessuno se ne accorgesse (nessuna
+//   delle modifiche backend recenti era mai realmente online).
+//   send-message-to-child, request-location, cancel-sos e ack-event
+//   sono stati accorpati in un unico endpoint backend/api/parent-
+//   command.js (dispatch su un campo "action" nel body): tutti i
+//   metodi qui sotto ora chiamano quello, cambia solo il body inviato.
 
 import android.util.Log
 import com.gwatch.childtracker.phone.util.Constants
@@ -29,13 +37,14 @@ import kotlin.coroutines.resume
 
 /**
  * Chiamate REST verso il backend fatte dalla phone-app (invio chat al
- * watch, richiesta posizione immediata). Non e' un client Firestore
- * diretto come DeviceRepository perche' serve anche la push FCM che
- * sveglia il watch, e su Vercel non esiste un trigger equivalente a
- * onDocumentCreated (vedi backend/api/send-message-to-child.js) — deve
- * quindi passare da un endpoint che fa scrittura+push (o solo push)
- * nella stessa chiamata. Stessa libreria (OkHttp) e stile di
- * watch-app/network/BackendClient.kt, per coerenza.
+ * watch, richiesta posizione immediata, annulla SOS, conferma lettura
+ * posizione — tutte via backend/api/parent-command.js). Non e' un
+ * client Firestore diretto come DeviceRepository perche' serve anche
+ * la push FCM che sveglia il watch, e su Vercel non esiste un trigger
+ * equivalente a onDocumentCreated: deve quindi passare da un endpoint
+ * che fa scrittura+push (o solo push) nella stessa chiamata. Stessa
+ * libreria (OkHttp) e stile di watch-app/network/BackendClient.kt, per
+ * coerenza.
  */
 class BackendClient {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -48,48 +57,44 @@ class BackendClient {
 
     /** true se il messaggio e' stato accettato (HTTP 2xx). */
     suspend fun sendMessageToChild(idToken: String, text: String): Boolean {
-        val body = JSONObject().apply { put("text", text) }
-        val request = Request.Builder()
-            .url("${Constants.BACKEND_BASE_URL}/api/send-message-to-child")
-            .header("Authorization", "Bearer $idToken")
-            .post(body.toString().toRequestBody(jsonMediaType))
-            .build()
-        return execute(request, "sendMessageToChild")
+        val body = JSONObject().apply {
+            put("action", "message")
+            put("text", text)
+        }
+        return callParentCommand(idToken, body, "sendMessageToChild")
     }
 
     /** true se la richiesta e' stata accettata (HTTP 2xx): il watch riceve la push a parte. */
     suspend fun requestLocation(idToken: String): Boolean {
-        val request = Request.Builder()
-            .url("${Constants.BACKEND_BASE_URL}/api/request-location")
-            .header("Authorization", "Bearer $idToken")
-            .post("".toRequestBody(jsonMediaType))
-            .build()
-        return execute(request, "requestLocation")
+        val body = JSONObject().apply { put("action", "request_location") }
+        return callParentCommand(idToken, body, "requestLocation")
     }
 
-    /** Disattiva un SOS in corso (vedi backend/api/cancel-sos.js). */
+    /** Disattiva un SOS in corso. */
     suspend fun cancelSos(idToken: String): Boolean {
-        val request = Request.Builder()
-            .url("${Constants.BACKEND_BASE_URL}/api/cancel-sos")
-            .header("Authorization", "Bearer $idToken")
-            .post("".toRequestBody(jsonMediaType))
-            .build()
-        return execute(request, "cancelSos")
+        val body = JSONObject().apply { put("action", "cancel_sos") }
+        return callParentCommand(idToken, body, "cancelSos")
     }
 
     /**
      * Marca un evento come "visto" dal genitore — usato per notificare
-     * al watch che la posizione inviata dal bambino e' stata guardata
-     * (vedi backend/api/ack-event.js).
+     * al watch che la posizione inviata dal bambino e' stata guardata.
      */
     suspend fun ackEvent(idToken: String, eventId: String): Boolean {
-        val body = JSONObject().apply { put("eventId", eventId) }
+        val body = JSONObject().apply {
+            put("action", "ack_event")
+            put("eventId", eventId)
+        }
+        return callParentCommand(idToken, body, "ackEvent")
+    }
+
+    private suspend fun callParentCommand(idToken: String, body: JSONObject, tag: String): Boolean {
         val request = Request.Builder()
-            .url("${Constants.BACKEND_BASE_URL}/api/ack-event")
+            .url("${Constants.BACKEND_BASE_URL}/api/parent-command")
             .header("Authorization", "Bearer $idToken")
             .post(body.toString().toRequestBody(jsonMediaType))
             .build()
-        return execute(request, "ackEvent")
+        return execute(request, tag)
     }
 
     private suspend fun execute(request: Request, tag: String): Boolean =

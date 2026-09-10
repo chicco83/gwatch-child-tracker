@@ -25,8 +25,15 @@ package com.gwatch.childtracker.phone.messaging
 //   ChatScreen.kt senza aspettare il listener Firestore (stesso ruolo
 //   del gia' esistente invio ottimistico per i messaggi in uscita, vedi
 //   AppViewModel.kt).
+// v0.4.0 (2026-09-10): bug segnalato — toccando la notifica di un
+//   messaggio si apriva la Home invece della chat. Non veniva
+//   impostato nessun contentIntent sulla notifica. Aggiunto un
+//   PendingIntent verso MainActivity con l'extra EXTRA_OPEN_CHAT, letta
+//   li' per navigare subito alla schermata Chat (vedi MainActivity.kt).
 
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -37,6 +44,7 @@ import com.gwatch.childtracker.phone.alarm.ExitAlarmService
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.model.ChatMessage
+import com.gwatch.childtracker.phone.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,10 +87,21 @@ class FcmService : FirebaseMessagingService() {
         IncomingMessageStore.append(
             ChatMessage(sender = sender, text = text, timestampMillis = System.currentTimeMillis()),
         )
-        postNotification(getString(R.string.chat_notification_title), text)
+        postNotification(getString(R.string.chat_notification_title), text, openChat = true)
     }
 
-    private fun postNotification(title: String, text: String) {
+    private fun postNotification(title: String, text: String, openChat: Boolean = false) {
+        val contentIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (openChat) putExtra(MainActivity.EXTRA_OPEN_CHAT, true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val manager = getSystemService(NotificationManager::class.java)
         val builder = NotificationCompat.Builder(this, TrackerApplication.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -90,6 +109,7 @@ class FcmService : FirebaseMessagingService() {
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
         manager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 }
