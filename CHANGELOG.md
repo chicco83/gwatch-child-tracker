@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-10
+
+### Added
+- `GeofenceScreen.kt` (phone-app): pulsante "Annulla" per scartare un
+  punto scelto per errore prima di salvare la zona; zone gia' salvate
+  ora visibili come cerchi anche su questa mappa (prima solo su
+  `MapScreen.kt`); anteprima live (cerchio verde) del raggio scelto
+  con lo slider, prima di salvare.
+
+### Fixed
+- Schermata Zone della phone-app: la mappa occupava solo meta' schermo
+  (`Modifier.height(220.dp)` fissa) lasciando il resto bianco, e non
+  c'era una barra strumenti per gestire le zone. Riscritta sul pattern
+  Box+align gia' in uso in `MapScreen.kt`: mappa a `fillMaxSize()`,
+  pannello strumenti flottante in alto, lista zone flottante in basso
+  con sfondo opaco (stessa lezione di trasparenza gia' notata per
+  `EventsList` in `MapScreen.kt`, applicata qui preventivamente).
+
 ## [0.19.0] - 2026-09-10
 
 ### Added

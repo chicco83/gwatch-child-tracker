@@ -12,6 +12,7 @@
     <string name="geofence_name_label">Nome zona (es. Casa, Scuola)</string>
     <string name="geofence_radius_label">Raggio: %d m</string>
     <string name="save_geofence">Salva zona</string>
+    <string name="geofence_cancel">Annulla</string>
     <string name="delete">Elimina</string>
 
     <!-- v0.2.0: chat -->

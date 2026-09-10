@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.19.0
+**Versione contesto:** 0.20.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -186,6 +186,35 @@ originale:
   disattiva dalla phone-app (nuovo banner rosso con pulsante
   "Disattiva"). Vedi `backend/api/sos-heartbeat.js` e
   `backend/api/cancel-sos.js`.
+
+Bug UX trovato e corretto in questa stessa sessione (test su device
+reale, schermata Zone): mappa a altezza fissa (`Modifier.height(220.dp)`)
+che lasciava meta' schermo bianco sotto, e nessuna barra strumenti per
+gestire le zone. Riscritta `phone-app/.../ui/GeofenceScreen.kt` sullo
+stesso pattern Box+align gia' in uso in `MapScreen.kt`: mappa a
+`fillMaxSize()`, pannello "strumenti" flottante in alto (nome/raggio/
+Salva/**Annulla**, quest'ultimo nuovo — prima non c'era modo esplicito
+di annullare un punto scelto per errore) e lista zone flottante in
+basso con sfondo opaco (stessa lezione della trasparenza di
+`EventsList` in `MapScreen.kt`, applicata qui subito senza aspettare
+di ripetere l'errore). In piu': le zone gia' salvate ora si vedono come
+cerchi anche su questa mappa (prima solo su `MapScreen.kt`), e il
+raggio scelto con lo slider ha un'anteprima live (cerchio verde) prima
+di salvare.
+
+**Nessun limite al numero di zone** codificato nell'app: il solo
+vincolo reale e' quello di sistema della Geofencing API Android (max
+100 geofence per app), molto oltre il bisogno pratico. Le notifiche di
+ingresso/uscita zona sono gia' complete end-to-end (non richiedono
+altra configurazione oltre a nome/raggio): il watch registra ogni zona
+con `GEOFENCE_TRANSITION_ENTER` **e** `EXIT` insieme
+(`GeofenceSyncWorker.kt`), l'evento arriva a `trigger-event.js` che
+manda due notifiche testualmente diverse ("Ingresso zona"/"Uscita
+zona", vedi `buildNotification()`). L'unico controllo attuale e' lo
+switch attiva/disattiva per zona nella lista: disattiva **entrambe** le
+direzioni insieme, non sono separabili (nessuna richiesta in tal senso
+finora — annotato come possibile estensione futura, non in backlog
+finche' non richiesto).
 
 ### Aperto/da fare (non ancora chiuso)
 
@@ -478,3 +507,18 @@ CHANGELOG.md  Storico versioni
   nessuna carta collegata in modo permanente" — confermata la scelta
   della soluzione custom. Test su hardware reale del watch-app ancora
   da fare/confermare (v0.19.0).
+- 2026-09-10: Feedback utente dopo test reale sulla schermata Zone
+  della phone-app: mappa a meta' schermo (altezza fissa hardcoded),
+  nessuna barra strumenti per disegnare/cancellare zone. Riscritta
+  `GeofenceScreen.kt` sul pattern Box+align gia' validato in
+  `MapScreen.kt` (mappa fillMaxSize, pannello strumenti flottante in
+  alto con pulsante "Annulla" nuovo, lista zone flottante in basso con
+  sfondo opaco). Aggiunte anche zone esistenti visibili come cerchi
+  sulla mappa di questa schermata e anteprima live del raggio scelto
+  con lo slider (miglioramenti collaterali, stessa causa del bug
+  originale: mappa poco utilizzabile). Confermato via revisione del
+  codice (non ancora richiesto ma verificato in previsione): nessun
+  limite al numero di zone nell'app (solo il tetto di sistema Android,
+  100 geofence/app), notifiche ingresso/uscita gia' complete
+  end-to-end, un solo switch attiva/disattiva per zona che copre
+  entrambe le direzioni insieme (v0.20.0).
