@@ -12,6 +12,16 @@ package com.gwatch.childtracker
 //   notifica come "silenziosa" e non la considera abbastanza
 //   interruttiva da riattivare lo schermo. Aggiunto
 //   enableVibration(true) + pattern esplicito sul canale "messages".
+// v0.6.2 (2026-09-10): il fix sopra non aveva alcun effetto reale sul
+//   watch — testato di nuovo dopo la ricompilazione, ancora nessuna
+//   vibrazione/popup. Causa: su Android le impostazioni di un
+//   NotificationChannel sono IMMUTABILI una volta creato — richiamare
+//   createNotificationChannel() con lo stesso ID (qui "messages", gia'
+//   esistente sul dispositivo da build precedenti) non aggiorna niente,
+//   il sistema ignora silenziosamente i nuovi parametri. L'unico modo
+//   per applicare le nuove impostazioni e' un ID canale nuovo, cosi'
+//   Android ne crea uno da zero con enableVibration(true) di base.
+//   ID cambiato da "messages" a "messages_v2".
 
 import android.app.Application
 import android.app.NotificationChannel
@@ -53,6 +63,11 @@ class TrackerApplication : Application() {
 
     companion object {
         const val TRACKING_CHANNEL_ID = "tracking"
-        const val MESSAGES_CHANNEL_ID = "messages"
+
+        // v0.6.2: "messages" -> "messages_v2" per forzare Android a
+        // creare un canale nuovo con la vibrazione abilitata (vedi
+        // storico versioni sopra) — le impostazioni di un canale
+        // esistente non si possono aggiornare via codice.
+        const val MESSAGES_CHANNEL_ID = "messages_v2"
     }
 }

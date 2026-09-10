@@ -7,6 +7,20 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-09-10
+
+### Fixed
+- Il fix vibrazione della v0.26.0 (canale "messages" del watch) non
+  aveva alcun effetto reale, confermato dopo ricompilazione: ancora
+  nessuna vibrazione/popup all'arrivo di un messaggio. Causa: su
+  Android le impostazioni di un `NotificationChannel` sono immutabili
+  dopo la creazione — richiamare `createNotificationChannel()` con lo
+  stesso ID (gia' esistente sul dispositivo da build precedenti) non
+  aggiorna nulla, il sistema ignora silenziosamente i nuovi parametri.
+  Cambiato l'ID del canale da `"messages"` a `"messages_v2"` in
+  `TrackerApplication.kt`, cosi' Android ne crea uno nuovo con la
+  vibrazione abilitata fin da subito.
+
 ## [0.27.0] - 2026-09-10
 
 ### Fixed

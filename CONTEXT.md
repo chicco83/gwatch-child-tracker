@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.27.0
+**Versione contesto:** 0.28.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -792,3 +792,19 @@ CHANGELOG.md  Storico versioni
   > Pubblica, oppure `firebase deploy --only firestore:rules` da
   `backend/` per chi ha la CLI) o resta silenziosamente senza effetto.
   Nessuna azione di codice richiesta per questo fix.
+- 2026-09-10: Confermato che tap-notifica ora apre la Chat
+  correttamente (v0.27.0 verificato su hardware reale). Ma il fix
+  vibrazione watch (v0.26.0) risultava ancora senza effetto dopo
+  ricompilazione: nessuna vibrazione/popup all'arrivo di un messaggio.
+  Causa reale trovata: su Android le impostazioni di un
+  `NotificationChannel` (vibrazione, suono, importanza) sono
+  **immutabili una volta creato** — richiamare
+  `createNotificationChannel()` con lo stesso ID non aggiorna nulla su
+  un dispositivo dove quel canale esisteva gia' da build precedenti
+  (qui "messages", creato ben prima di questo fix). L'unico modo per
+  applicare le nuove impostazioni e' un ID canale nuovo, forzando
+  Android a crearne uno da zero. ID cambiato a "messages_v2" in
+  `TrackerApplication.kt` (watch). **Promemoria per il futuro**: ogni
+  volta che si cambiano le impostazioni di un `NotificationChannel`
+  gia' esistente su dispositivi reali, serve un nuovo ID canale,
+  altrimenti il fix e' silenziosamente inefficace (v0.28.0).
