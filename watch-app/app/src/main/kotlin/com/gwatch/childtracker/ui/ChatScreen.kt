@@ -16,6 +16,10 @@ package com.gwatch.childtracker.ui
 //   pesato: stesso risultato visivo (lista messaggi al centro,
 //   pulsante indietro in alto, dettatura/risposte rapide in basso),
 //   ma senza dipendere da quell'API.
+// v0.2.2 (2026-09-10): su device reale i Button (indietro, dettatura,
+//   risposte rapide) apparivano come cerchi col testo che tracimava —
+//   Button in Wear Compose e' pensato per icone a dimensione fissa,
+//   non per etichette di testo. Sostituiti tutti con Chip.
 
 import android.app.Activity
 import android.content.Context
@@ -43,7 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.Text
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.data.MessageStore
@@ -103,16 +107,17 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
             }
         }
 
-        Button(
+        Chip(
             onClick = onBack,
             modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
-        ) { Text(stringResourceCompat(R.string.back)) }
+            label = { Text(stringResourceCompat(R.string.back)) },
+        )
 
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).padding(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Button(onClick = {
+            Chip(onClick = {
                 voiceLauncher.launch(
                     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(
@@ -121,7 +126,7 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
                         )
                     },
                 )
-            }) { Text(stringResourceCompat(R.string.chat_voice_reply)) }
+            }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResourceCompat(R.string.chat_voice_reply)) })
 
             QuickReplyButton(R.string.chat_quick_reply_ok, backendClient, scope, context)
             QuickReplyButton(R.string.chat_quick_reply_coming, backendClient, scope, context)
@@ -138,9 +143,11 @@ private fun QuickReplyButton(
     context: Context,
 ) {
     val label = stringResourceCompat(textRes)
-    Button(onClick = { sendChatMessage(label, backendClient, scope, context) }) {
-        Text(label)
-    }
+    Chip(
+        onClick = { sendChatMessage(label, backendClient, scope, context) },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+    )
 }
 
 @Composable

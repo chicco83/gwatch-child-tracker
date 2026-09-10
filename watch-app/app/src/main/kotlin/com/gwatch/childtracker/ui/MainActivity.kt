@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,7 +29,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.google.firebase.messaging.FirebaseMessaging
@@ -174,6 +175,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
+    // v0.2.2 (2026-09-10): Button (Wear Compose) e' un tondo per icone
+    // a dimensione fissa, non per etichette di testo — su device reale
+    // "SOS"/"Messaggi" apparivano come cerchietti col testo troncato.
+    // Sostituito con Chip, il componente Wear pensato per bottoni con
+    // testo (rettangolare, si adatta alla larghezza).
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -182,12 +188,12 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(text = stringResourceCompat(R.string.app_name))
-        Button(onClick = onSosClick) {
+        Chip(onClick = onSosClick, modifier = Modifier.fillMaxWidth(), label = {
             Text(text = stringResourceCompat(R.string.sos_button))
-        }
-        Button(onClick = onChatClick) {
+        })
+        Chip(onClick = onChatClick, modifier = Modifier.fillMaxWidth(), label = {
             Text(text = stringResourceCompat(R.string.chat_button))
-        }
+        })
     }
 }
 
