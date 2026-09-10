@@ -44,6 +44,10 @@ package com.gwatch.childtracker.ui
 //   sottostante. Anche qui il testo dei Chip era allineato a
 //   sinistra: centrato con CenteredChipLabel (condivisa con
 //   MainActivity.kt, stesso package).
+// v0.3.1 (2026-09-10): in build reale androidx.wear.compose.material.
+//   Divider risultava "Unresolved reference" con la versione di
+//   compose-material di questo progetto (1.3.1) — sostituito con
+//   HorizontalSeparator(), una riga disegnata a mano (Box sottile).
 
 import android.app.Activity
 import android.content.Context
@@ -52,10 +56,13 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,12 +73,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
-import androidx.wear.compose.material.Divider
 import androidx.wear.compose.material.Text
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.data.MessageStore
@@ -152,7 +159,7 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
             )
         }
 
-        item { Divider(modifier = Modifier.padding(vertical = 4.dp)) }
+        item { HorizontalSeparator() }
 
         item { Text(stringResourceCompat(R.string.chat_history_header)) }
         if (messages.isEmpty()) {
@@ -175,6 +182,25 @@ private fun QuickReplyButton(
         onClick = { sendChatMessage(label, backendClient, scope, context) },
         modifier = Modifier.fillMaxWidth(),
         label = { CenteredChipLabel(label) },
+    )
+}
+
+/**
+ * v0.3.1 (2026-09-10): androidx.wear.compose.material.Divider non
+ * risolveva in build reale ("Unresolved reference: Divider") con la
+ * versione di compose-material fissata in build.gradle.kts (1.3.1) —
+ * a differenza di Chip/CompactChip non fa parte dell'API di quella
+ * release. Sostituito con una riga disegnata a mano (Box sottile),
+ * senza dipendere da quel componente.
+ */
+@Composable
+private fun HorizontalSeparator() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .height(1.dp)
+            .background(Color.White.copy(alpha = 0.2f)),
     )
 }
 
