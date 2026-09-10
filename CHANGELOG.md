@@ -7,7 +7,28 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-09-10
+## [0.30.0] - 2026-09-10
+
+### Fixed
+- **Confermato dall'utente**: popup e riattivazione schermo per le
+  notifiche sul watch ora funzionano (v0.28.0/v0.29.0 hanno risolto).
+- La notifica sul watch non era cliccabile, il tocco non portava a
+  nessuna schermata (mancava un `contentIntent`, stesso bug gia'
+  sistemato sulla phone-app). Aggiunto un `PendingIntent` verso
+  `MainActivity`: per i messaggi di chat apre direttamente la
+  schermata Chat (`EXTRA_OPEN_CHAT`, letto sia a freddo sia ad app
+  gia' aperta tramite `onNewIntent` + `launchMode="singleTop"`), per
+  le altre notifiche apre la schermata principale.
+
+### Known limitations
+- Segnalato dubbio sull'identificazione dell'app nella notifica
+  (icona generica, non chiaro da quale app arrivi): l'icona piccola
+  e' gia' conforme alle linee guida Android (maschera monocromatica) e
+  il nome app (`app_name` = "Family Tracker") dovrebbe comparire di
+  default nella card Wear OS — probabile che nello screenshot fosse
+  solo tagliato fuori dall'inquadratura (cinturino sopra al bordo).
+  Da riverificare con schermo/foto meno raccorciata prima di
+  considerarlo un problema reale.
 
 ### Fixed
 - Anche il nuovo ID canale (v0.28.0) non ha risolto la mancanza di

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.29.0
+**Versione contesto:** 0.30.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -839,3 +839,18 @@ CHANGELOG.md  Storico versioni
   codice fatta in questo giro: serve conferma dall'utente su quale di
   queste impostazioni fosse la causa, prima di considerare il problema
   chiuso.
+- 2026-09-10: **Confermato dall'utente con screenshot**: popup e
+  riattivazione schermo sul watch ora funzionano — chiuso il problema
+  aperto dai due giri precedenti (v0.28.0/v0.29.0 hanno risolto).
+  Dallo screenshot emergono pero' due cose nuove: (1) la notifica non
+  e' cliccabile (nessuna azione al tocco) — stesso bug gia' sistemato
+  sulla phone-app (v0.27.0), mancava il contentIntent qui sul watch.
+  Aggiunto PendingIntent verso MainActivity con lo stesso pattern
+  (EXTRA_OPEN_CHAT + onNewIntent + launchMode singleTop) — per i
+  messaggi apre la Chat, per le altre notifiche la Home. (2) Dubbio
+  sull'icona/nome app poco riconoscibile: verificato che l'icona
+  piccola e' gia' corretta (maschera monocromatica, come richiesto da
+  Android) e il nome app dovrebbe comparire di default nella card Wear
+  OS — nessuna modifica fatta, probabile che fosse solo tagliato fuori
+  dalla foto (cinturino sopra al bordo dello schermo nello
+  screenshot); da riverificare (v0.30.0).

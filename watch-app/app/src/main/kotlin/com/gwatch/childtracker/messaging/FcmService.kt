@@ -58,8 +58,14 @@ package com.gwatch.childtracker.messaging
 //   vibrazione), o il toggle "Vibra" specifico del canale "Messaggi"
 //   disattivato a mano in Impostazioni > App > Family Tracker >
 //   Notifiche.
+// v0.6.3 (2026-09-10): bug segnalato — la notifica non era cliccabile,
+//   il tocco non portava da nessuna parte (mancava un contentIntent).
+//   Aggiunto un PendingIntent verso MainActivity, con l'extra
+//   EXTRA_OPEN_CHAT per i messaggi di chat (le altre notifiche aprono
+//   semplicemente la schermata principale).
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
@@ -75,6 +81,7 @@ import com.gwatch.childtracker.location.LocationRequestWorker
 import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.network.model.ChatMessage
+import com.gwatch.childtracker.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -122,6 +129,7 @@ class FcmService : FirebaseMessagingService() {
             title = getString(R.string.chat_notification_title),
             text = text,
             category = NotificationCompat.CATEGORY_MESSAGE,
+            openChat = true,
         )
     }
 
@@ -154,7 +162,19 @@ class FcmService : FirebaseMessagingService() {
         title: String,
         text: String,
         category: String = NotificationCompat.CATEGORY_STATUS,
+        openChat: Boolean = false,
     ) {
+        val contentIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (openChat) putExtra(MainActivity.EXTRA_OPEN_CHAT, true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val manager = getSystemService(NotificationManager::class.java)
         val builder = NotificationCompat.Builder(this, TrackerApplication.MESSAGES_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -163,6 +183,7 @@ class FcmService : FirebaseMessagingService() {
             .setCategory(category)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(false)
+            .setContentIntent(pendingIntent)
             // v0.5.1: ridondante rispetto alle impostazioni del canale
             // (che dovrebbero da sole bastare da Android 8+), ma alcuni
             // OEM non le rispettano sempre in modo affidabile — vedi

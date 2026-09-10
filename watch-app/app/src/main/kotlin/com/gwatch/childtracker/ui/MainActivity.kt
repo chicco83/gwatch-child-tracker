@@ -1,6 +1,18 @@
 package com.gwatch.childtracker.ui
 
+// Storico versioni (solo modifiche recenti)
+// v0.6.3 (2026-09-10): bug segnalato — la notifica di un messaggio in
+//   arrivo non era cliccabile, non portava da nessuna parte (a
+//   differenza della phone-app, gia' sistemata allo stesso modo).
+//   FcmService.kt non impostava nessun contentIntent. Aggiunto un
+//   PendingIntent verso questa Activity con l'extra EXTRA_OPEN_CHAT,
+//   letto sia a freddo (onCreate) sia ad app gia' aperta (onNewIntent,
+//   richiede launchMode="singleTop" nel Manifest) per navigare subito
+//   alla schermata "chat" tramite lo stesso MutableStateFlow-pattern
+//   gia' usato per SosState/MessageStore in questo progetto.
+
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,10 +67,14 @@ import com.gwatch.childtracker.sos.SosState
 import com.gwatch.childtracker.sos.SosWorker
 import com.gwatch.childtracker.upload.LocationUploadWorker
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
+
+    private val openChatRequested = MutableStateFlow(false)
 
     private val requestCorePermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -82,9 +99,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
         setContent {
             MaterialTheme {
                 var screen by remember { mutableStateOf("main") }
+                val openChat by openChatRequested.asStateFlow().collectAsState()
+                LaunchedEffect(openChat) {
+                    if (openChat) {
+                        screen = "chat"
+                        openChatRequested.value = false
+                    }
+                }
                 when (screen) {
                     // v0.2.5 (2026-09-10): lo swipe di sistema "indietro" su
                     // Wear OS chiudeva l'app invece di tornare al menu
@@ -124,6 +149,18 @@ class MainActivity : ComponentActivity() {
         }
         requestPermissionsAndStart()
         registerFcmToken()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_CHAT, false) == true) {
+            openChatRequested.value = true
+        }
     }
 
     // Ad ogni avvio, non solo su onNewToken: cosi' un token gia'
@@ -281,6 +318,10 @@ class MainActivity : ComponentActivity() {
                 else -> Unit
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_CHAT = "open_chat"
     }
 }
 
