@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 5 - Scudo di protezione con pin di
+     geolocalizzazione all'interno, per comunicare sicurezza oltre
+     al semplice tracking. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Scudo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 L76,28 L76,52 C76,68 66,80 54,86 C42,80 32,68 32,52 L32,28 Z" />
+    <!-- Pin blu all'interno dello scudo -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,34c-7.7,0 -14,6.3 -14,14c0,10.5 14,24 14,24s14,-13.5 14,-24C68,40.3 61.7,34 54,34z" />
+    <!-- Foro del pin -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,48m-5.5,0a5.5,5.5 0,1 1,11 0a5.5,5.5 0,1 1,-11 0" />
+</vector>

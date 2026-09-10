@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 1 - Pin di geolocalizzazione + quadrante orologio.
+     Pin bianco standard con, al posto del pallino piano, un piccolo
+     quadrante orologio (cerchio + due lancette) per richiamare il
+     tracking "nel tempo" tramite smartwatch. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Corpo del pin -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24c-11.6,0 -21,9.4 -21,21c0,15.75 21,39 21,39s21,-23.25 21,-39C75,33.4 65.6,24 54,24z" />
+    <!-- Foro del pin (mostra lo sfondo blu) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,53m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <!-- Quadrante orologio bianco dentro il foro -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,53m-6.5,0a6.5,6.5 0,1 1,13 0a6.5,6.5 0,1 1,-13 0" />
+    <!-- Lancetta minuti (verticale) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M53,53 L53,47.5 L55,47.5 L55,53 Z" />
+    <!-- Lancetta ore (orizzontale, ore 10 circa) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M53,53 L53,50.8 L58.5,50.8 L58.5,52.8 Z" />
+</vector>
