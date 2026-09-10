@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 16 - Replica il piu' fedele possibile
+     alla prima immagine di riferimento (icona line-art bianco/nero):
+     mappa a "farfalla"/esagono fatta di pannelli piegati che si
+     assottigliano in punta a sinistra e destra, pieghe interne come
+     linee, percorso tratteggiato, pin grande con cerchio vuoto
+     (bianco con contorno nero, non blu/bianco come gli altri round -
+     qui la fedelta' alla reference viene prima della palette brand).
+     Nota: qui non c'e' il bambino dentro il pin, come nella
+     reference originale - da riaggiungere se lo si vuole ancora. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Mappa piegata, a farfalla/esagono con punte a sx/dx -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.5"
+        android:pathData="M14,54 L32,30 L54,44 L76,30 L94,54 L76,78 L54,64 L32,78 Z" />
+    <!-- Pieghe interne -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M32,30 L32,78" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M54,44 L54,64" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M76,30 L76,78" />
+    <!-- Percorso tratteggiato -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M20,56 L26,53 M34,58 L40,55 M60,58 L66,54 M82,56 L88,53" />
+    <!-- Pin, grande, con cerchio vuoto -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="3"
+        android:pathData="M54,20c-13,0 -23.5,10.5 -23.5,23.5c0,17.6 23.5,43.5 23.5,43.5s23.5,-25.9 23.5,-43.5C77.5,30.5 67,20 54,20z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="2.5"
+        android:pathData="M54,45m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+</vector>
