@@ -52,6 +52,13 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- v0.4.0 (2026-09-10): tracking ad alta frequenza (ogni 30")
+             durante un SOS attivo, vedi location/SosLocationService.kt -->
+        <service
+            android:name=".location.SosLocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <receiver
             android:name=".geofence.GeofenceBroadcastReceiver"
             android:exported="false" />

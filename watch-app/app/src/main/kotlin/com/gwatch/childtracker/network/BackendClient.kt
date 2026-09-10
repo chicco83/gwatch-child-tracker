@@ -1,5 +1,12 @@
 package com.gwatch.childtracker.network
 
+// v0.4.0 (2026-09-10): aggiunto sosHeartbeat, per il ping di posizione
+// ogni 30" durante un SOS attivo (vedi
+// location/SosLocationService.kt e backend/api/sos-heartbeat.js).
+// Esito a 3 stati (non solo bool) perche' un 409 ("SOS non piu'
+// attivo") e' un segnale distinto da un errore di rete: il primo dice
+// al service di fermarsi, il secondo di ritentare al prossimo giro.
+
 import com.gwatch.childtracker.config.BackendConfig
 import com.gwatch.childtracker.network.model.ChatMessage
 import com.gwatch.childtracker.network.model.GeofenceZone
@@ -113,6 +120,54 @@ class BackendClient {
         return executeForSuccess(request)
     }
 
+    /**
+     * Ping di posizione durante un SOS attivo. STOP significa "il
+     * backend dice che l'SOS non e' piu' attivo" (il genitore l'ha
+     * disattivato, o la push di cancellazione e' arrivata dopo che il
+     * 409 e' gia' stato ricevuto): il chiamante deve fermare il loop.
+     */
+    suspend fun sosHeartbeat(
+        lat: Double,
+        lon: Double,
+        accuracy: Float?,
+        battery: Int?,
+        timestampMillis: Long = System.currentTimeMillis(),
+    ): SosHeartbeatResult {
+        val body = JSONObject().apply {
+            put("lat", lat)
+            put("lon", lon)
+            accuracy?.let { put("accuracy", it.toDouble()) }
+            battery?.let { put("battery", it) }
+            put("timestamp", timestampMillis)
+        }
+        val request = Request.Builder()
+            .url("${BackendConfig.baseUrl}/api/sos-heartbeat")
+            .header("X-Device-Token", BackendConfig.deviceToken)
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        return suspendCancellableCoroutine { cont ->
+            val call = http.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (cont.isActive) cont.resume(SosHeartbeatResult.FAILED)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        val result = when {
+                            it.isSuccessful -> SosHeartbeatResult.ACCEPTED
+                            it.code == 409 -> SosHeartbeatResult.STOP
+                            else -> SosHeartbeatResult.FAILED
+                        }
+                        if (cont.isActive) cont.resume(result)
+                    }
+                }
+            })
+        }
+    }
+
     /** Registra/aggiorna il token FCM del watch, per ricevere la chat. */
     suspend fun registerFcmToken(token: String): Boolean {
         val body = JSONObject().apply { put("token", token) }
@@ -163,3 +218,5 @@ class BackendClient {
             })
         }
 }
+
+enum class SosHeartbeatResult { ACCEPTED, STOP, FAILED }

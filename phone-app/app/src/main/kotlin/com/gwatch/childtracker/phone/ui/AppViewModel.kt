@@ -112,6 +112,18 @@ class AppViewModel(
         }
     }
 
+    /** Disattiva un SOS in corso (vedi backend/api/cancel-sos.js). */
+    fun cancelSos(onResult: (Boolean) -> Unit) {
+        val user = _user.value ?: return onResult(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.cancelSos(idToken)
+            }.getOrDefault(false)
+            onResult(ok)
+        }
+    }
+
     class Factory(
         private val authRepository: AuthRepository,
         private val deviceRepository: DeviceRepository,

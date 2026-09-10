@@ -56,6 +56,7 @@ class DeviceRepository {
                     battery = (snap.get("battery") as? Number)?.toInt(),
                     activity = snap.getString("activity"),
                     lastSeenMillis = snap.getTimestamp("lastSeen")?.toDate()?.time,
+                    sosActive = snap.getBoolean("sosActive") ?: false,
                 ),
             )
         }

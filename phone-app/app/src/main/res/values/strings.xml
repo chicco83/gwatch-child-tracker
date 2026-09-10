@@ -29,4 +29,10 @@
     <string name="map_requesting_location">Richiesta in corso…</string>
     <string name="map_request_location_sent">Richiesta inviata al watch</string>
     <string name="map_request_location_failed">Richiesta fallita (watch non raggiungibile)</string>
+
+    <!-- v0.4.0 (2026-09-10): banner SOS attivo -->
+    <string name="sos_banner_title">🆘 SOS ATTIVO</string>
+    <string name="sos_banner_deactivate">Disattiva</string>
+    <string name="sos_deactivate_success">SOS disattivato</string>
+    <string name="sos_deactivate_failed">Disattivazione fallita, riprova</string>
 </resources>

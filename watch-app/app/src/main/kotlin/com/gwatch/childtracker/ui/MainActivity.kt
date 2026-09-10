@@ -37,6 +37,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.google.firebase.messaging.FirebaseMessaging
@@ -44,6 +45,7 @@ import com.gwatch.childtracker.R
 import com.gwatch.childtracker.geofence.GeofenceSyncWorker
 import com.gwatch.childtracker.location.LocationRequestWorker
 import com.gwatch.childtracker.location.LocationTrackingService
+import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.sos.SosWorker
 import com.gwatch.childtracker.upload.LocationUploadWorker
@@ -89,8 +91,27 @@ class MainActivity : ComponentActivity() {
                         BackHandler { screen = "main" }
                         ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
                     }
+                    // v0.4.0 (2026-09-10): l'SOS ora chiede conferma
+                    // prima di attivarsi (richiesta utente, per evitare
+                    // attivazioni accidentali di una funzione che avvia
+                    // un tracking continuo finche' il genitore non lo
+                    // disattiva) — stesso pattern "screen" gia' usato
+                    // per la chat, nessun componente Dialog/Confirmation
+                    // di Wear Compose (mai verificato in build reale in
+                    // questo progetto, vedi la vicenda di Divider in
+                    // ChatScreen.kt).
+                    "sosConfirm" -> {
+                        BackHandler { screen = "main" }
+                        SosConfirmScreen(
+                            onConfirm = {
+                                screen = "main"
+                                confirmSos()
+                            },
+                            onCancel = { screen = "main" },
+                        )
+                    }
                     else -> MainScreen(
-                        onSosClick = ::sendSos,
+                        onSosClick = { screen = "sosConfirm" },
                         onLocationClick = ::sendLocationNow,
                         onChatClick = { screen = "chat" },
                     )
@@ -187,6 +208,21 @@ class MainActivity : ComponentActivity() {
     // avvenuta (SUCCEEDED) o fallimento definitivo (FAILED, es.
     // permesso posizione mancante); i tentativi (RETRY) restano
     // silenziosi, il worker ritenta da solo in background.
+    // v0.4.0 (2026-09-10): chiamato dopo la conferma sullo schermo
+    // "sosConfirm". Oltre all'invio SOS gia' esistente (sendSos, fix +
+    // notifica al genitore), avvia SosLocationService: da qui in poi il
+    // watch invia la posizione ogni 30 secondi finche' il genitore non
+    // disattiva l'SOS dalla phone-app (push "sos_cancel", vedi
+    // FcmService.kt) o finche' il backend non segnala che l'SOS non e'
+    // piu' attivo (vedi SosLocationService/sos-heartbeat.js).
+    private fun confirmSos() {
+        sendSos()
+        ContextCompat.startForegroundService(
+            this,
+            android.content.Intent(this, SosLocationService::class.java),
+        )
+    }
+
     private fun sendSos() {
         val work = OneTimeWorkRequestBuilder<SosWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -282,6 +318,46 @@ private fun MainScreen(
             onClick = onChatClick,
             modifier = Modifier.fillMaxWidth(),
             label = { CenteredChipLabel(stringResourceCompat(R.string.chat_button)) },
+        )
+    }
+}
+
+/**
+ * Schermo di conferma mostrato prima di attivare l'SOS (v0.4.0):
+ * evita attivazioni accidentali di una funzione che, a differenza del
+ * vecchio SOS one-shot, ora avvia un tracking continuo (ogni 30", vedi
+ * SosLocationService) finche' il genitore non lo disattiva dal
+ * telefono. "Conferma" e' il Chip primario (rosso, come il pulsante
+ * SOS originale); "Annulla" e' un CompactChip secondario, stesso
+ * pattern gia' usato per "Indietro" in ChatScreen.kt.
+ */
+@Composable
+private fun SosConfirmScreen(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+    ) {
+        Text(text = stringResourceCompat(R.string.sos_confirm_title))
+        Text(
+            text = stringResourceCompat(R.string.sos_confirm_message),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
+        Chip(
+            onClick = onConfirm,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ChipDefaults.chipColors(backgroundColor = Color.Red, contentColor = Color.White),
+            label = { CenteredChipLabel(stringResourceCompat(R.string.sos_confirm_button)) },
+        )
+        CompactChip(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ChipDefaults.secondaryChipColors(),
+            label = { CenteredChipLabel(stringResourceCompat(R.string.sos_cancel_confirm_button)) },
         )
     }
 }

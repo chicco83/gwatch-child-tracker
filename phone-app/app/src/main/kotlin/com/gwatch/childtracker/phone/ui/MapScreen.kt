@@ -21,6 +21,12 @@ package com.gwatch.childtracker.phone.ui
 //   switch per passare fra "solo posizione attuale" (comportamento di
 //   prima) e "percorso ultime 24h" (disegna la polyline sullo storico
 //   filtrato alle ultime 24h, invece di disegnarla sempre come prima).
+// v0.4.0 (2026-09-10): banner SOS — quando deviceState.sosActive e'
+//   true (il watch ha attivato un SOS, vedi trigger-event.js) mostra un
+//   banner rosso in cima con un pulsante "Disattiva SOS"
+//   (AppViewModel.cancelSos/backend/api/cancel-sos.js), che marca
+//   sosActive=false e manda la push che ferma SosLocationService sul
+//   watch.
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -108,6 +114,7 @@ fun MapScreen(
     var centered by remember { mutableStateOf(false) }
     var showFullPath by remember { mutableStateOf(false) }
     var requestingLocation by remember { mutableStateOf(false) }
+    var deactivatingSos by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -173,6 +180,23 @@ fun MapScreen(
             )
 
             Column(modifier = Modifier.align(Alignment.TopCenter)) {
+                if (deviceState.sosActive) {
+                    SosBanner(
+                        deactivating = deactivatingSos,
+                        onDeactivate = {
+                            deactivatingSos = true
+                            viewModel.cancelSos { ok ->
+                                deactivatingSos = false
+                                val feedbackRes = if (ok) {
+                                    R.string.sos_deactivate_success
+                                } else {
+                                    R.string.sos_deactivate_failed
+                                }
+                                Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    )
+                }
                 StatusCard(deviceState)
                 MapControls(
                     showFullPath = showFullPath,
@@ -193,6 +217,33 @@ fun MapScreen(
                 )
             }
             EventsList(events = events, modifier = Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@Composable
+private fun SosBanner(deactivating: Boolean, onDeactivate: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
+        elevation = CardDefaults.cardElevation(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.sos_banner_title),
+                color = MaterialTheme.colorScheme.onError,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            TextButton(onClick = onDeactivate, enabled = !deactivating) {
+                Text(
+                    text = stringResource(R.string.sos_banner_deactivate),
+                    color = MaterialTheme.colorScheme.onError,
+                )
+            }
         }
     }
 }

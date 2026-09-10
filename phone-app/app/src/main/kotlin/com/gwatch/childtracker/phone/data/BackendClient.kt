@@ -67,6 +67,16 @@ class BackendClient {
         return execute(request, "requestLocation")
     }
 
+    /** Disattiva un SOS in corso (vedi backend/api/cancel-sos.js). */
+    suspend fun cancelSos(idToken: String): Boolean {
+        val request = Request.Builder()
+            .url("${Constants.BACKEND_BASE_URL}/api/cancel-sos")
+            .header("Authorization", "Bearer $idToken")
+            .post("".toRequestBody(jsonMediaType))
+            .build()
+        return execute(request, "cancelSos")
+    }
+
     private suspend fun execute(request: Request, tag: String): Boolean =
         suspendCancellableCoroutine { cont ->
             val call = http.newCall(request)

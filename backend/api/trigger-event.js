@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.4.0
+ * Versione: 0.5.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -36,6 +36,14 @@
  *   "Invia posizione". Aggiunto lo stesso merge di
  *   lastLocation/battery/lastSeen che fa ingest-location.js, cosi'
  *   la mappa si aggiorna subito.
+ * - 0.5.0 (2026-09-10): l'SOS ora marca devices/{id}.sosActive=true al
+ *   primo trigger — letto dalla phone-app per mostrare il banner "SOS
+ *   attivo" con pulsante di disattivazione (vedi cancel-sos.js) e dal
+ *   watch (sos-heartbeat.js) per sapere quando smettere di inviare la
+ *   posizione ogni 30" anche se la push di cancellazione va persa. La
+ *   notifica push "SOS ricevuto" parte solo al PRIMO evento sos
+ *   dell'episodio (sosActive era gia' false), non ad ogni evento sos
+ *   successivo, per non spammare il genitore.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -95,6 +103,20 @@ module.exports = async (req, res) => {
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
   const deviceRef = db.collection("devices").doc(DEVICE_ID);
 
+  // Serve PRIMA della scrittura per sapere se questo e' il primo "sos"
+  // dell'episodio (e quindi se notificare) o un evento successivo.
+  const wasSosActive = type === "sos" ? (await deviceRef.get()).data()?.sosActive === true : false;
+
+  const deviceUpdate = {
+    lastLocation: { lat, lon, accuracy: accuracy ?? null },
+    battery: battery ?? null,
+    lastSeen: ts,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (type === "sos") {
+    deviceUpdate.sosActive = true;
+  }
+
   const batch = db.batch();
   batch.set(deviceRef.collection("events").doc(), {
     type,
@@ -106,33 +128,31 @@ module.exports = async (req, res) => {
     timestamp: ts,
     acknowledged: false,
   });
-  batch.set(
-    deviceRef,
-    {
-      lastLocation: { lat, lon, accuracy: accuracy ?? null },
-      battery: battery ?? null,
-      lastSeen: ts,
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  batch.set(deviceRef, deviceUpdate, { merge: true });
   await batch.commit();
 
-  const parentSnap = await db.collection("parents").get();
-  const tokens = [];
-  parentSnap.forEach((p) => {
-    const t = p.data().fcmTokens;
-    if (Array.isArray(t)) tokens.push(...t);
-  });
-
-  if (tokens.length > 0) {
-    const { title, body } = buildNotification(type, zoneName);
-    await getMessaging().sendEachForMulticast({
-      tokens,
-      notification: { title, body },
-      data: { type, lat: String(lat), lon: String(lon) },
-      android: { priority: "high" },
+  // Niente notifica per un "sos" quando l'episodio e' gia' attivo
+  // (arriva qui solo se il bambino ripreme il pulsante durante un SOS
+  // gia' in corso — non per i ping ogni 30", quelli passano da
+  // sos-heartbeat.js e non toccano questo endpoint).
+  const shouldNotify = type !== "sos" || !wasSosActive;
+  if (shouldNotify) {
+    const parentSnap = await db.collection("parents").get();
+    const tokens = [];
+    parentSnap.forEach((p) => {
+      const t = p.data().fcmTokens;
+      if (Array.isArray(t)) tokens.push(...t);
     });
+
+    if (tokens.length > 0) {
+      const { title, body } = buildNotification(type, zoneName);
+      await getMessaging().sendEachForMulticast({
+        tokens,
+        notification: { title, body },
+        data: { type, lat: String(lat), lon: String(lon) },
+        android: { priority: "high" },
+      });
+    }
   }
 
   res.status(200).json({ ok: true });

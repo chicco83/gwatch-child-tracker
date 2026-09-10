@@ -35,4 +35,13 @@
          il separatore che segue i pulsanti azione (vedi ChatScreen.kt) -->
     <string name="chat_history_header">Messaggi inviati</string>
     <string name="back">Indietro</string>
+
+    <!-- v0.4.0 (2026-09-10): conferma prima dell'SOS + tracking continuo
+         ogni 30" finche' non disattivato dal genitore -->
+    <string name="sos_confirm_title">Confermi SOS?</string>
+    <string name="sos_confirm_message">Invierai la tua posizione al genitore ogni 30 secondi, finché non verrà disattivato dal telefono.</string>
+    <string name="sos_confirm_button">Conferma SOS</string>
+    <string name="sos_cancel_confirm_button">Annulla</string>
+    <string name="sos_tracking_notification_title">SOS attivo</string>
+    <string name="sos_tracking_notification_text">Invio posizione ogni 30 secondi</string>
 </resources>

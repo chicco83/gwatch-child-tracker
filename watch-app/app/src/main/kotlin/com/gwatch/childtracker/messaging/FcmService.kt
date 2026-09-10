@@ -10,8 +10,14 @@ package com.gwatch.childtracker.messaging
 //   identico invio (fix GPS + trigger-event), solo innescato da remoto
 //   invece che in locale, nessuna UI/notifica da mostrare qui (il fix
 //   GPS parte silenzioso, il genitore vede il pin muoversi da solo).
+// v0.3.0 (2026-09-10): aggiunto "sos_cancel" — il genitore disattiva
+//   l'SOS dalla phone-app (vedi backend/api/cancel-sos.js), che manda
+//   questa push per fermare subito SosLocationService (i ping ogni 30",
+//   vedi location/SosLocationService.kt) invece di aspettare che il
+//   watch se ne accorga da solo al prossimo ping rifiutato con 409.
 
 import android.app.NotificationManager
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -22,6 +28,7 @@ import com.gwatch.childtracker.R
 import com.gwatch.childtracker.TrackerApplication
 import com.gwatch.childtracker.data.MessageStore
 import com.gwatch.childtracker.location.LocationRequestWorker
+import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.network.model.ChatMessage
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +58,7 @@ class FcmService : FirebaseMessagingService() {
         when (message.data["type"]) {
             "chat" -> handleChatMessage(message.data)
             "location_request" -> handleLocationRequest()
+            "sos_cancel" -> stopService(Intent(this, SosLocationService::class.java))
         }
     }
 

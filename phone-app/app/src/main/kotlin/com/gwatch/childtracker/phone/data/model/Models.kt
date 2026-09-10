@@ -11,6 +11,10 @@ data class DeviceState(
     val battery: Int? = null,
     val activity: String? = null,
     val lastSeenMillis: Long? = null,
+    // v0.4.0 (2026-09-10): SOS attivo — mostra il banner di
+    // disattivazione sulla mappa (vedi MapScreen.kt/trigger-event.js,
+    // che lo marca true al primo evento "sos" di un episodio).
+    val sosActive: Boolean = false,
 )
 
 data class LocationPoint(
