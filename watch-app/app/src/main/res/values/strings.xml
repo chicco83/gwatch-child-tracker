@@ -52,4 +52,8 @@
     <string name="sos_active_banner">🆘 SOS ATTIVO</string>
     <string name="sos_deactivated_title">SOS disattivato</string>
     <string name="sos_deactivated_text">Il genitore ha disattivato l\'SOS.</string>
+
+    <!-- v0.5.0 (2026-09-10): conferma di lettura posizione -->
+    <string name="location_seen_title">Posizione visualizzata</string>
+    <string name="location_seen_text">Il genitore ha visto la tua posizione.</string>
 </resources>

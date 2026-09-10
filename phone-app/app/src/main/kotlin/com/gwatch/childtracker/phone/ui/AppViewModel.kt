@@ -155,6 +155,23 @@ class AppViewModel(
         }
     }
 
+    /**
+     * Marca un evento come "visto" — chiamato da MapScreen.kt quando
+     * mostra un evento "posizione inviata dal bambino" non ancora
+     * marcato (vedi backend/api/ack-event.js, che notifica il watch).
+     * Fire-and-forget: nessun feedback in UI, non e' un'azione che
+     * l'utente ha scelto esplicitamente di fare.
+     */
+    fun ackEvent(eventId: String) {
+        val user = _user.value ?: return
+        viewModelScope.launch {
+            runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.ackEvent(idToken, eventId)
+            }
+        }
+    }
+
     class Factory(
         private val authRepository: AuthRepository,
         private val deviceRepository: DeviceRepository,

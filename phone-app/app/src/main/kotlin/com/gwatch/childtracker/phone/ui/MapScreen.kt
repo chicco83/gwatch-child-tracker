@@ -27,6 +27,17 @@ package com.gwatch.childtracker.phone.ui
 //   (AppViewModel.cancelSos/backend/api/cancel-sos.js), che marca
 //   sosActive=false e manda la push che ferma SosLocationService sul
 //   watch.
+// v0.5.0 (2026-09-10): richiesto un modo per il bambino di sapere che
+//   il genitore ha visto la posizione che ha inviato (SOS o "Invia
+//   posizione" premuto sul watch, non una richiesta remota del
+//   genitore stesso). Aggiunto un LaunchedEffect(events): appena questa
+//   schermata mostra un evento "sos" o "location_request" (source
+//   "child") non ancora marcato, chiama AppViewModel.ackEvent, che
+//   avvisa il watch (vedi backend/api/ack-event.js). "Visto" qui
+//   significa letteralmente "la mappa con quell'evento e' stata
+//   composta" — non richiede un tocco esplicito, coerente con com'e'
+//   gia' pensata questa schermata (si apre gia' mostrando l'ultima
+//   posizione).
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +61,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -107,6 +119,16 @@ fun MapScreen(
         }
     }
     DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
+
+    // Vedi storico versioni v0.5.0 sopra. Filtro sul "source": una
+    // richiesta di posizione fatta dal genitore stesso (MapControls
+    // sotto) non deve generare "il genitore ha visto la tua posizione"
+    // sul watch, non avrebbe senso.
+    LaunchedEffect(events) {
+        events
+            .filter { !it.acknowledged && (it.type == "sos" || (it.type == "location_request" && it.source != "parent")) }
+            .forEach { viewModel.ackEvent(it.id) }
+    }
 
     // Centra la mappa sull'ultima posizione nota solo alla prima
     // ricezione: dopo, l'utente deve poter muovere liberamente la mappa

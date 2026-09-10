@@ -140,6 +140,8 @@ class DeviceRepository {
                             lat = d.getDouble("lat") ?: 0.0,
                             lon = d.getDouble("lon") ?: 0.0,
                             zoneName = d.getString("zoneName"),
+                            source = d.getString("source"),
+                            acknowledged = d.getBoolean("acknowledged") ?: false,
                             timestampMillis = d.getTimestamp("timestamp")?.toDate()?.time ?: 0L,
                         )
                     },

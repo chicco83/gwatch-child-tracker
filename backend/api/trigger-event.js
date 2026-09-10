@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.7.0
+ * Versione: 0.8.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -68,6 +68,12 @@
  *   la notifica al genitore diceva sempre "il bambino ha inviato la
  *   posizione", anche quando l'aveva chiesta lui stesso. source assente
  *   (client watch non aggiornato) si comporta come "child", invariato.
+ * - 0.8.0 (2026-09-10): "source" ora e' salvato anche sul documento
+ *   evento (prima usato solo per il testo della notifica) — serve alla
+ *   phone-app per distinguere un invio "location_request" davvero
+ *   iniziato dal bambino da una richiesta remota del genitore: solo il
+ *   primo caso ha senso per la notifica "il genitore ha visto la tua
+ *   posizione" (vedi ack-event.js, nuovo in questa stessa versione).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -187,6 +193,12 @@ module.exports = async (req, res) => {
     battery: battery ?? null,
     zoneId: zoneId ?? null,
     zoneName: type === "geofence_enter" || type === "geofence_exit" ? zoneName : null,
+    // "source" (solo su "location_request") serve alla phone-app per
+    // sapere se notificare al watch, con /api/ack-event, che il
+    // genitore ha visto la posizione — ha senso solo per un invio
+    // decisamente iniziato dal bambino (pulsante sul watch), non per
+    // una richiesta remota del genitore stesso. Vedi ack-event.js.
+    source: type === "location_request" ? (source ?? "child") : null,
     timestamp: ts,
     acknowledged: false,
   });

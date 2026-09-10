@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-10
+
+### Added
+- Notifica "Posizione visualizzata" sul watch quando il genitore vede
+  sulla phone-app una posizione inviata volontariamente dal bambino
+  (SOS o "Invia posizione"): nuovo endpoint `backend/api/ack-event.js`
+  (idempotente), chiamato da `MapScreen.kt` quando mostra un evento non
+  ancora marcato "acknowledged".
+
+### Changed
+- Notifiche sul watch (chat, SOS disattivato, posizione visualizzata)
+  ora restano visibili finche' non vengono rimosse esplicitamente
+  (`setAutoCancel(false)`, prima sparivano al tocco).
+- Priorita' delle notifiche watch alzata a `PRIORITY_MAX` (prima
+  `HIGH`) con categoria dedicata (`CATEGORY_MESSAGE` per la chat), per
+  favorire la presentazione piu' prominente di Wear OS alla ricezione
+  — la resa esatta a schermo resta comunque decisa dal sistema.
+
 ## [0.23.0] - 2026-09-10
 
 ### Added

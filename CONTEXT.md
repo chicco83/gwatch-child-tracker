@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.23.1
+**Versione contesto:** 0.24.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -313,6 +313,38 @@ in arrivo non mostri comunque una notifica (vedi voce precedente nel
 log decisioni) NON e' quindi un problema di permesso mancante, resta
 un punto da rivalutare con piu' attenzione se il sintomo si ripete dopo
 il fix dello scroll automatico appena fatto.
+
+Ulteriore richiesta sulle notifiche del watch, due parti:
+
+1. **Notifiche persistenti**: dovevano restare visibili finche' non
+   vengono rimosse esplicitamente, invece di sparire da sole al tocco.
+   `postNotification()` (nuovo helper condiviso in `FcmService.kt`,
+   fattorizzato da chat/sos_cancel/location_seen) ora usa
+   `setAutoCancel(false)` su tutte.
+2. **Card "a comparsa" piu' grande/centrata**: l'unica leva che l'app
+   ha verso il renderer di sistema di Wear OS per la presentazione
+   interattiva di una notifica in arrivo e' importanza del canale (gia'
+   `IMPORTANCE_HIGH`) + priorita' della notifica + categoria. Alzata la
+   priorita' a `PRIORITY_MAX` (prima `HIGH`) e aggiunta
+   `CATEGORY_MESSAGE` per la chat (`CATEGORY_STATUS` per le altre) —
+   **limite onesto**: la resa finale a schermo (dimensione/posizione
+   esatta) resta decisa dal sistema operativo, non e' un parametro
+   impostabile pixel per pixel dall'app; questi sono i segnali
+   corretti/standard per chiedere il trattamento piu' prominente, non
+   una garanzia assoluta del risultato visivo esatto.
+
+**Nuova funzione**: notifica "Posizione visualizzata" sul watch quando
+il genitore vede sulla phone-app una posizione inviata volontariamente
+dal bambino (SOS o pulsante "Invia posizione" — non una richiesta
+remota del genitore stesso, non avrebbe senso). Nuovo endpoint
+`backend/api/ack-event.js` (idempotente, stesso pattern
+`wasSosActive` di trigger-event.js per non spammare la notifica se
+richiamato piu' volte per lo stesso evento): la phone-app lo chiama da
+`MapScreen.kt` (`LaunchedEffect(events)`) appena mostra un evento
+"sos"/"location_request" (source "child") non ancora marcato
+`acknowledged`. "Visto" qui significa "la schermata mappa con
+quell'evento e' stata composta", non richiede un tocco esplicito del
+genitore.
 
 ### Aperto/da fare (non ancora chiuso)
 
@@ -666,3 +698,14 @@ CHANGELOG.md  Storico versioni
   poligono (sconsigliata, perde il risparmio batteria ovunque). Scelto
   restare **solo cerchio** — nessuna modifica al codice, decisione
   registrata qui per non doverla rivalutare da capo in futuro (v0.23.1).
+- 2026-09-10: Richieste due modifiche alle notifiche del watch (restare
+  visibili finche' non rimosse esplicitamente; la card a comparsa piu'
+  grande/centrata invece che un peek in basso) e una nuova funzione
+  (notifica al watch quando il genitore ha visto la posizione inviata
+  dal bambino). Implementate: setAutoCancel(false) + PRIORITY_MAX +
+  categoria su tutte le notifiche watch (fattorizzate in un helper
+  condiviso in FcmService.kt), nuovo endpoint ack-event.js (idempotente)
+  chiamato da MapScreen.kt quando mostra un evento sos/location_request
+  (source "child") non ancora marcato. Chiarito che la resa esatta a
+  schermo della card a comparsa resta decisa da Wear OS, non e'
+  impostabile pixel per pixel dall'app (v0.24.0).

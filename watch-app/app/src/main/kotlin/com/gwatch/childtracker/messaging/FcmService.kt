@@ -25,6 +25,24 @@ package com.gwatch.childtracker.messaging
 //   del bambino (stesso identico worker, vedi LocationRequestWorker.kt) —
 //   prima la notifica al genitore diceva sempre "il bambino ha inviato
 //   la posizione", anche quando l'aveva chiesta lui stesso.
+// v0.5.0 (2026-09-10): due richieste dell'utente su come si comportano
+//   le notifiche sul watch:
+//   1) dovevano restare visibili finche' non le si rimuove a mano,
+//      invece di sparire da sole al tocco. postNotification() ora usa
+//      setAutoCancel(false) su tutte (prima "true" su chat/sos_cancel).
+//   2) la card "a comparsa" che appare poi svanisce doveva essere piu'
+//      grande/centrata invece che un peek in basso. L'unica leva che
+//      l'app ha verso il renderer di sistema di Wear OS e'
+//      importanza canale (gia' IMPORTANCE_HIGH) + priorita' massima +
+//      categoria della notifica: alzata a PRIORITY_MAX (prima HIGH) e
+//      aggiunta CATEGORY_MESSAGE per la chat (CATEGORY_STATUS per le
+//      altre) — la resa finale a schermo (dimensione/posizione esatta)
+//      resta decisa dal sistema, non e' un parametro impostabile
+//      pixel per pixel dall'app.
+//   Aggiunto anche "location_seen": il genitore ha guardato la
+//   posizione inviata dal bambino (SOS o "Invia posizione", vedi
+//   backend/api/ack-event.js, chiamato da MapScreen.kt sulla
+//   phone-app) — notifica "Il genitore ha visto la tua posizione".
 
 import android.app.NotificationManager
 import android.content.Intent
@@ -47,8 +65,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * Riceve dal genitore: messaggi di chat e richieste di posizione
- * immediata. Il payload e' sempre "data" (mai "notification", vedi
+ * Riceve dal genitore: messaggi di chat, richieste di posizione
+ * immediata, cancellazione SOS e conferma di lettura posizione. Il
+ * payload e' sempre "data" (mai "notification", vedi
  * backend/api/send-message-to-child.js e request-location.js): il
  * sistema non mostra/agisce nulla da solo, va gestito qui sempre,
  * anche ad app in background — necessario sia per mettere il messaggio
@@ -70,6 +89,7 @@ class FcmService : FirebaseMessagingService() {
             "chat" -> handleChatMessage(message.data)
             "location_request" -> handleLocationRequest()
             "sos_cancel" -> handleSosCancel()
+            "location_seen" -> handleLocationSeen()
         }
     }
 
@@ -83,14 +103,11 @@ class FcmService : FirebaseMessagingService() {
         )
         MessageStore.append(chatMessage)
 
-        val manager = getSystemService(NotificationManager::class.java)
-        val builder = NotificationCompat.Builder(this, TrackerApplication.MESSAGES_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.chat_notification_title))
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-        manager.notify(System.currentTimeMillis().toInt(), builder.build())
+        postNotification(
+            title = getString(R.string.chat_notification_title),
+            text = text,
+            category = NotificationCompat.CATEGORY_MESSAGE,
+        )
     }
 
     private fun handleLocationRequest() {
@@ -106,14 +123,31 @@ class FcmService : FirebaseMessagingService() {
 
     private fun handleSosCancel() {
         stopService(Intent(this, SosLocationService::class.java))
+        postNotification(getString(R.string.sos_deactivated_title), getString(R.string.sos_deactivated_text))
+    }
 
+    private fun handleLocationSeen() {
+        postNotification(getString(R.string.location_seen_title), getString(R.string.location_seen_text))
+    }
+
+    /**
+     * Notifica visibile/sonora condivisa da chat, sos_cancel e
+     * location_seen — vedi storico versioni v0.5.0 sopra per il perche'
+     * di PRIORITY_MAX/setAutoCancel(false)/categoria.
+     */
+    private fun postNotification(
+        title: String,
+        text: String,
+        category: String = NotificationCompat.CATEGORY_STATUS,
+    ) {
         val manager = getSystemService(NotificationManager::class.java)
         val builder = NotificationCompat.Builder(this, TrackerApplication.MESSAGES_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.sos_deactivated_title))
-            .setContentText(getString(R.string.sos_deactivated_text))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setCategory(category)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setAutoCancel(false)
         manager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 }

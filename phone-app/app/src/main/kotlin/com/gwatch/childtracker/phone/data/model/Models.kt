@@ -50,6 +50,13 @@ data class DeviceEvent(
     val lat: Double = 0.0,
     val lon: Double = 0.0,
     val zoneName: String? = null,
+    // v0.24.0 (2026-09-10): "source" ("child" | "parent", solo su
+    // "location_request") e "acknowledged" — usati da MapScreen.kt per
+    // sapere quali eventi "posizione inviata dal bambino" notificare al
+    // watch come visti (vedi backend/api/ack-event.js), senza rifarlo
+    // per eventi gia' marcati.
+    val source: String? = null,
+    val acknowledged: Boolean = false,
     val timestampMillis: Long = 0L,
 )
 

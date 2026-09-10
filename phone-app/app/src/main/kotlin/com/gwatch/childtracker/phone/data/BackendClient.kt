@@ -77,6 +77,21 @@ class BackendClient {
         return execute(request, "cancelSos")
     }
 
+    /**
+     * Marca un evento come "visto" dal genitore — usato per notificare
+     * al watch che la posizione inviata dal bambino e' stata guardata
+     * (vedi backend/api/ack-event.js).
+     */
+    suspend fun ackEvent(idToken: String, eventId: String): Boolean {
+        val body = JSONObject().apply { put("eventId", eventId) }
+        val request = Request.Builder()
+            .url("${Constants.BACKEND_BASE_URL}/api/ack-event")
+            .header("Authorization", "Bearer $idToken")
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+        return execute(request, "ackEvent")
+    }
+
     private suspend fun execute(request: Request, tag: String): Boolean =
         suspendCancellableCoroutine { cont ->
             val call = http.newCall(request)
