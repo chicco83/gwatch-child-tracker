@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -72,7 +73,15 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 var screen by remember { mutableStateOf("main") }
                 when (screen) {
-                    "chat" -> ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
+                    // v0.2.5 (2026-09-10): lo swipe di sistema "indietro" su
+                    // Wear OS chiudeva l'app invece di tornare al menu
+                    // principale, perche' la navigazione interna (questo
+                    // "screen" state) non intercettava il gesto — mancava
+                    // un BackHandler.
+                    "chat" -> {
+                        BackHandler { screen = "main" }
+                        ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
+                    }
                     else -> MainScreen(onSosClick = ::sendSos, onChatClick = { screen = "chat" })
                 }
             }
