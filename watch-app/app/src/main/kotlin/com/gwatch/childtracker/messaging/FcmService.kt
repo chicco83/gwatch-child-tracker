@@ -43,6 +43,21 @@ package com.gwatch.childtracker.messaging
 //   posizione inviata dal bambino (SOS o "Invia posizione", vedi
 //   backend/api/ack-event.js, chiamato da MapScreen.kt sulla
 //   phone-app) — notifica "Il genitore ha visto la tua posizione".
+// v0.5.1 (2026-09-10): la notifica continuava a comparire SOLO nel
+//   pannello, senza vibrazione/popup, anche dopo aver dato al canale
+//   (TrackerApplication.kt) un ID nuovo con enableVibration(true) —
+//   quindi non era (solo) il problema del canale immutabile.
+//   Aggiunta vibrazione esplicita anche sulla singola notifica
+//   (setVibrate/setDefaults, normalmente ignorati a favore del canale
+//   da Android 8+, ma alcuni skin OEM — incluso Wear OS di Samsung sul
+//   Galaxy Watch4 — non rispettano sempre in modo affidabile solo le
+//   impostazioni di canale). Se anche questo non basta, il problema e'
+//   quasi certamente un'impostazione di sistema sul watch stesso, non
+//   piu' risolvibile da codice: Non disturbare/Modalita' teatro
+//   attivi, vibrazione disattivata globalmente (Impostazioni > Suoni e
+//   vibrazione), o il toggle "Vibra" specifico del canale "Messaggi"
+//   disattivato a mano in Impostazioni > App > Family Tracker >
+//   Notifiche.
 
 import android.app.NotificationManager
 import android.content.Intent
@@ -148,6 +163,12 @@ class FcmService : FirebaseMessagingService() {
             .setCategory(category)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(false)
+            // v0.5.1: ridondante rispetto alle impostazioni del canale
+            // (che dovrebbero da sole bastare da Android 8+), ma alcuni
+            // OEM non le rispettano sempre in modo affidabile — vedi
+            // storico versioni sopra.
+            .setVibrate(longArrayOf(0, 400, 200, 400))
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
         manager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 }

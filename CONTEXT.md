@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.28.0
+**Versione contesto:** 0.29.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -808,3 +808,20 @@ CHANGELOG.md  Storico versioni
   volta che si cambiano le impostazioni di un `NotificationChannel`
   gia' esistente su dispositivi reali, serve un nuovo ID canale,
   altrimenti il fix e' silenziosamente inefficace (v0.28.0).
+- 2026-09-10: Confermato dall'utente (dopo domanda diretta via
+  AskUserQuestion per distinguere i due scenari possibili): anche col
+  nuovo ID canale la notifica compare ANCORA solo nel pannello, senza
+  vibrazione/popup — il problema non era (solo) l'immutabilita' del
+  canale. Aggiunta vibrazione esplicita anche sulla singola notifica
+  (setVibrate/setDefaults in FcmService.kt), ridondante rispetto al
+  canale su Android 8+ ma non sempre rispettata in modo affidabile da
+  alcune skin OEM. **Le leve lato codice sono ormai esaurite**: canale
+  IMPORTANCE_HIGH + vibrazione+pattern+luci sul canale + vibrazione
+  ridondante sulla notifica + PRIORITY_MAX + CATEGORY_MESSAGE. Se il
+  problema persiste dopo questo fix, e' quasi certamente
+  un'impostazione di sistema sul watch (Non disturbare/Modalita'
+  teatro/Bedtime mode, vibrazione disattivata globalmente in
+  Impostazioni > Suoni e vibrazione, o il toggle "Vibra" del canale
+  "Messaggi" disattivato a mano in Impostazioni > App > Family Tracker
+  > Notifiche sul watch) — da verificare direttamente sul dispositivo,
+  non piu' diagnosticabile da qui (v0.29.0).

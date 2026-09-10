@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-09-10
+
+### Fixed
+- Anche il nuovo ID canale (v0.28.0) non ha risolto la mancanza di
+  vibrazione/popup: confermato dall'utente, la notifica compare ancora
+  solo nel pannello. Aggiunta vibrazione esplicita anche a livello di
+  singola notifica (`setVibrate`/`setDefaults`) in
+  `FcmService.kt` (watch) — ridondante rispetto al canale su Android
+  8+, ma alcune skin OEM (incluso Wear OS Samsung) non rispettano
+  sempre in modo affidabile solo le impostazioni di canale.
+
+### Known limitations
+- Se anche questo non basta, il problema e' quasi certamente
+  un'impostazione di sistema sul watch, non risolvibile da codice:
+  Non disturbare/Modalita' teatro/Bedtime mode attivi, vibrazione
+  disattivata globalmente (Impostazioni > Suoni e vibrazione), o il
+  toggle "Vibra" del canale "Messaggi" disattivato a mano in
+  Impostazioni > App > Family Tracker > Notifiche sul watch stesso.
+
 ## [0.28.0] - 2026-09-10
 
 ### Fixed
