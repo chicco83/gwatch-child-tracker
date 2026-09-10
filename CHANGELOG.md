@@ -7,7 +7,28 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
-## [0.30.0] - 2026-09-10
+## [0.31.0] - 2026-09-10
+
+### Fixed
+- **Confermato dall'utente con screenshot**: il tap sulla notifica del
+  watch ora funziona ("Apri app" porta correttamente in chat).
+
+### Changed
+- Icona della notifica sul watch ancora generica (fumetto) e nessun
+  nome app visibile in nessuna parte della card, confermato dallo
+  screenshot. Aggiunto `setLargeIcon()` con l'icona reale dell'app
+  (`mipmap/ic_launcher`), che Wear OS mostra tipicamente accanto/al
+  posto della small icon per rendere piu' riconoscibile la
+  provenienza.
+
+### Known limitations
+- Non esiste nessuna API per forzare un testo "nome app" esplicito
+  nella card di notifica Wear OS: quello che il sistema mostra (se lo
+  mostra) e' sempre e solo l'etichetta del manifest (gia' "Family
+  Tracker"), con resa a schermo interamente decisa dalla skin del
+  dispositivo. Se anche con l'icona reale non compare alcun nome, e'
+  un limite della skin Wear OS di questo Galaxy Watch4, non
+  ulteriormente risolvibile lato app.
 
 ### Fixed
 - **Confermato dall'utente**: popup e riattivazione schermo per le

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.30.0
+**Versione contesto:** 0.31.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -854,3 +854,18 @@ CHANGELOG.md  Storico versioni
   OS — nessuna modifica fatta, probabile che fosse solo tagliato fuori
   dalla foto (cinturino sopra al bordo dello schermo nello
   screenshot); da riverificare (v0.30.0).
+- 2026-09-10: **Confermato dall'utente con secondo screenshot** (foto
+  meno raccorciata): tap ok, "Apri app" funziona. Ma confermato anche
+  che il nome app NON e' un artefatto della foto precedente — la card
+  e' genuinamente senza alcun testo identificativo, solo icona
+  generica (fumetto) + titolo + orario + corpo + pulsante. Aggiunto
+  `setLargeIcon()` con l'icona reale dell'app (mipmap/ic_launcher) per
+  renderla piu' riconoscibile visivamente. **Limite architetturale
+  documentato**: non esiste nessuna API Android/Wear OS per forzare un
+  testo "nome app" esplicito nella card — cio' che il sistema mostra
+  (se lo mostra) e' sempre solo l'etichetta del manifest, con resa
+  interamente decisa dalla skin del dispositivo; se anche con l'icona
+  reale non compare alcun nome, e' un limite della skin Wear OS di
+  questo Galaxy Watch4, non ulteriormente risolvibile lato app —
+  chiudere il punto dopo la prossima verifica, qualunque sia l'esito
+  (v0.31.0).

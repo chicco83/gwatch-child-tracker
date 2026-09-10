@@ -63,11 +63,27 @@ package com.gwatch.childtracker.messaging
 //   Aggiunto un PendingIntent verso MainActivity, con l'extra
 //   EXTRA_OPEN_CHAT per i messaggi di chat (le altre notifiche aprono
 //   semplicemente la schermata principale).
+// v0.6.4 (2026-09-10): confermato via screenshot — tap ok ("Apri app"),
+//   ma l'icona resta quella generica del fumetto (ic_notification, per
+//   design solo una maschera monocromatica: e' cosi' che Android/Wear
+//   OS vogliono la small icon) e nessun nome app e' visibile da
+//   nessuna parte nella card. Aggiunto setLargeIcon() con l'icona reale
+//   dell'app (mipmap/ic_launcher), che Wear OS mostra tipicamente
+//   accanto/al posto della small icon per rendere piu' riconoscibile
+//   la provenienza. ATTENZIONE: non esiste nessuna API per forzare un
+//   testo "nome app" esplicito nella card — quello che Wear OS mostra
+//   (se lo mostra) e' sempre e solo l'etichetta dal manifest
+//   (android:label, gia' "Family Tracker"), resa a schermo in modo
+//   completamente deciso dal sistema: se anche con l'icona reale non
+//   compare alcun nome, e' un limite della skin Wear OS di questo
+//   dispositivo, non piu' risolvibile lato app.
 
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -178,6 +194,7 @@ class FcmService : FirebaseMessagingService() {
         val manager = getSystemService(NotificationManager::class.java)
         val builder = NotificationCompat.Builder(this, TrackerApplication.MESSAGES_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(ContextCompat.getDrawable(this, R.mipmap.ic_launcher)?.toBitmap())
             .setContentTitle(title)
             .setContentText(text)
             .setCategory(category)
