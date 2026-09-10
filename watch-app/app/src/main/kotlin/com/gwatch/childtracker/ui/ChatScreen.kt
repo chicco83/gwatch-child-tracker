@@ -28,6 +28,9 @@ package com.gwatch.childtracker.ui
 //   un'unica LazyColumn verticale con spaziatura fissa fra gli
 //   elementi — nessun elemento sovrapposto da posizionare a mano,
 //   pattern standard per schermi rotondi Wear.
+// v0.2.4 (2026-09-10): mancava conferma visiva dell'invio riuscito —
+//   c'era solo un Toast in caso di fallimento. Aggiunto Toast anche
+//   sul successo ("Messaggio inviato").
 
 import android.app.Activity
 import android.content.Context
@@ -167,9 +170,8 @@ private fun sendChatMessage(
     MessageStore.append(message)
     scope.launch {
         val ok = backendClient.sendMessage(text, message.timestampMillis)
-        if (!ok) {
-            Toast.makeText(context, context.getString(R.string.chat_send_failed), Toast.LENGTH_SHORT).show()
-        }
+        val feedbackRes = if (ok) R.string.chat_send_success else R.string.chat_send_failed
+        Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
     }
 }
 

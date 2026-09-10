@@ -18,5 +18,6 @@
     <string name="chat_quick_reply_call_me">Chiamami</string>
     <string name="chat_voice_reply">🎤 Rispondi</string>
     <string name="chat_send_failed">Invio fallito, riprova</string>
+    <string name="chat_send_success">Messaggio inviato</string>
     <string name="back">Indietro</string>
 </resources>
