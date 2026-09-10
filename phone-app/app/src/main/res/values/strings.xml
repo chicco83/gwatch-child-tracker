@@ -32,6 +32,10 @@
     <!-- v0.2.0: chat -->
     <string name="chat_title">Messaggi</string>
     <string name="chat_no_messages">Nessun messaggio ancora</string>
+    <!-- v0.25.1 (2026-09-10): titolo notifica per i messaggi in arrivo
+         dal watch, costruita a mano da FcmService.kt (push data-only,
+         niente piu' "notification" dal backend, vedi send-message.js) -->
+    <string name="chat_notification_title">Messaggio dal watch</string>
     <string name="chat_input_hint">Scrivi un messaggio</string>
     <string name="send">Invia</string>
     <string name="chat_send_success">Messaggio inviato</string>

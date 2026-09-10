@@ -1,6 +1,6 @@
 /**
  * POST /api/send-message
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Messaggio di chat inviato dal watch verso il genitore. Scrive il
  * messaggio e invia subito la push FCM a tutti i genitori nella stessa
@@ -16,6 +16,17 @@
  *   lo storico chat viene ora svuotato ogni 24h dallo stesso cron
  *   giornaliero che gia' pulisce posizioni/quota scadute, vedi
  *   backend/api/cleanup.js e firestore.indexes.json.
+ * - 0.3.0 (2026-09-10): bug segnalato — i messaggi ricevuti dal watch
+ *   comparivano SOLO come notifica di sistema sulla phone-app, mai
+ *   nella schermata Chat. Causa: la push era "mista" (notification +
+ *   data); con l'app in background Android consegna la parte
+ *   "notification" al tray di sistema e NON invoca onMessageReceived()
+ *   sul client, quindi nessun codice app girava per popolare la chat
+ *   (che dipendeva solo dal listener Firestore, mai toccato). Ora la
+ *   push e' solo "data", stesso pattern gia' usato in
+ *   send-message-to-child.js verso il watch: onMessageReceived() gira
+ *   sempre, anche in background, e FcmService.kt (phone-app) costruisce
+ *   la notifica a mano E aggiorna subito la chat (IncomingMessageStore).
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -73,9 +84,12 @@ module.exports = async (req, res) => {
   });
 
   if (tokens.length > 0) {
+    // Solo "data" (vedi storico versioni v0.3.0 sopra): niente
+    // "notification", cosi' onMessageReceived() gira sempre lato
+    // phone-app anche ad app in background, invece di essere gestito
+    // (e la chat mai aggiornata) dal tray di sistema.
     await getMessaging().sendEachForMulticast({
       tokens,
-      notification: { title: "Messaggio dal watch", body: text },
       data: { type: "chat", sender: "child", text },
       android: { priority: "high" },
     });

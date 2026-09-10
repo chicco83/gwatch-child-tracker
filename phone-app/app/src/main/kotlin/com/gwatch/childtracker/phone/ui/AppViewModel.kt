@@ -9,6 +9,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.gwatch.childtracker.phone.auth.AuthRepository
 import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
+import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
@@ -34,6 +35,14 @@ import kotlinx.coroutines.tasks.await
 // mandati dal genitore non ancora confermati dal listener, "messages"
 // li combina con quelli reali e scarta i duplicati quando il listener
 // li recupera (stesso sender+testo).
+// v0.25.1 (2026-09-10): bug segnalato — i messaggi RICEVUTI dal watch
+// comparivano solo come notifica, mai nella schermata Chat (il
+// listener Firestore da solo non bastava, vedi
+// backend/api/send-message.js v0.3.0 e messaging/FcmService.kt per la
+// causa reale). Aggiunta la stessa logica di echo locale usata per i
+// messaggi in uscita, ma per quelli in entrata: IncomingMessageStore
+// (nuovo, in data/), popolato da FcmService.kt alla ricezione della
+// push, combinato qui esattamente come _optimisticMessages.
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
@@ -60,9 +69,10 @@ class AppViewModel(
     val messages: StateFlow<List<ChatMessage>> = combine(
         deviceRepository.observeMessages(),
         _optimisticMessages,
-    ) { remote, optimistic ->
+        IncomingMessageStore.messages,
+    ) { remote, outgoingPending, incomingPending ->
         val remoteKeys = remote.map { it.sender to it.text }.toSet()
-        val stillPending = optimistic.filterNot { (it.sender to it.text) in remoteKeys }
+        val stillPending = (outgoingPending + incomingPending).filterNot { (it.sender to it.text) in remoteKeys }
         (remote + stillPending).sortedBy { it.timestampMillis }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-09-10
+
+### Fixed
+- I messaggi di chat ricevuti dal watch comparivano solo come notifica
+  di sistema sulla phone-app, mai nella schermata Chat. Causa:
+  `backend/api/send-message.js` mandava una push "mista"
+  (notification + data) — ad app in background Android consegna la
+  parte "notification" al tray di sistema e non invoca
+  `onMessageReceived()`, quindi nessun codice app girava per
+  aggiornare la chat (dipendeva solo dal listener Firestore). La push
+  e' ora solo "data" (stesso pattern gia' in uso verso il watch);
+  `FcmService.kt` (phone-app) costruisce la notifica a mano e aggiorna
+  subito la chat tramite il nuovo `data/IncomingMessageStore.kt`
+  (stesso ruolo dell'invio ottimistico gia' esistente per i messaggi
+  in uscita).
+- Sul watch, i messaggi arrivavano ma non svegliavano lo schermo, non
+  vibravano e non mostravano alcuna card se il watch era sulla home.
+  Causa: il canale di notifica "messages" non aveva la vibrazione
+  abilitata esplicitamente (`enableVibration(false)` e' il default
+  alla creazione, anche per canali `IMPORTANCE_HIGH`) — senza,
+  Wear OS tratta la notifica come non abbastanza interruttiva da
+  riattivare lo schermo. Aggiunto `enableVibration(true)` + pattern
+  esplicito sul canale.
+
 ## [0.25.0] - 2026-09-10
 
 ### Fixed

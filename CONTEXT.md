@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.25.0
+**Versione contesto:** 0.26.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -724,3 +724,26 @@ CHANGELOG.md  Storico versioni
   gestibile da codice ("Metti in sospensione le app inutilizzate", Cura
   del dispositivo > Batteria) da disattivare a mano se il problema
   persiste dopo l'esenzione (v0.25.0).
+- 2026-09-10: Due bug distinti sulla chat, segnalati insieme. (1) Sulla
+  phone-app i messaggi ricevuti dal watch comparivano solo come
+  notifica di sistema, mai nella schermata Chat, mentre quelli inviati
+  dal telefono si vedevano regolarmente (grazie all'invio ottimistico
+  gia' presente). Causa trovata: `send-message.js` mandava una push
+  "mista" (notification + data) — ad app in background Android
+  consegna la parte "notification" al tray di sistema senza invocare
+  `onMessageReceived()`, quindi la chat (che dipende solo dal listener
+  Firestore, mai toccato in quel percorso) non veniva mai aggiornata
+  finche' non arrivava un aggiornamento del listener per altra via.
+  Sistemato allineando `send-message.js` allo stesso pattern
+  "solo data" gia' usato verso il watch, e aggiungendo un
+  `IncomingMessageStore` sulla phone-app (stesso ruolo dell'invio
+  ottimistico ma per i messaggi in entrata), popolato da
+  `FcmService.kt` alla ricezione. (2) Sul watch i messaggi arrivavano
+  (visibili aprendo il pannello notifiche) ma senza vibrazione, senza
+  svegliare lo schermo, senza alcuna card se il watch era sulla home.
+  Causa: il canale "messages" non aveva la vibrazione abilitata
+  esplicitamente (il default alla creazione e' `enableVibration(false)`
+  anche per canali `IMPORTANCE_HIGH`), e Wear OS non considera
+  abbastanza interruttiva una notifica cosi' configurata per riattivare
+  lo schermo da sola. Aggiunto `enableVibration(true)` + pattern
+  esplicito sul canale in `TrackerApplication.kt` (v0.26.0).
