@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 11 - Come v10, ma la "mappa" si legge
+     con l'angolo piegato/tagliato del pin (convenzione visiva nota
+     per carta/mappa) invece delle pieghe sottili: più leggibile a
+     dimensioni piccole. Bambino = bustino con testa grande dentro il
+     pin. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Corpo del pin/mappa -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24c-11.6,0 -21,9.4 -21,21c0,15.75 21,39 21,39s21,-23.25 21,-39C75,33.4 65.6,24 54,24z" />
+    <!-- Angolo piegato della mappa (spalla sinistra del pin) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M33,45 L33,35 L43,45 Z" />
+    <!-- Piega interna dell'angolo -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.55"
+        android:fillColor="#00000000"
+        android:pathData="M35,43 L41,43" />
+    <!-- Testa del bambino (grande, proporzione infantile) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,47m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- Bustino -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M46,68 C46,61 49,58 54,58 C59,58 62,61 62,68 Z" />
+</vector>
