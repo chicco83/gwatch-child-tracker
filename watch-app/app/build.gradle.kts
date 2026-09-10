@@ -70,6 +70,12 @@ dependencies {
     implementation("androidx.wear.compose:compose-foundation:1.3.1")
     implementation("androidx.compose.ui:ui:1.6.8")
     implementation("androidx.wear:wear:1.3.0")
+    // v0.2.1 (2026-09-10): androidx.wear.compose:compose-foundation
+    // porta transitivamente una versione di foundation-layout piu'
+    // vecchia di ui:1.6.8, dove ColumnScope/RowScope.weight risultava
+    // "internal" (errore di build in ChatScreen.kt). Fissata la stessa
+    // versione di ui per allineare tutto lo stack Compose.
+    implementation("androidx.compose.foundation:foundation:1.6.8")
 
     // Location, Activity Recognition, Geofencing
     implementation("com.google.android.gms:play-services-location:21.3.0")
