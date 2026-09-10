@@ -13,7 +13,19 @@
     <string name="geofence_radius_label">Raggio: %d m</string>
     <string name="save_geofence">Salva zona</string>
     <string name="geofence_cancel">Annulla</string>
+    <string name="geofence_edit">Modifica</string>
     <string name="delete">Elimina</string>
+    <string name="geofence_unknown_zone">zona</string>
+
+    <!-- v0.20.0 (2026-09-10): toggle per-zona notifica ingresso/uscita
+         e allarme sonoro ripetuto sul telefono in caso di uscita -->
+    <string name="geofence_notify_enter">Notifica all\'ingresso</string>
+    <string name="geofence_notify_exit">Notifica all\'uscita</string>
+    <string name="geofence_alarm_on_exit">Allarme sonoro all\'uscita</string>
+    <string name="geofence_alarm_on_exit_hint">Suona ripetutamente sul telefono finché non lo fermi, oltre alla notifica</string>
+    <string name="exit_alarm_title">🔔 Allarme uscita zona</string>
+    <string name="exit_alarm_body">Uscito da \"%1$s\"</string>
+    <string name="exit_alarm_stop">Ferma allarme</string>
 
     <!-- v0.2.0: chat -->
     <string name="chat_title">Messaggi</string>

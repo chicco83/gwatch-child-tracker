@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.5.0
+ * Versione: 0.6.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -13,7 +13,7 @@
  * Auth: header "X-Device-Token".
  * Body: { type: "sos" | "geofence_enter" | "geofence_exit" |
  *         "location_request", lat, lon, accuracy?, battery?,
- *         zoneName?, timestamp? }
+ *         zoneId?, timestamp? }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-09): versione iniziale.
@@ -44,6 +44,22 @@
  *   notifica push "SOS ricevuto" parte solo al PRIMO evento sos
  *   dell'episodio (sosActive era gia' false), non ad ogni evento sos
  *   successivo, per non spammare il genitore.
+ * - 0.6.0 (2026-09-10): il body ora manda "zoneId" (prima "zoneName",
+ *   ma il valore era sempre stato l'id Firestore della zona — bug: le
+ *   notifiche mostravano l'id al posto del nome). Per ogni transizione
+ *   geofence la zona viene letta da Firestore con questo id: risolve
+ *   il nome vero E legge i nuovi toggle per-zona configurabili dalla
+ *   phone-app (GeofenceScreen.kt) — notifyOnEnter/notifyOnExit (invia
+ *   o silenzia la notifica per direzione) e alarmOnExit (in aggiunta
+ *   alla notifica normale, manda anche un secondo messaggio data-only
+ *   "exit_alarm" che fa partire un allarme sonoro/vibrazione ripetuto
+ *   sul telefono, vedi phone-app/.../alarm/ExitAlarmService.kt — serve
+ *   data-only, non notification+data, per poter partire anche ad app
+ *   in background/uccisa, non solo quando l'utente tocca la notifica).
+ *   Zone create prima di questa versione non hanno questi campi:
+ *   default notifyOnEnter/notifyOnExit = true (comportamento
+ *   invariato), alarmOnExit = false (funzione opt-in, mai attiva senza
+ *   scelta esplicita).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -62,15 +78,25 @@ function buildNotification(type, zoneName) {
     };
   }
   if (type === "geofence_enter") {
-    return { title: "Ingresso zona", body: `Entrato in "${zoneName ?? "zona"}".` };
+    return { title: "Ingresso zona", body: `Entrato in "${zoneName}".` };
   }
   if (type === "geofence_exit") {
-    return { title: "Uscita zona", body: `Uscito da "${zoneName ?? "zona"}".` };
+    return { title: "Uscita zona", body: `Uscito da "${zoneName}".` };
   }
   return {
     title: "Posizione aggiornata",
     body: "Il bambino ha inviato la posizione attuale.",
   };
+}
+
+async function fetchParentFcmTokens(db) {
+  const parentSnap = await db.collection("parents").get();
+  const tokens = [];
+  parentSnap.forEach((p) => {
+    const t = p.data().fcmTokens;
+    if (Array.isArray(t)) tokens.push(...t);
+  });
+  return tokens;
 }
 
 module.exports = async (req, res) => {
@@ -83,7 +109,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneName, timestamp } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, timestamp } = req.body || {};
   if (!VALID_TYPES.has(type) || typeof lat !== "number" || typeof lon !== "number") {
     res.status(400).send("Bad Request: 'type'/'lat'/'lon' mancanti o non validi");
     return;
@@ -91,6 +117,7 @@ module.exports = async (req, res) => {
 
   getAdminApp();
   const db = getFirestore();
+  const deviceRef = db.collection("devices").doc(DEVICE_ID);
 
   if (type !== "sos") {
     const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
@@ -100,8 +127,26 @@ module.exports = async (req, res) => {
     }
   }
 
+  // Config della zona (nome vero + toggle notifica/allarme): letta solo
+  // per le transizioni geofence, dall'id che il watch riceve gia' da
+  // GET /api/device-config. Zona non trovata (cancellata nel frattempo
+  // dal genitore) -> notifica comunque, coi default piu' prudenti.
+  let zoneName = "zona";
+  let notifyOnEnter = true;
+  let notifyOnExit = true;
+  let alarmOnExit = false;
+  if (type === "geofence_enter" || type === "geofence_exit") {
+    const zoneSnap = zoneId ? await deviceRef.collection("geofences").doc(zoneId).get() : null;
+    const zone = zoneSnap?.exists ? zoneSnap.data() : null;
+    if (zone) {
+      zoneName = zone.name || zoneName;
+      notifyOnEnter = zone.notifyOnEnter !== false;
+      notifyOnExit = zone.notifyOnExit !== false;
+      alarmOnExit = zone.alarmOnExit === true;
+    }
+  }
+
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
-  const deviceRef = db.collection("devices").doc(DEVICE_ID);
 
   // Serve PRIMA della scrittura per sapere se questo e' il primo "sos"
   // dell'episodio (e quindi se notificare) o un evento successivo.
@@ -124,7 +169,8 @@ module.exports = async (req, res) => {
     lon,
     accuracy: accuracy ?? null,
     battery: battery ?? null,
-    zoneName: zoneName ?? null,
+    zoneId: zoneId ?? null,
+    zoneName: type === "geofence_enter" || type === "geofence_exit" ? zoneName : null,
     timestamp: ts,
     acknowledged: false,
   });
@@ -134,24 +180,38 @@ module.exports = async (req, res) => {
   // Niente notifica per un "sos" quando l'episodio e' gia' attivo
   // (arriva qui solo se il bambino ripreme il pulsante durante un SOS
   // gia' in corso — non per i ping ogni 30", quelli passano da
-  // sos-heartbeat.js e non toccano questo endpoint).
-  const shouldNotify = type !== "sos" || !wasSosActive;
-  if (shouldNotify) {
-    const parentSnap = await db.collection("parents").get();
-    const tokens = [];
-    parentSnap.forEach((p) => {
-      const t = p.data().fcmTokens;
-      if (Array.isArray(t)) tokens.push(...t);
-    });
+  // sos-heartbeat.js e non toccano questo endpoint). Per le geofence,
+  // rispetta il toggle per-zona/per-direzione scelto dal genitore.
+  const shouldNotify =
+    type === "sos" ? !wasSosActive :
+    type === "geofence_enter" ? notifyOnEnter :
+    type === "geofence_exit" ? notifyOnExit :
+    true;
+  const shouldAlarm = type === "geofence_exit" && alarmOnExit;
 
+  if (shouldNotify || shouldAlarm) {
+    const tokens = await fetchParentFcmTokens(db);
     if (tokens.length > 0) {
-      const { title, body } = buildNotification(type, zoneName);
-      await getMessaging().sendEachForMulticast({
-        tokens,
-        notification: { title, body },
-        data: { type, lat: String(lat), lon: String(lon) },
-        android: { priority: "high" },
-      });
+      if (shouldNotify) {
+        const { title, body } = buildNotification(type, zoneName);
+        await getMessaging().sendEachForMulticast({
+          tokens,
+          notification: { title, body },
+          data: { type, lat: String(lat), lon: String(lon) },
+          android: { priority: "high" },
+        });
+      }
+      if (shouldAlarm) {
+        // Data-only (nessun campo "notification"): deve poter avviare
+        // ExitAlarmService anche ad app in background/uccisa, non solo
+        // mostrare una notifica passiva quando l'utente la tocca (vedi
+        // storico versioni sopra).
+        await getMessaging().sendEachForMulticast({
+          tokens,
+          data: { type: "exit_alarm", zoneName },
+          android: { priority: "high" },
+        });
+      }
     }
   }
 

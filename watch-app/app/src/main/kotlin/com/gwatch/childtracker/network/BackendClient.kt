@@ -59,6 +59,15 @@ class BackendClient {
      * Vedi backend/api/trigger-event.js — l'SOS non e' mai soggetto al
      * limite di traffico lato backend, per cui questa chiamata va
      * sempre tentata anche se altre chiamate sono state rifiutate.
+     *
+     * v0.5.0 (2026-09-10): "zoneName" rinominato "zoneId" — il valore
+     * passato era gia' sempre l'id Firestore della zona (vedi
+     * GeofenceBroadcastReceiver.kt, requestId della geofence), mai il
+     * nome leggibile: il nome mostrato nelle notifiche era percio'
+     * sbagliato (mostrava l'id). Ora il backend risolve il nome vero
+     * leggendo la zona da Firestore con questo id — necessario comunque
+     * per leggere i nuovi toggle per-zona notifyOnEnter/notifyOnExit/
+     * alarmOnExit (vedi CONTEXT.md).
      */
     suspend fun triggerEvent(
         type: String,
@@ -66,7 +75,7 @@ class BackendClient {
         lon: Double,
         accuracy: Float?,
         battery: Int?,
-        zoneName: String? = null,
+        zoneId: String? = null,
         timestampMillis: Long = System.currentTimeMillis(),
     ): Boolean {
         val body = JSONObject().apply {
@@ -75,7 +84,7 @@ class BackendClient {
             put("lon", lon)
             accuracy?.let { put("accuracy", it.toDouble()) }
             battery?.let { put("battery", it) }
-            zoneName?.let { put("zoneName", it) }
+            zoneId?.let { put("zoneId", it) }
             put("timestamp", timestampMillis)
         }
         val request = Request.Builder()

@@ -112,6 +112,9 @@ class DeviceRepository {
                         lon = d.getDouble("lon") ?: 0.0,
                         radiusMeters = d.getDouble("radiusMeters") ?: 150.0,
                         active = d.getBoolean("active") ?: true,
+                        notifyOnEnter = d.getBoolean("notifyOnEnter") ?: true,
+                        notifyOnExit = d.getBoolean("notifyOnExit") ?: true,
+                        alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
                     )
                 },
             )
@@ -186,6 +189,9 @@ class DeviceRepository {
                 "lon" to zone.lon,
                 "radiusMeters" to zone.radiusMeters,
                 "active" to zone.active,
+                "notifyOnEnter" to zone.notifyOnEnter,
+                "notifyOnExit" to zone.notifyOnExit,
+                "alarmOnExit" to zone.alarmOnExit,
             ),
             SetOptions.merge(),
         ).await()

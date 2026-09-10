@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.20.0
+**Versione contesto:** 0.21.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -204,17 +204,51 @@ di salvare.
 
 **Nessun limite al numero di zone** codificato nell'app: il solo
 vincolo reale e' quello di sistema della Geofencing API Android (max
-100 geofence per app), molto oltre il bisogno pratico. Le notifiche di
-ingresso/uscita zona sono gia' complete end-to-end (non richiedono
-altra configurazione oltre a nome/raggio): il watch registra ogni zona
-con `GEOFENCE_TRANSITION_ENTER` **e** `EXIT` insieme
-(`GeofenceSyncWorker.kt`), l'evento arriva a `trigger-event.js` che
-manda due notifiche testualmente diverse ("Ingresso zona"/"Uscita
-zona", vedi `buildNotification()`). L'unico controllo attuale e' lo
-switch attiva/disattiva per zona nella lista: disattiva **entrambe** le
-direzioni insieme, non sono separabili (nessuna richiesta in tal senso
-finora — annotato come possibile estensione futura, non in backlog
-finche' non richiesto).
+100 geofence per app), molto oltre il bisogno pratico.
+
+Richiesta successiva dell'utente, implementata nella stessa sessione:
+toggle per-zona per notificare solo all'ingresso o solo all'uscita
+(prima erano sempre accoppiati su un solo switch attiva/disattiva), e
+un toggle "allarme sonoro all'uscita" — suona e vibra ripetutamente sul
+telefono del genitore finche' non lo si ferma, non solo una notifica
+passiva. Implementazione:
+- `GeofenceZone` (watch/phone) guadagna `notifyOnEnter`/`notifyOnExit`
+  (default true, comportamento invariato per le zone gia' esistenti) e
+  `alarmOnExit` (default false, opt-in esplicito).
+- **Bug collaterale trovato e corretto nello stesso giro**: il campo
+  che il watch mandava a `trigger-event.js` come "zoneName" era in
+  realta' sempre stato il **requestId Firestore** della zona
+  (`GeofenceBroadcastReceiver.kt` lo prende da
+  `triggeringGeofences.firstOrNull().requestId`, mai il nome
+  leggibile) — le notifiche di ingresso/uscita mostravano quindi l'id
+  al posto del nome fin dall'inizio. Rinominato in `zoneId` end-to-end
+  (watch -> backend) e il backend ora risolve il nome vero leggendo il
+  documento zona da Firestore con quell'id — necessario comunque per
+  leggere i nuovi toggle, quindi corretto "gratis" nello stesso
+  passaggio di codice.
+- `backend/api/trigger-event.js` (v0.6.0): per ogni `geofence_enter`/
+  `geofence_exit` legge la zona da Firestore (nome + i 3 toggle),
+  decide se notificare in base a `notifyOnEnter`/`notifyOnExit`, e se
+  `alarmOnExit` e' true manda un **secondo** messaggio FCM **data-only**
+  `{type: "exit_alarm", zoneName}` (oltre alla normale notifica, non al
+  suo posto) — data-only e non notification+data perche' deve poter
+  avviare l'allarme sul telefono anche ad app in background/uccisa, non
+  solo quando l'utente tocca una notifica di sistema gia' mostrata.
+- Phone-app: nuovo `alarm/ExitAlarmService.kt` (foreground Service,
+  suono in loop via `MediaPlayer`/`AudioAttributes.USAGE_ALARM` +
+  vibrazione a pattern ripetuto via `VibrationEffect.createWaveform`,
+  cap di sicurezza 5 minuti se nessuno lo ferma) e
+  `alarm/ExitAlarmActivity.kt` (schermata a tutto schermo sopra il
+  lockscreen via full-screen intent dalla notifica, un pulsante "Ferma
+  allarme"). `FcmService.kt` smista il messaggio `exit_alarm` PRIMA del
+  controllo `message.notification` esistente (che altrimenti scarta
+  ogni payload data-only).
+- `GeofenceScreen.kt`: il pannello di creazione zona ha 3 switch in
+  piu'; aggiunta anche la possibilita' di **modificare** una zona
+  esistente (prima si poteva solo attivare/disattivare o cancellare,
+  mai cambiare nome/raggio/notifiche) — pulsante "Modifica" in lista
+  che precarica il pannello, "Salva" aggiorna lo stesso documento
+  invece di crearne uno nuovo.
 
 ### Aperto/da fare (non ancora chiuso)
 
@@ -522,3 +556,16 @@ CHANGELOG.md  Storico versioni
   100 geofence/app), notifiche ingresso/uscita gia' complete
   end-to-end, un solo switch attiva/disattiva per zona che copre
   entrambe le direzioni insieme (v0.20.0).
+- 2026-09-10: Richiesti toggle separati notifica ingresso/notifica
+  uscita per zona, e un allarme sonoro/vibrazione ripetuto sul telefono
+  per l'uscita. Nel leggere la config della zona lato backend per questi
+  toggle, scoperto un bug preesistente mai notato: il campo "zoneName"
+  mandato dal watch era sempre stato l'id Firestore della zona, non il
+  nome (le notifiche di ingresso/uscita mostravano l'id). Corretto nello
+  stesso passaggio (rinominato "zoneId", nome vero risolto lato
+  backend). Allarme uscita implementato come foreground Service sul
+  telefono (suono in loop + vibrazione + schermata a tutto schermo sopra
+  il lockscreen), avviato da un messaggio FCM data-only dedicato (serve
+  data-only per partire anche ad app in background/uccisa). Aggiunta
+  anche la modifica di una zona esistente in GeofenceScreen.kt, prima
+  impossibile (v0.21.0).

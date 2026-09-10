@@ -20,6 +20,17 @@ package com.gwatch.childtracker.phone.ui
 //   valutare sovrapposizioni mentre se ne aggiunge una nuova), e il
 //   raggio scelto con lo slider ha un'anteprima live come cerchio
 //   intorno al punto scelto.
+// v0.3.0 (2026-09-10): richiesta esplicita — toggle separati "notifica
+//   solo in ingresso"/"solo in uscita" per zona, e un toggle "allarme
+//   ripetuto sul telefono" per l'uscita (vedi
+//   phone-app/.../alarm/ExitAlarmService.kt, backend/api/
+//   trigger-event.js). Il pannello di creazione (NewZoneToolbar) ora
+//   ha 3 switch in piu'; la lista zone ha un pulsante "Modifica" oltre
+//   ad "Elimina" (prima non esisteva un modo per cambiare nome/raggio/
+//   notifiche di una zona gia' salvata, solo attivarla/disattivarla o
+//   cancellarla) — tocca la zona in lista, il pannello in alto si apre
+//   precompilato, "Salva" aggiorna la zona esistente invece di crearne
+//   una nuova (editingZone != null -> stesso id, "active" preservato).
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,10 +80,10 @@ import org.osmdroid.views.overlay.Polygon
 /**
  * Gestione zone (casa/scuola, MVP): tocco sulla mappa per scegliere il
  * centro, pannello con nome + raggio (con anteprima), lista delle zone
- * esistenti con attiva/disattiva e cancellazione. Scrittura diretta su
- * Firestore (permessa dalle regole solo al genitore autenticato, vedi
- * backend/firestore.rules) — nessun endpoint backend dedicato: il watch
- * legge le zone da /api/device-config in autonomia.
+ * esistenti con attiva/disattiva, modifica e cancellazione. Scrittura
+ * diretta su Firestore (permessa dalle regole solo al genitore
+ * autenticato, vedi backend/firestore.rules) — nessun endpoint backend
+ * dedicato: il watch legge le zone da /api/device-config in autonomia.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +93,23 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     var pickedPoint by remember { mutableStateOf<GeoPoint?>(null) }
     var name by remember { mutableStateOf("") }
     var radius by remember { mutableStateOf(150f) }
+    var notifyOnEnter by remember { mutableStateOf(true) }
+    var notifyOnExit by remember { mutableStateOf(true) }
+    var alarmOnExit by remember { mutableStateOf(false) }
+    // Zona in modifica (tocco su "Modifica" in lista) invece che nuova
+    // (tocco sulla mappa): null -> "Salva" crea, non-null -> aggiorna
+    // lo stesso documento preservando lo stato active esistente.
+    var editingZone by remember { mutableStateOf<GeofenceZone?>(null) }
+
+    fun resetForm() {
+        name = ""
+        pickedPoint = null
+        radius = 150f
+        notifyOnEnter = true
+        notifyOnExit = true
+        alarmOnExit = false
+        editingZone = null
+    }
 
     val context = LocalContext.current
     val mapView = remember {
@@ -94,6 +122,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 MapEventsOverlay(
                     object : MapEventsReceiver {
                         override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                            editingZone = null
                             pickedPoint = p
                             return true
                         }
@@ -135,10 +164,10 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                         )
                     }
 
-                    // Punto appena scelto, non ancora salvato: marker +
-                    // anteprima del raggio scelto con lo slider, colore
-                    // diverso (verde) per distinguerlo dalle zone gia'
-                    // salvate.
+                    // Punto appena scelto/in modifica, non ancora
+                    // salvato: marker + anteprima del raggio scelto con
+                    // lo slider, colore diverso (verde) per distinguerlo
+                    // dalle zone gia' salvate.
                     pickedPoint?.let { point ->
                         map.overlays.add(Marker(map).apply { position = point })
                         map.overlays.add(
@@ -173,28 +202,30 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                         onNameChange = { name = it },
                         radius = radius,
                         onRadiusChange = { radius = it },
+                        notifyOnEnter = notifyOnEnter,
+                        onNotifyOnEnterChange = { notifyOnEnter = it },
+                        notifyOnExit = notifyOnExit,
+                        onNotifyOnExitChange = { notifyOnExit = it },
+                        alarmOnExit = alarmOnExit,
+                        onAlarmOnExitChange = { alarmOnExit = it },
                         onSave = {
                             val picked = pickedPoint ?: return@NewZoneToolbar
                             if (name.isNotBlank()) {
                                 val zone = GeofenceZone(
+                                    id = editingZone?.id ?: "",
                                     name = name,
                                     lat = picked.latitude,
                                     lon = picked.longitude,
                                     radiusMeters = radius.toDouble(),
-                                    active = true,
+                                    active = editingZone?.active ?: true,
+                                    notifyOnEnter = notifyOnEnter,
+                                    notifyOnExit = notifyOnExit,
+                                    alarmOnExit = alarmOnExit,
                                 )
-                                viewModel.saveGeofence(zone) {
-                                    name = ""
-                                    pickedPoint = null
-                                    radius = 150f
-                                }
+                                viewModel.saveGeofence(zone) { resetForm() }
                             }
                         },
-                        onCancel = {
-                            name = ""
-                            pickedPoint = null
-                            radius = 150f
-                        },
+                        onCancel = { resetForm() },
                     )
                 }
             }
@@ -203,6 +234,15 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 geofences = geofences,
                 onToggle = { zone, checked -> viewModel.saveGeofence(zone.copy(active = checked)) {} },
                 onDelete = { zone -> viewModel.deleteGeofence(zone.id) },
+                onEdit = { zone ->
+                    pickedPoint = GeoPoint(zone.lat, zone.lon)
+                    name = zone.name
+                    radius = zone.radiusMeters.toFloat()
+                    notifyOnEnter = zone.notifyOnEnter
+                    notifyOnExit = zone.notifyOnExit
+                    alarmOnExit = zone.alarmOnExit
+                    editingZone = zone
+                },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -210,10 +250,11 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
 }
 
 /**
- * Pannello "strumenti" per la zona in fase di creazione: nome, raggio
- * (con anteprima live sulla mappa, vedi update() sopra) e i due
- * pulsanti Salva/Annulla — prima non esisteva un modo esplicito per
- * annullare un punto scelto per errore, solo ritoccare la mappa.
+ * Pannello "strumenti" per la zona in fase di creazione/modifica: nome,
+ * raggio (con anteprima live sulla mappa, vedi update() sopra), i toggle
+ * di notifica/allarme e i due pulsanti Salva/Annulla — prima non
+ * esisteva un modo esplicito per annullare un punto scelto per errore,
+ * solo ritoccare la mappa.
  */
 @Composable
 private fun NewZoneToolbar(
@@ -221,6 +262,12 @@ private fun NewZoneToolbar(
     onNameChange: (String) -> Unit,
     radius: Float,
     onRadiusChange: (Float) -> Unit,
+    notifyOnEnter: Boolean,
+    onNotifyOnEnterChange: (Boolean) -> Unit,
+    notifyOnExit: Boolean,
+    onNotifyOnExitChange: (Boolean) -> Unit,
+    alarmOnExit: Boolean,
+    onAlarmOnExitChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -234,6 +281,24 @@ private fun NewZoneToolbar(
             )
             Text(text = stringResource(R.string.geofence_radius_label, radius.toInt()))
             Slider(value = radius, onValueChange = onRadiusChange, valueRange = 50f..1000f)
+
+            ToggleRow(
+                label = stringResource(R.string.geofence_notify_enter),
+                checked = notifyOnEnter,
+                onCheckedChange = onNotifyOnEnterChange,
+            )
+            ToggleRow(
+                label = stringResource(R.string.geofence_notify_exit),
+                checked = notifyOnExit,
+                onCheckedChange = onNotifyOnExitChange,
+            )
+            ToggleRow(
+                label = stringResource(R.string.geofence_alarm_on_exit),
+                hint = stringResource(R.string.geofence_alarm_on_exit_hint),
+                checked = alarmOnExit,
+                onCheckedChange = onAlarmOnExitChange,
+            )
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onSave) { Text(stringResource(R.string.save_geofence)) }
                 TextButton(onClick = onCancel) { Text(stringResource(R.string.geofence_cancel)) }
@@ -243,10 +308,33 @@ private fun NewZoneToolbar(
 }
 
 @Composable
+private fun ToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    hint: String? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(label)
+            if (hint != null) {
+                Text(text = hint, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
 private fun ZoneList(
     geofences: List<GeofenceZone>,
     onToggle: (GeofenceZone, Boolean) -> Unit,
     onDelete: (GeofenceZone) -> Unit,
+    onEdit: (GeofenceZone) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (geofences.isEmpty()) return
@@ -271,6 +359,7 @@ private fun ZoneList(
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = zone.active, onCheckedChange = { onToggle(zone, it) })
+                        TextButton(onClick = { onEdit(zone) }) { Text(stringResource(R.string.geofence_edit)) }
                         TextButton(onClick = { onDelete(zone) }) { Text(stringResource(R.string.delete)) }
                     }
                 }

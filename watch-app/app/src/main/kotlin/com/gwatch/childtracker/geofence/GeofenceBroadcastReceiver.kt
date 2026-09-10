@@ -31,7 +31,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val data = Data.Builder()
             .putString(GeofenceEventWorker.KEY_TYPE, type)
-            .putString(GeofenceEventWorker.KEY_ZONE_NAME, zoneId)
+            .putString(GeofenceEventWorker.KEY_ZONE_ID, zoneId)
             .putDouble(GeofenceEventWorker.KEY_LAT, location?.latitude ?: 0.0)
             .putDouble(GeofenceEventWorker.KEY_LON, location?.longitude ?: 0.0)
             .build()

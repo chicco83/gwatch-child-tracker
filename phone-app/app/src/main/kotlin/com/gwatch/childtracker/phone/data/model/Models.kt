@@ -33,6 +33,15 @@ data class GeofenceZone(
     val lon: Double = 0.0,
     val radiusMeters: Double = 150.0,
     val active: Boolean = true,
+    // v0.21.0 (2026-09-10): toggle per-zona configurabili da
+    // GeofenceScreen.kt. notifyOnEnter/notifyOnExit di default true
+    // (comportamento invariato per le zone gia' esistenti, che non
+    // hanno ancora questi campi su Firestore); alarmOnExit di default
+    // false (opt-in esplicito, vedi backend/api/trigger-event.js e
+    // phone-app/.../alarm/ExitAlarmService.kt).
+    val notifyOnEnter: Boolean = true,
+    val notifyOnExit: Boolean = true,
+    val alarmOnExit: Boolean = false,
 )
 
 data class DeviceEvent(

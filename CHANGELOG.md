@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-10
+
+### Added
+- Toggle per-zona "Notifica all'ingresso" / "Notifica all'uscita"
+  (`GeofenceScreen.kt`): prima un solo switch attiva/disattiva
+  copriva entrambe le direzioni insieme.
+- Toggle per-zona "Allarme sonoro all'uscita": oltre alla notifica,
+  suona e vibra ripetutamente sul telefono del genitore finche' non lo
+  si ferma. Nuovo `phone-app/.../alarm/ExitAlarmService.kt`
+  (foreground Service, loop audio/vibrazione, cap di sicurezza 5
+  minuti) + `ExitAlarmActivity.kt` (schermata a tutto schermo sopra il
+  lockscreen). Avviato da un messaggio FCM data-only dedicato
+  (`backend/api/trigger-event.js`), necessario per partire anche ad
+  app in background/uccisa.
+- Modifica di una zona esistente in `GeofenceScreen.kt` (pulsante
+  "Modifica" in lista): prima si poteva solo attivare/disattivare o
+  cancellare una zona, mai cambiarne nome/raggio/notifiche.
+
+### Fixed
+- Bug preesistente scoperto leggendo la config zona per i nuovi
+  toggle: il campo "zoneName" mandato dal watch a `trigger-event.js`
+  era in realta' sempre stato l'id Firestore della zona (mai il nome
+  leggibile) — le notifiche di ingresso/uscita zona mostravano l'id al
+  posto del nome fin dall'inizio. Rinominato "zoneId" end-to-end
+  (watch -> backend), il nome vero ora e' risolto lato backend
+  leggendo il documento zona da Firestore.
+
 ## [0.20.0] - 2026-09-10
 
 ### Added
