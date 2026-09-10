@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.2.0
+ * Versione: 0.4.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -29,8 +29,15 @@
  *   ingest-location.js). Riusa lo stesso evento+push del SOS/geofence
  *   invece di un endpoint dedicato: stessa scrittura in
  *   devices/{id}/events e stessa notifica FCM al genitore.
+ * - 0.4.0 (2026-09-10): bug — l'evento veniva scritto solo in
+ *   devices/{id}/events, senza aggiornare devices/{id}.lastLocation:
+ *   il pin sulla mappa della phone-app resta fermo fino al prossimo
+ *   upload periodico di ingest-location.js, anche premendo SOS o
+ *   "Invia posizione". Aggiunto lo stesso merge di
+ *   lastLocation/battery/lastSeen che fa ingest-location.js, cosi'
+ *   la mappa si aggiorna subito.
  */
-const { getFirestore, Timestamp } = require("firebase-admin/firestore");
+const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { checkDeviceToken } = require("./_lib/auth");
@@ -86,21 +93,30 @@ module.exports = async (req, res) => {
   }
 
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
+  const deviceRef = db.collection("devices").doc(DEVICE_ID);
 
-  await db
-    .collection("devices")
-    .doc(DEVICE_ID)
-    .collection("events")
-    .add({
-      type,
-      lat,
-      lon,
-      accuracy: accuracy ?? null,
+  const batch = db.batch();
+  batch.set(deviceRef.collection("events").doc(), {
+    type,
+    lat,
+    lon,
+    accuracy: accuracy ?? null,
+    battery: battery ?? null,
+    zoneName: zoneName ?? null,
+    timestamp: ts,
+    acknowledged: false,
+  });
+  batch.set(
+    deviceRef,
+    {
+      lastLocation: { lat, lon, accuracy: accuracy ?? null },
       battery: battery ?? null,
-      zoneName: zoneName ?? null,
-      timestamp: ts,
-      acknowledged: false,
-    });
+      lastSeen: ts,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  await batch.commit();
 
   const parentSnap = await db.collection("parents").get();
   const tokens = [];
