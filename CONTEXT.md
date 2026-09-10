@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.18.1
+**Versione contesto:** 0.19.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -139,6 +139,100 @@ da Family Link.
   (`checkParentAuth`, verificato con l'Admin SDK), diverso dal token
   statico usato dal watch — non ancora deployato su Vercel (serve un
   push del branch).
+
+## Stato aggiornato al 2026-09-10 (sessione di test su hardware reale)
+
+Prima sessione di build/test reale su Android Studio (utente) dopo lo
+scaffolding. Risultato: **backend deployato e verificato su Vercel**
+(branch tracking, env vars, indice Firestore `messages/expiresAt`
+tutti confermati attivi), **phone-app installata su device reale e
+login funzionante**. Bug trovati durante il test e già corretti,
+committati e pushati (non ancora ri-verificati dall'utente dopo il
+fix):
+
+- `Modifier.weight` non risolveva a build reale sia nel watch-app che
+  nella phone-app (stessa causa, mai isolata con certezza — probabile
+  disallineamento di versione fra gli artifact Compose fissati in
+  `build.gradle.kts`) — riscritti tutti i layout coinvolti senza
+  `weight` (pattern Box+align o BoxWithConstraints).
+  `androidx.wear.compose.material.Divider` non esisteva nella versione
+  di Wear Compose Material fissata — sostituito con un separatore
+  disegnato a mano. **Lezione operante da qui in avanti**: in questo
+  progetto non fidarsi delle API Compose "note" senza build reale a
+  disposizione, preferire componenti già verificati o fallback manuali.
+- SOS e "Invia posizione" scrivevano l'evento ma non aggiornavano
+  `devices/figlio.lastLocation`: il pin sulla mappa della phone-app non
+  si muoveva fino al prossimo upload periodico. Corretto.
+- Il pulsante "Invia" della chat sul telefono ignorava l'esito
+  dell'invio (nessun feedback su fallimento) — probabile causa del
+  sintomo riportato "i messaggi non partono". Aggiunto Toast di
+  esito. Aggiunto anche logging esplicito degli errori nei listener
+  Firestore di `DeviceRepository` (prima silenziosamente ignorati) per
+  poter diagnosticare eventuali permission-denied da logcat.
+
+Funzionalità aggiunte in questa sessione, oltre allo scope MVP
+originale:
+
+- Pulsante "Invia posizione attuale" sul watch + pulsante "Aggiorna
+  posizione" sulla phone-app (richiede al watch un fix immediato via
+  push, senza aspettare l'upload periodico a 15 minuti).
+- Switch "percorso ultime 24h" sulla mappa (prima si vedeva solo
+  l'ultima posizione, mai la polyline storica su richiesta).
+- Storico chat con scadenza automatica a 24h (stesso meccanismo
+  `expiresAt` + cron GitHub Actions già usato per posizioni/quota).
+- **SOS ridisegnato oltre lo scope MVP originale** ("invio one-shot"):
+  ora richiede conferma esplicita sul watch prima di attivarsi, e da
+  attivo invia la posizione ogni 30 secondi finché il genitore non lo
+  disattiva dalla phone-app (nuovo banner rosso con pulsante
+  "Disattiva"). Vedi `backend/api/sos-heartbeat.js` e
+  `backend/api/cancel-sos.js`.
+
+### Aperto/da fare (non ancora chiuso)
+
+- **Test su hardware reale del watch-app non ancora confermato**: la
+  phone-app è installata e loggata su device reale, ma non risulta
+  ancora conferma che il watch-app sia stato installato/avviato sul
+  Galaxy Watch4 fisico. Finché non succede, SOS/geofence/chat/sampling
+  adattivo restano verificati solo a livello di build, non di
+  comportamento reale.
+- Tutte le correzioni di questa sessione (weight, lastLocation, chat
+  send, SOS) sono state pushate ma **non ancora ricompilate/ritestate**
+  dall'utente dopo il fix — da fare al prossimo giro di test.
+- `devices/{id}/events` non ha retention/pulizia automatica (a
+  differenza di locations/quota/messages): cresce senza limite nel
+  tempo. Impatto reale basso nel breve termine (storage trascurabile
+  nel piano gratuito), ma da aggiungere alla pulizia di
+  `cleanup.js` in Fase 2 se il volume di eventi cresce (SOS/geofence/
+  richieste posizione ora più frequenti con le nuove funzioni).
+- Backlog Fase 2 invariato (vedi sotto) — nessuna voce ancora
+  iniziata: backup Drive, alert batteria scarica, modalità scuola,
+  check-in volontario, alert "watch offline", riepilogo
+  giornaliero/settimanale.
+
+## Confronto con servizi esistenti sul mercato
+
+Rivalutazione richiesta dall'utente: perché una soluzione custom
+invece di un prodotto già pronto? Confronto sulle dimensioni che
+contano per questo caso d'uso (bambino con Galaxy Watch4 LTE già
+posseduto, priorità dichiarata: risparmio economico).
+
+| Soluzione | Costo ricorrente | Richiede nuovo hardware? | SOS/geofence/chat | Dati/privacy | Nota |
+|---|---|---|---|---|---|
+| **Questa app (custom)** | 0€ (piani gratuiti Firebase Spark + Vercel Hobby + GitHub Actions) | No, riusa il Watch4 già posseduto | Sì, tutte e tre native | Dati propri, su progetto Firebase personale | Costo reale: solo tempo di sviluppo/manutenzione; nessun SLA, nessun supporto |
+| **Google Family Link su Wear OS** | 0€ | **Sì** — supportato solo da Galaxy Watch7 LTE in poi, non su Watch4 | Sì (tramite ecosistema Google) | Dati su infrastruttura Google | Motivo stesso per cui esiste questo progetto: incompatibile con l'hardware già posseduto |
+| **Life360** | Gratis con limiti, piani a pagamento ~5-25$/mese per le funzioni avanzate (geofence multiple, driving reports, storico esteso) | No (app su smartphone) | Geofence sì, SOS sì (piani a pagamento), chat no | Dati su infrastruttura Life360 (ha avuto casi noti di vendita dati di localizzazione a data broker, poi sospesa dopo scrutinio pubblico) | Pensato per smartphone, non per un watch standalone senza telefono al seguito |
+| **Watch per bambini "chiavi in mano"** (GizmoWatch/Verizon, TickTalk, Xplora e simili) | Abbonamento dati dedicato ~5-15$/mese *oltre* al costo del dispositivo | **Sì**, dispositivo proprietario dedicato (il Watch4 già posseduto non è riusabile) | Sì, tutte native (spesso anche chiamate vocali) | Dati sull'infrastruttura del produttore, opaca, nessun controllo | Esperienza più "finita"/rifinita, ma doppia spesa (device + abbonamento) e nessuna possibilità di personalizzazione |
+| **Jiobit / tracker dedicati** | Abbonamento ~5-15$/mese | Sì, tracker dedicato separato dal watch | Solo geofence/posizione, no chat/SOS nel senso pieno | Dati sull'infrastruttura del produttore | Pensato per tracciamento puro, non sostituisce un watch indossabile con funzioni proprie |
+
+**Conclusione (invariata rispetto alla decisione già presa in avvio
+progetto):** nessuna soluzione pronta copre il caso "Galaxy Watch4 LTE
+già posseduto, zero spesa ricorrente, nessuna carta collegata in modo
+permanente". La soluzione custom è l'unica a costo zero che riusa
+l'hardware esistente; il prezzo pagato è l'assenza di
+supporto/manutenzione professionale e il tempo di sviluppo/testing,
+esattamente il trade-off già accettato in partenza (vedi "Decisioni
+architetturali correnti" sopra: priorità dichiarata = risparmio
+economico, non privacy end-to-end né commercializzazione).
 
 ## Scope MVP (v1 — in sviluppo ora)
 
@@ -363,3 +457,24 @@ CHANGELOG.md  Storico versioni
   su un display così piccolo per un bambino), sul telefono un campo di
   testo libero. **Non ancora compilato/testato/deployato** — stesso
   limite di sempre, backend da pushare su Vercel (v0.18.0).
+- 2026-09-10: Prima sessione di build/test reale su Android Studio.
+  Backend deployato e verificato su Vercel (branch tracking, env vars,
+  indice `messages/expiresAt` tutti confermati attivi). Phone-app
+  installata su device reale, login funzionante. Trovati e corretti in
+  diretta diversi bug emersi solo a build reale (`Modifier.weight` non
+  risolveva ne' nel watch-app ne' nella phone-app, `Divider` non
+  esisteva nella versione di Wear Compose Material del progetto,
+  SOS/"Invia posizione" non aggiornavano il pin sulla mappa, il
+  pulsante "Invia" della chat sul telefono ignorava silenziosamente i
+  fallimenti). Aggiunte funzioni oltre lo scope MVP originale su
+  richiesta esplicita: "Invia posizione"/"Aggiorna posizione" on-demand,
+  switch percorso 24h sulla mappa, scadenza automatica storico chat
+  (24h), e un ridisegno dell'SOS (conferma prima dell'attivazione +
+  tracking continuo ogni 30s finche' non disattivato dal genitore,
+  invece del precedente invio one-shot). Ripetuto il confronto con
+  servizi di mercato equivalenti (Family Link su Wear OS, Life360,
+  watch "chiavi in mano" tipo GizmoWatch/TickTalk/Xplora, Jiobit):
+  nessuno copre il caso "Watch4 gia' posseduto, zero spesa ricorrente,
+  nessuna carta collegata in modo permanente" — confermata la scelta
+  della soluzione custom. Test su hardware reale del watch-app ancora
+  da fare/confermare (v0.19.0).
