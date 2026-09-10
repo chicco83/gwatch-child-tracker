@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 9 - Mascotte "Impronta con cuore". Una
+     piccola impronta di passo (non un piede tecnico, uno stilizzato
+     "buddy print") con un dito trasformato in cuoricino: richiama
+     "seguo i tuoi passi con affetto" in modo piu' morbido di un pin. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Pianta del piede -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,66m-14,0a14,16 0,1 1,28 0a14,16 0,1 1,-28 0" />
+    <!-- Dito sinistro -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,36m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- Dito centrale -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28m-7.5,0a7.5,7.5 0,1 1,15 0a7.5,7.5 0,1 1,-15 0" />
+    <!-- Dito destro, a forma di cuore -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M66,42 C61,38 58,35 58,32 C58,29 60,27 63,29 C64,30 65,31 66,32 C67,31 68,30 69,29 C72,27 74,29 74,32 C74,35 71,38 66,42 Z" />
+</vector>

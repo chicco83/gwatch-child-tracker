@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 6 - Mascotte "Buddy attento". Un
+     omino-blob amichevole con un grande occhio (stile Pixar-lamp),
+     zampine che spuntano da sotto: comunica "ti tengo d'occhio" in
+     modo giocoso, senza simboli tecnici (pin/radar/scudo). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Zampina sinistra -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,58 L53,58 L53,80 a4,4 0 0 1 -8,0 Z" />
+    <!-- Zampina destra -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M55,58 L63,58 L63,80 a4,4 0 0 1 -8,0 Z" />
+    <!-- Corpo/testa (blob) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,46m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    <!-- Occhio (foro, mostra il blu) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M60,42m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <!-- Pupilla -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M63,39m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+</vector>
