@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.0 (2026-09-10): Concept 15 - Basato sulle due immagini di
+     riferimento fornite dall'utente (mappa piegata line-art e mappa
+     3D stile Google): la mappa non e' un rettangolo con intaccature,
+     ma un trapezio (piu' largo in basso, come una mappa spiegata a
+     ventaglio vista di fronte), con 2 pieghe oblique marcate che
+     seguono l'inclinazione dei lati. Il pin resta grande e
+     dominante sopra, come nei riferimenti, con dentro il bustino
+     del bambino. -->
+<!-- v1.0 precedente (v14, sostituito qui): foglio rettangolare con
+     intaccature a V sul bordo - piu' leggibile del v13, ma la forma
+     generale (rettangolo) non corrispondeva alla convenzione reale
+     mostrata nei riferimenti (trapezio/ventaglio). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Foglio mappa: trapezio (piu' largo in basso) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,26 L78,26 L96,88 L12,88 Z" />
+    <!-- Piega 1, obliqua -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="3"
+        android:strokeAlpha="0.65"
+        android:fillColor="#00000000"
+        android:pathData="M46,26 L40,88" />
+    <!-- Piega 2, obliqua -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="3"
+        android:strokeAlpha="0.65"
+        android:fillColor="#00000000"
+        android:pathData="M62,26 L68,88" />
+    <!-- Percorso sulla mappa -->
+    <path
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2.2"
+        android:strokeAlpha="0.45"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M20,80 Q45,60 66,42" />
+    <!-- Pin/marker (blu, grande e dominante come nei riferimenti) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M54,24c-11.6,0 -21,9.4 -21,21c0,15.75 21,39 21,39s21,-23.25 21,-39C75,33.4 65.6,24 54,24z" />
+    <!-- Testa del bambino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,47m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- Bustino -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,68 C46,61 49,58 54,58 C59,58 62,61 62,68 Z" />
+</vector>
