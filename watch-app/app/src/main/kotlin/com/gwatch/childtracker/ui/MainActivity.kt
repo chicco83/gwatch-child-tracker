@@ -180,12 +180,14 @@ private fun MainScreen(onSosClick: () -> Unit, onChatClick: () -> Unit) {
     // "SOS"/"Messaggi" apparivano come cerchietti col testo troncato.
     // Sostituito con Chip, il componente Wear pensato per bottoni con
     // testo (rettangolare, si adatta alla larghezza).
+    // v0.2.3 (2026-09-10): aggiunta spaziatura fra i due Chip, che su
+    // device reale risultavano attaccati senza margine.
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
         Text(text = stringResourceCompat(R.string.app_name))
         Chip(onClick = onSosClick, modifier = Modifier.fillMaxWidth(), label = {

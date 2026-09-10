@@ -20,6 +20,14 @@ package com.gwatch.childtracker.ui
 //   risposte rapide) apparivano come cerchi col testo che tracimava —
 //   Button in Wear Compose e' pensato per icone a dimensione fissa,
 //   non per etichette di testo. Sostituiti tutti con Chip.
+// v0.2.3 (2026-09-10): su device reale i Chip "flottanti" (Box +
+//   align, dettatura/risposte rapide ancorati in basso sopra la lista
+//   messaggi) si sovrapponevano fra loro, con lo storico che
+//   trapelava nelle fessure. Il Box a due livelli e' stato eliminato:
+//   ora tutto (indietro, storico, dettatura, risposte rapide) e' in
+//   un'unica LazyColumn verticale con spaziatura fissa fra gli
+//   elementi — nessun elemento sovrapposto da posizionare a mano,
+//   pattern standard per schermi rotondi Wear.
 
 import android.app.Activity
 import android.content.Context
@@ -29,12 +37,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -43,7 +48,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -66,7 +70,7 @@ import kotlinx.coroutines.launch
  * nessun permesso RECORD_AUDIO da dichiarare qui). Lo storico arriva
  * dal backend all'apertura (BackendClient.fetchMessages) e si
  * aggiorna in tempo reale via push (MessageStore, alimentato da
- * FcmService).
+ * FcmService). Tutto in un'unica lista scorrevole (vedi v0.2.3 sopra).
  */
 @Composable
 fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
@@ -92,31 +96,24 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (messages.isEmpty()) {
-            Text(
-                text = stringResourceCompat(R.string.chat_no_messages),
-                modifier = Modifier.align(Alignment.Center).padding(8.dp),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().fillMaxWidth(),
-                contentPadding = PaddingValues(top = 32.dp, bottom = 132.dp, start = 8.dp, end = 8.dp),
-            ) {
-                items(messages) { message -> MessageRow(message) }
-            }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp, start = 10.dp, end = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        item {
+            Chip(onClick = onBack, modifier = Modifier.fillMaxWidth(), label = {
+                Text(stringResourceCompat(R.string.back))
+            })
         }
 
-        Chip(
-            onClick = onBack,
-            modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
-            label = { Text(stringResourceCompat(R.string.back)) },
-        )
+        if (messages.isEmpty()) {
+            item { Text(stringResourceCompat(R.string.chat_no_messages)) }
+        } else {
+            items(messages) { message -> MessageRow(message) }
+        }
 
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+        item {
             Chip(onClick = {
                 voiceLauncher.launch(
                     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -127,11 +124,11 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
                     },
                 )
             }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResourceCompat(R.string.chat_voice_reply)) })
-
-            QuickReplyButton(R.string.chat_quick_reply_ok, backendClient, scope, context)
-            QuickReplyButton(R.string.chat_quick_reply_coming, backendClient, scope, context)
-            QuickReplyButton(R.string.chat_quick_reply_call_me, backendClient, scope, context)
         }
+
+        item { QuickReplyButton(R.string.chat_quick_reply_ok, backendClient, scope, context) }
+        item { QuickReplyButton(R.string.chat_quick_reply_coming, backendClient, scope, context) }
+        item { QuickReplyButton(R.string.chat_quick_reply_call_me, backendClient, scope, context) }
     }
 }
 
