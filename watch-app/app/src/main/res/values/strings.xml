@@ -4,10 +4,14 @@
     <string name="tracking_notification_title">Family Tracker attivo</string>
     <string name="tracking_notification_text">Condivisione posizione in corso</string>
     <string name="sos_button">SOS</string>
+    <!-- v0.2.7 (2026-09-10): "sos_failed" era duplicato (due <string>
+         con lo stesso name, uno residuo di una revisione precedente) —
+         il resource merger di Android fallisce la build se una chiave
+         string e' dichiarata piu' di una volta. Rimossa la riga
+         duplicata, tenuta solo "Invio SOS fallito". -->
     <string name="sos_sending">Invio SOS in corso…</string>
     <string name="sos_sent">SOS inviato</string>
     <string name="sos_failed">Invio SOS fallito</string>
-    <string name="sos_failed">Invio fallito, riprovo…</string>
     <string name="status_last_sync">Ultimo invio: %1$s</string>
     <string name="status_battery">Batteria: %1$d%%</string>
 
