@@ -51,6 +51,15 @@ package com.gwatch.childtracker.phone.ui
 //      uscite per il solo rumore del GPS aumenta (mitigato in parte dal
 //      loitering delay di 30s sull'uscita, vedi GeofenceSyncWorker.kt
 //      sul watch), quindi il minimo resta comunque non-zero.
+// v0.5.0 (2026-09-10): richiesta utente — "nelle zone quando clicco
+//   sulla modifica di una zona la mappa deve autocentrarsi sulla
+//   posizione di tale zona". Prima onEdit (vedi ZoneList piu' sotto)
+//   aggiornava solo lo stato Compose (pickedPoint, name, radius, ecc.)
+//   ma non spostava la camera della mappa: se lo zoom/pan corrente era
+//   lontano dalla zona da modificare, il pannello si apriva ma la zona
+//   restava fuori schermo. Aggiunta la stessa chiamata gia' usata in
+//   pickSearchResult() (mapView.controller.animateTo + setZoom(17.0))
+//   dentro onEdit.
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -313,7 +322,18 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     onToggle = { zone, checked -> viewModel.saveGeofence(zone.copy(active = checked)) {} },
                     onDelete = { zone -> viewModel.deleteGeofence(zone.id) },
                     onEdit = { zone ->
-                        pickedPoint = GeoPoint(zone.lat, zone.lon)
+                        // v0.4.0 (precedente): solo stato Compose, la
+                        // mappa restava dove si trovava prima del tocco
+                        // su "Modifica" — se la zona era fuori dallo
+                        // zoom/pan corrente, il pannello si apriva su un
+                        // punto non visibile a schermo.
+                        // v0.5.0 (2026-09-10): stessa chiamata di
+                        // pickSearchResult() per centrare la mappa sulla
+                        // zona che si sta per modificare.
+                        val point = GeoPoint(zone.lat, zone.lon)
+                        mapView.controller.animateTo(point)
+                        mapView.controller.setZoom(17.0)
+                        pickedPoint = point
                         name = zone.name
                         radius = zone.radiusMeters.toFloat()
                         notifyOnEnter = zone.notifyOnEnter

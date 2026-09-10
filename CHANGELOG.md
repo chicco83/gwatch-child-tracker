@@ -7,6 +7,17 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-09-10
+
+### Fixed
+- **Zone (Geofence, telefono)**: cliccando "Modifica" su una zona in
+  lista, la mappa ora si centra automaticamente sulla posizione di
+  quella zona (`mapView.controller.animateTo()` + zoom 17, stessa
+  chiamata gia' usata per i risultati della ricerca indirizzo). Prima
+  la camera restava ferma dov'era: se la zona da modificare era fuori
+  dall'inquadratura corrente, il pannello di modifica si apriva ma la
+  zona restava invisibile fuori schermo.
+
 ## [0.32.0] - 2026-09-10
 
 ### Changed

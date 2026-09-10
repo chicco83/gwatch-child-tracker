@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.32.0
+**Versione contesto:** 0.33.0
 **Ultimo aggiornamento:** 2026-09-10
 
 ---
@@ -884,3 +884,12 @@ CHANGELOG.md  Storico versioni
   genitore specifico abbia scritto un messaggio nel caso multi-genitore
   — se in futuro si aggiunge quel tracciamento, la stessa etichetta
   passerebbe a mostrare il nome vero (v0.32.0).
+- 2026-09-10: **Confermato dall'utente**: "tutto perfetto" sulla chat
+  WhatsApp-style. Nuova richiesta: nelle Zone, cliccando "Modifica" su
+  una zona la mappa deve centrarsi automaticamente sulla sua posizione
+  (`onEdit` aggiornava solo lo stato Compose del form, non la camera
+  della mappa — bug minore ma reale, gia' emerso in passato come
+  pattern per i risultati della ricerca indirizzo, `pickSearchResult()`,
+  mai applicato pero' al percorso "Modifica zona esistente"). Corretto
+  riusando la stessa chiamata (`animateTo` + zoom 17) dentro `onEdit`
+  (v0.33.0).
