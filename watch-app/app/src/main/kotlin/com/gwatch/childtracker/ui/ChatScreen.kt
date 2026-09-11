@@ -67,6 +67,15 @@ package com.gwatch.childtracker.ui
 //   ricevuti (sul watch arrivano sempre e solo dal genitore, ma
 //   comunque piu' leggibile di "Genitore 22:51: testo" tutto su una
 //   riga).
+// v0.6.0 (2026-09-11): richiesta utente — lo scroll automatico in fondo
+//   (v0.4.0) doveva restare SOLO quando si apre la chat toccando la
+//   notifica di un nuovo messaggio, non quando si apre col pulsante
+//   "Messaggi" dal menu principale (li' l'utente vuole vedere la chat
+//   da dove l'ha lasciata, non essere sempre "strappato" in fondo).
+//   Aggiunto il parametro scrollToBottom: MainActivity.kt lo passa
+//   true solo nel percorso "apertura da notifica"
+//   (openChatRequested/EXTRA_OPEN_CHAT), false quando si apre dal Chip
+//   "Messaggi" di MainScreen.
 
 import android.app.Activity
 import android.content.Context
@@ -127,7 +136,7 @@ import kotlinx.coroutines.launch
  * FcmService). Tutto in un'unica lista scorrevole (vedi v0.2.3 sopra).
  */
 @Composable
-fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
+fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit, scrollToBottom: Boolean = false) {
     val messages by MessageStore.messages.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -138,13 +147,13 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit) {
         if (history.isNotEmpty()) MessageStore.replaceAll(history)
     }
 
-    // Scorre automaticamente all'ultimo messaggio quando la lista
-    // cambia (apertura schermo con storico gia' presente, o nuovo
-    // messaggio in arrivo via push) — FIXED_HEADER_ITEMS e' il numero
+    // v0.6.0 (vedi storico versioni sopra): scorre automaticamente
+    // all'ultimo messaggio solo se scrollToBottom e' true (apertura da
+    // notifica di un nuovo messaggio) — FIXED_HEADER_ITEMS e' il numero
     // di elementi fissi sopra lo storico nella LazyColumn sotto
     // (dettatura, 3 risposte rapide, indietro, separatore, intestazione).
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
+        if (scrollToBottom && messages.isNotEmpty()) {
             listState.animateScrollToItem(FIXED_HEADER_ITEMS + messages.size - 1)
         }
     }

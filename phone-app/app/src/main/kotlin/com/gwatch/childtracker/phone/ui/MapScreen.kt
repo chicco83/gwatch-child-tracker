@@ -45,6 +45,20 @@ package com.gwatch.childtracker.phone.ui
 //   due per disconnettersi per errore. Aggiunto un AlertDialog di
 //   conferma (stesso pattern gia' usato per l'SOS sul watch,
 //   sos_confirm_title/message) prima di chiamare onSignOut().
+// v0.7.0 (2026-09-11): richiesta utente dopo il fix precedente — non
+//   era chiaro che "Esci" fosse un logout (confuso con un pulsante di
+//   chiusura schermata qualsiasi). Tre modifiche:
+//   1) "Esci" (rinominato "Logout") non e' piu' un pulsante diretto in
+//      barra ma una voce dentro un menu hamburger (pattern classico:
+//      un'azione rara/distruttiva sepolta in un menu, non affiancata a
+//      quelle frequenti come "Messaggi"/"Zone" — la stessa causa del
+//      bug v0.6.0). Il dialog di conferma gia' aggiunto in v0.6.0 resta
+//      invariato.
+//   2) lo switch "Percorso 24h" si sposta dalla card MapControls
+//      (rimossa) alla TopAppBar, accanto all'icona del menu.
+//   3) il pulsante "Aggiorna posizione" si sposta sulla stessa riga
+//      della StatusCard (testo stato + batteria), invece di stare in
+//      una card MapControls separata sotto.
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -57,10 +71,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -147,6 +167,8 @@ fun MapScreen(
     var deactivatingSos by remember { mutableStateOf(false) }
     // v0.6.0: vedi storico versioni sopra — conferma prima del logout.
     var showSignOutConfirm by remember { mutableStateOf(false) }
+    // v0.7.0: stato apertura del menu hamburger (contiene solo "Logout").
+    var showMenu by remember { mutableStateOf(false) }
 
     if (showSignOutConfirm) {
         AlertDialog(
@@ -174,7 +196,26 @@ fun MapScreen(
                 actions = {
                     TextButton(onClick = onOpenChat) { Text(stringResource(R.string.chat_title)) }
                     TextButton(onClick = onOpenGeofences) { Text(stringResource(R.string.geofences_title)) }
-                    TextButton(onClick = { showSignOutConfirm = true }) { Text(stringResource(R.string.sign_out)) }
+                    // v0.7.0: switch "Percorso 24h", prima nella card
+                    // MapControls (rimossa) sotto la mappa, ora qui
+                    // accanto all'icona del menu.
+                    Text(stringResource(R.string.map_show_path), style = MaterialTheme.typography.bodySmall)
+                    Switch(checked = showFullPath, onCheckedChange = { showFullPath = it })
+                    // v0.7.0: "Logout" non e' piu' un pulsante diretto
+                    // in barra (causa del logout accidentale v0.6.0) ma
+                    // una voce dentro questo menu hamburger.
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.menu_content_description))
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.sign_out)) },
+                            onClick = {
+                                showMenu = false
+                                showSignOutConfirm = true
+                            },
+                        )
+                    }
                 },
             )
         },
@@ -248,10 +289,8 @@ fun MapScreen(
                         },
                     )
                 }
-                StatusCard(deviceState)
-                MapControls(
-                    showFullPath = showFullPath,
-                    onToggleFullPath = { showFullPath = it },
+                StatusCard(
+                    state = deviceState,
                     requesting = requestingLocation,
                     onRequestLocation = {
                         requestingLocation = true
@@ -299,47 +338,40 @@ private fun SosBanner(deactivating: Boolean, onDeactivate: () -> Unit) {
     }
 }
 
+// v0.7.0: prima card separata (MapControls) sotto la StatusCard —
+// eliminata, il pulsante ora sta sulla stessa riga dello stato (vedi
+// StatusCard sotto) e lo switch "Percorso 24h" e' salito in TopAppBar.
 @Composable
-private fun MapControls(
-    showFullPath: Boolean,
-    onToggleFullPath: (Boolean) -> Unit,
+private fun StatusCard(
+    state: DeviceState,
     requesting: Boolean,
     onRequestLocation: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+    Card(modifier = modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.map_show_path), style = MaterialTheme.typography.bodySmall)
-                Switch(checked = showFullPath, onCheckedChange = onToggleFullPath)
+            Column {
+                Text(
+                    text = state.lastSeenMillis?.let { formatRelativeTime(it) }
+                        ?: stringResource(R.string.no_data_yet),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                state.battery?.let { battery ->
+                    Text(
+                        text = stringResource(R.string.battery_format, battery),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
             TextButton(onClick = onRequestLocation, enabled = !requesting) {
                 Text(
                     stringResource(
                         if (requesting) R.string.map_requesting_location else R.string.map_request_location,
                     ),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusCard(state: DeviceState, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = state.lastSeenMillis?.let { formatRelativeTime(it) }
-                    ?: stringResource(R.string.no_data_yet),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            state.battery?.let { battery ->
-                Text(
-                    text = stringResource(R.string.battery_format, battery),
-                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }

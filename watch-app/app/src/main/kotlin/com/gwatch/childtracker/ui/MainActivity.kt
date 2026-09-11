@@ -10,6 +10,13 @@ package com.gwatch.childtracker.ui
 //   richiede launchMode="singleTop" nel Manifest) per navigare subito
 //   alla schermata "chat" tramite lo stesso MutableStateFlow-pattern
 //   gia' usato per SosState/MessageStore in questo progetto.
+// v0.7.0 (2026-09-11): richiesta utente — lo scroll automatico in fondo
+//   alla chat (ChatScreen.kt) deve avvenire solo aprendo la chat dalla
+//   notifica di un nuovo messaggio, non dal Chip "Messaggi" del menu
+//   principale. Aggiunto chatScrollToBottom: true solo nel ramo
+//   LaunchedEffect(openChat) (apertura da notifica/EXTRA_OPEN_CHAT),
+//   riportato a false ogni volta che si entra in chat dal Chip
+//   "Messaggi" (onChatClick).
 
 import android.Manifest
 import android.content.Intent
@@ -103,9 +110,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 var screen by remember { mutableStateOf("main") }
+                // v0.7.0: vedi storico versioni sopra — true solo quando
+                // si entra in chat dalla notifica di un nuovo messaggio.
+                var chatScrollToBottom by remember { mutableStateOf(false) }
                 val openChat by openChatRequested.asStateFlow().collectAsState()
                 LaunchedEffect(openChat) {
                     if (openChat) {
+                        chatScrollToBottom = true
                         screen = "chat"
                         openChatRequested.value = false
                     }
@@ -118,7 +129,11 @@ class MainActivity : ComponentActivity() {
                     // un BackHandler.
                     "chat" -> {
                         BackHandler { screen = "main" }
-                        ChatScreen(backendClient = backendClient, onBack = { screen = "main" })
+                        ChatScreen(
+                            backendClient = backendClient,
+                            onBack = { screen = "main" },
+                            scrollToBottom = chatScrollToBottom,
+                        )
                     }
                     // v0.4.0 (2026-09-10): l'SOS ora chiede conferma
                     // prima di attivarsi (richiesta utente, per evitare
@@ -142,7 +157,10 @@ class MainActivity : ComponentActivity() {
                     else -> MainScreen(
                         onSosClick = { screen = "sosConfirm" },
                         onLocationClick = ::sendLocationNow,
-                        onChatClick = { screen = "chat" },
+                        onChatClick = {
+                            chatScrollToBottom = false
+                            screen = "chat"
+                        },
                     )
                 }
             }

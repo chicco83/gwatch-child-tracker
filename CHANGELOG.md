@@ -7,6 +7,31 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-09-11
+
+### Changed
+- **Phone, MapScreen**: riorganizzazione richiesta dopo il fix v0.35.0
+  (non era chiaro che "Esci" fosse un logout):
+  - "Logout" (rinominato da "Esci") non è più un pulsante diretto in
+    barra ma una voce in un nuovo menu hamburger, con lo stesso dialog
+    di conferma già presente (v0.35.0).
+  - Lo switch "Percorso 24h" si è spostato dalla card sotto la mappa
+    alla TopAppBar, accanto all'icona del menu.
+  - Il pulsante "Aggiorna posizione" si è spostato sulla stessa riga
+    della card di stato (testo + batteria), la card separata sotto è
+    stata rimossa.
+  - Testo di stato rinominato da "Aggiornato X min fa" a "Ultima
+    posizione ricevuta X min fa" (`util/TimeFormat.kt`).
+- **Watch, ChatScreen**: lo scroll automatico in fondo alla chat ora
+  avviene solo aprendo la chat dalla notifica di un nuovo messaggio
+  (`scrollToBottom` passato da `MainActivity.kt`), non più aprendo la
+  chat dal pulsante "Messaggi" del menu principale — lì la chat ora si
+  apre da dove l'ha lasciata l'utente.
+
+### Added
+- Nuova dipendenza `androidx.compose.material:material-icons-core`
+  (phone-app) per l'icona del menu hamburger.
+
 ## [0.35.0] - 2026-09-11
 
 ### Fixed

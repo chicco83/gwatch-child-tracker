@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.35.0
+**Versione contesto:** 0.36.0
 **Ultimo aggiornamento:** 2026-09-11
 
 ---
@@ -927,3 +927,25 @@ CHANGELOG.md  Storico versioni
   prompt di sistema Wear OS/Google Play Services legato all'account
   Google "adulto" del device, non risolvibile lato app; da confermare
   con uno screenshot se ricapita.
+- 2026-09-11: Richiesta utente, quattro parti. **Implementate (v0.36.0)**:
+  1) MapScreen: "Logout" spostato in un menu hamburger (prima non era
+     chiaro fosse un logout, nonostante il dialog di conferma v0.35.0);
+     switch "Percorso 24h" salito in TopAppBar accanto al menu; "Aggiorna
+     posizione" spostato sulla stessa riga della card di stato; testo
+     "Aggiornato X min fa" rinominato "Ultima posizione ricevuta X min fa".
+  2) Watch ChatScreen: scroll automatico in fondo ora solo aprendo la
+     chat dalla notifica di un nuovo messaggio, non piu' dal Chip
+     "Messaggi" del menu principale.
+  **Rimandata, serve una decisione di scope prima di implementare**:
+  3) "campo nickname per se stessi e per i bambini, chat unica per i
+     genitori e due bambini" — tocca l'architettura corrente, dove
+     device/DEVICE_ID e' hardcoded a un solo figlio ("figlio",
+     backend/api/*.js) e ChatMessage.sender e' solo "parent"/"child"
+     (nessun ID di chi specificamente). Supportare davvero due bambini
+     richiede un secondo device Wear OS con la propria identita' e uno
+     schema messaggi/eventi che la porti fino in fondo (backend,
+     Firestore, entrambe le app) — molto piu' di un campo impostazioni
+     cosmetico. Chiesto all'utente se per ora basta un nickname
+     "cosmetico" (etichette configurabili al posto di "Genitore"/
+     "Bambino" hardcoded, ancora un solo watch) o se serve gia' da
+     subito il supporto reale a due dispositivi/bambini distinti.

@@ -1,6 +1,6 @@
 import java.util.Properties
 
-// Storico versioni (firma release/Play Console)
+// Storico versioni
 // v0.1.0 (2026-09-10): aggiunta signingConfig "release", letta da
 //   local.properties (mai committato — stesso pattern gia' in uso in
 //   watch-app/app/build.gradle.kts per device.token/backend.base.url):
@@ -11,6 +11,10 @@ import java.util.Properties
 //   di sviluppo), la signingConfig "release" non viene creata e
 //   buildTypes.release resta senza firma, come prima — nessun impatto
 //   sui build di debug quotidiani in Android Studio.
+// v0.2.0 (2026-09-11): aggiunta la dipendenza
+//   "androidx.compose.material:material-icons-core" (vedi dependencies
+//   sotto) — serve l'icona hamburger (Icons.Filled.Menu) nel nuovo menu
+//   di MapScreen.kt, non inclusa di default in material3.
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -107,6 +111,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    // v0.2.0 (vedi Storico versioni sopra): icona hamburger per il menu
+    // di MapScreen.kt (Icons.Filled.Menu) — non fa parte di material3,
+    // serve il modulo icone "core" a parte (stessa versione via BOM sopra).
+    implementation("androidx.compose.material:material-icons-core")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // Firebase: Auth (login genitore), Firestore (letture in tempo

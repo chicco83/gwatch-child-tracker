@@ -6,7 +6,10 @@
     <string name="battery_format">Batteria watch: %d%%</string>
     <string name="last_known_position">Ultima posizione nota</string>
     <string name="geofences_title">Zone</string>
-    <string name="sign_out">Esci</string>
+    <!-- v0.7.0 (2026-09-11): rinominato "Esci" -> "Logout", ora dentro
+         al menu hamburger di MapScreen.kt invece che come pulsante
+         diretto in barra -->
+    <string name="sign_out">Logout</string>
     <string name="back">Indietro</string>
     <string name="geofence_tap_hint">Tocca la mappa per scegliere il centro di una nuova zona</string>
     <string name="geofence_search_hint">Cerca un indirizzo</string>
@@ -72,6 +75,10 @@
          senza nessuna conferma -->
     <string name="sign_out_confirm_title">Uscire dall\'app?</string>
     <string name="sign_out_confirm_message">Dovrai accedere di nuovo con l\'account Google per tornare a vedere la posizione.</string>
-    <string name="sign_out_confirm_button">Esci</string>
+    <string name="sign_out_confirm_button">Logout</string>
     <string name="sign_out_cancel">Annulla</string>
+
+    <!-- v0.7.0 (2026-09-11): icona hamburger in barra, apre un menu a
+         tendina con "Logout" invece di un pulsante diretto -->
+    <string name="menu_content_description">Menu</string>
 </resources>
