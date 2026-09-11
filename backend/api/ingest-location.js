@@ -1,12 +1,13 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
  * aggiorna sia lo stato corrente del dispositivo sia lo storico.
  *
- * Auth: header "X-Device-Token".
+ * Auth: header "X-Device-Token" (identifica il bambino, vedi
+ * _lib/auth.js/resolveDeviceId).
  * Body: { points: [{ lat, lon, accuracy?, battery?, activity?, timestamp? }, ...] }
  *
  * Storico versioni:
@@ -16,15 +17,15 @@
  *   CONTEXT.md); aggiunti un tetto massimo di punti per chiamata e la
  *   guardia di quota giornaliera (vedi _lib/quota.js) come rete di
  *   sicurezza contro le soglie gratuite di Firestore/Vercel.
+ * - 0.3.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
+ *   ora supporta N bambini, il childId si risolve dal token via
+ *   resolveDeviceId(req, db) (vedi _lib/auth.js).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getAdminApp } = require("./_lib/firebase-admin");
-const { checkDeviceToken } = require("./_lib/auth");
+const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-// MVP: un solo dispositivo tracciato. Rendere dinamico quando si
-// passera' a multi-figlio (Fase 2 backlog, vedi CONTEXT.md).
-const DEVICE_ID = "figlio";
 const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
 const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
 
@@ -33,7 +34,12 @@ module.exports = async (req, res) => {
     res.status(405).send("Method Not Allowed");
     return;
   }
-  if (!checkDeviceToken(req)) {
+
+  getAdminApp();
+  const db = getFirestore();
+
+  const childId = await resolveDeviceId(req, db);
+  if (!childId) {
     res.status(401).send("Unauthorized");
     return;
   }
@@ -48,16 +54,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  getAdminApp();
-  const db = getFirestore();
-
-  const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+  const allowed = await checkAndConsumeQuota(db, childId);
   if (!allowed) {
     res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
     return;
   }
 
-  const deviceRef = db.collection("devices").doc(DEVICE_ID);
+  const deviceRef = db.collection("devices").doc(childId);
   const batch = db.batch();
   let last = null;
 

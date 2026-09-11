@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.8.0
+ * Versione: 0.9.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -10,7 +10,8 @@
  * passo invece di separarli in due funzioni (piu' semplice, e per
  * questi eventi non serve comunque disaccoppiarli).
  *
- * Auth: header "X-Device-Token".
+ * Auth: header "X-Device-Token" (identifica il bambino, vedi
+ * _lib/auth.js/resolveDeviceId).
  * Body: { type: "sos" | "geofence_enter" | "geofence_exit" |
  *         "location_request", lat, lon, accuracy?, battery?,
  *         zoneId?, source? ("child" | "parent", solo per
@@ -74,28 +75,35 @@
  *   iniziato dal bambino da una richiesta remota del genitore: solo il
  *   primo caso ha senso per la notifica "il genitore ha visto la tua
  *   posizione" (vedi ack-event.js, nuovo in questa stessa versione).
+ * - 0.9.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
+ *   ora supporta N bambini, il childId si risolve dal token
+ *   (resolveDeviceId). Il testo delle notifiche ora include il nome
+ *   del bambino (devices/{childId}.childName, fallback "Bambino") —
+ *   con un solo figlio era implicito "di chi" si trattasse, con N non
+ *   piu'. Le geofence restano lette da devices/{childId}/geofences per
+ *   ora (diventeranno una collezione condivisa in una fase successiva,
+ *   vedi CONTEXT.md).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
-const { checkDeviceToken } = require("./_lib/auth");
+const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-const DEVICE_ID = "figlio";
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
 
-function buildNotification(type, zoneName, source) {
+function buildNotification(type, childName, zoneName, source) {
   if (type === "sos") {
     return {
-      title: "SOS ricevuto",
+      title: `🆘 SOS — ${childName}`,
       body: "Premuto il pulsante SOS sul watch. Posizione aggiornata.",
     };
   }
   if (type === "geofence_enter") {
-    return { title: "Ingresso zona", body: `Entrato in "${zoneName}".` };
+    return { title: `Ingresso zona — ${childName}`, body: `Entrato in "${zoneName}".` };
   }
   if (type === "geofence_exit") {
-    return { title: "Uscita zona", body: `Uscito da "${zoneName}".` };
+    return { title: `Uscita zona — ${childName}`, body: `Uscito da "${zoneName}".` };
   }
   // "location_request": source distingue un invio manuale del bambino
   // (pulsante sul watch) da una richiesta remota del genitore
@@ -103,11 +111,11 @@ function buildNotification(type, zoneName, source) {
   // sempre "il bambino ha inviato la posizione", anche quando l'aveva
   // chiesta il genitore stesso.
   if (source === "parent") {
-    return { title: "Posizione aggiornata", body: "Posizione aggiornata su tua richiesta." };
+    return { title: `Posizione aggiornata — ${childName}`, body: "Posizione aggiornata su tua richiesta." };
   }
   return {
-    title: "Posizione aggiornata",
-    body: "Il bambino ha inviato la posizione attuale.",
+    title: `Posizione aggiornata — ${childName}`,
+    body: `${childName} ha inviato la posizione attuale.`,
   };
 }
 
@@ -126,7 +134,12 @@ module.exports = async (req, res) => {
     res.status(405).send("Method Not Allowed");
     return;
   }
-  if (!checkDeviceToken(req)) {
+
+  getAdminApp();
+  const db = getFirestore();
+
+  const childId = await resolveDeviceId(req, db);
+  if (!childId) {
     res.status(401).send("Unauthorized");
     return;
   }
@@ -137,12 +150,10 @@ module.exports = async (req, res) => {
     return;
   }
 
-  getAdminApp();
-  const db = getFirestore();
-  const deviceRef = db.collection("devices").doc(DEVICE_ID);
+  const deviceRef = db.collection("devices").doc(childId);
 
   if (type !== "sos") {
-    const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+    const allowed = await checkAndConsumeQuota(db, childId);
     if (!allowed) {
       res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
       return;
@@ -171,8 +182,12 @@ module.exports = async (req, res) => {
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
 
   // Serve PRIMA della scrittura per sapere se questo e' il primo "sos"
-  // dell'episodio (e quindi se notificare) o un evento successivo.
-  const wasSosActive = type === "sos" ? (await deviceRef.get()).data()?.sosActive === true : false;
+  // dell'episodio (e quindi se notificare) o un evento successivo. Lo
+  // stesso get() serve anche per il nome del bambino nel testo della
+  // notifica (vedi storico versioni v0.9.0).
+  const deviceSnapBefore = await deviceRef.get();
+  const wasSosActive = type === "sos" ? deviceSnapBefore.data()?.sosActive === true : false;
+  const childName = deviceSnapBefore.data()?.childName || "Bambino";
 
   const deviceUpdate = {
     lastLocation: { lat, lon, accuracy: accuracy ?? null },
@@ -221,11 +236,11 @@ module.exports = async (req, res) => {
     const tokens = await fetchParentFcmTokens(db);
     if (tokens.length > 0) {
       if (shouldNotify) {
-        const { title, body } = buildNotification(type, zoneName, source);
+        const { title, body } = buildNotification(type, childName, zoneName, source);
         await getMessaging().sendEachForMulticast({
           tokens,
           notification: { title, body },
-          data: { type, lat: String(lat), lon: String(lon) },
+          data: { type, lat: String(lat), lon: String(lon), childId },
           android: { priority: "high" },
         });
       }
@@ -236,7 +251,7 @@ module.exports = async (req, res) => {
         // storico versioni sopra).
         await getMessaging().sendEachForMulticast({
           tokens,
-          data: { type: "exit_alarm", zoneName },
+          data: { type: "exit_alarm", zoneName, childId },
           android: { priority: "high" },
         });
       }

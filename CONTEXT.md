@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.36.0
+**Versione contesto:** 0.37.0
 **Ultimo aggiornamento:** 2026-09-11
 
 ---
@@ -949,3 +949,28 @@ CHANGELOG.md  Storico versioni
      "cosmetico" (etichette configurabili al posto di "Genitore"/
      "Bambino" hardcoded, ancora un solo watch) o se serve gia' da
      subito il supporto reale a due dispositivi/bambini distinti.
+- 2026-09-11: **Richiesta grande, in corso a fasi** (piano approvato in
+  plan mode, salvato — vedi sessione — dopo tre giri di precisazioni
+  dell'utente): supporto a N bambini/watch reali (non 2 fissi), nickname
+  per genitori e bambini, chat dove il genitore sceglie il destinatario,
+  zone su una sola mappa con toggle di assegnazione per bambino.
+  **Fase 1/4 completata (v0.37.0), solo backend**: registro bambini
+  dinamico (`devices/{childId}`, id auto-generato tranne il primo
+  `"figlio"`); auth watch passata da un token statico globale
+  (`checkDeviceToken`) a un hash-lookup per-device
+  (`resolveDeviceId`, `_lib/auth.js`) con **migrazione automatica** del
+  device esistente (se l'hash non combacia ma il vecchio
+  `DEVICE_TOKEN` sì, il device "figlio" viene aggiornato al volo —
+  nessun passaggio manuale per non rompere il watch già installato);
+  `parent-command.js` guadagna `create_child` (genera id+token,
+  restituisce il token in chiaro una volta sola, salva solo l'hash) e
+  `set_nickname`; le azioni esistenti richiedono `childId` esplicito;
+  messaggi chat portano `senderId`/`senderName`; notifiche push
+  includono il nome del bambino. **Nessuna modifica a
+  firestore.rules**: i nuovi campi sono già coperti dalle regole
+  esistenti (wildcard su `devices/{deviceId}`). Retrocompatibile: con
+  un solo bambino il comportamento visibile non cambia.
+  **Prossime fasi** (non ancora iniziate): geofence come collezione
+  radice con `childIds[]` + toggle UI; phone SettingsScreen (nickname +
+  "Aggiungi bambino") + mappa singola multi-bambino; chat con selettore
+  destinatario su entrambe le app + `CHILD_ID` sul watch.

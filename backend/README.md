@@ -28,33 +28,41 @@ backend/
     ha-status.js               GET  — stato per il polling opzionale di Home Assistant
     cleanup.js                  GET  — pulizia storico scaduto, invocata da GitHub Actions
     send-message.js             POST — messaggio chat dal watch al genitore + push FCM
-    send-message-to-child.js    POST — messaggio chat dal genitore al watch + push FCM
+    parent-command.js           POST — comandi genitore: messaggio al watch, richiesta
+                                 posizione, annulla SOS, ack evento, nickname, aggiungi bambino
     register-watch-token.js     POST — registra il token FCM del watch
     messages.js                  GET  — storico chat recente (usato dal watch)
     _lib/
       firebase-admin.js         Init condivisa dell'Admin SDK
-      auth.js                    Verifica token device/HA/genitore
+      auth.js                    Verifica token device (hash lookup)/HA/genitore
       quota.js                    Guardia di traffico giornaliera (vedi sotto)
 ```
 
 ## Modello dati Firestore
 
 ```
-devices/{deviceId}                      stato corrente (lastLocation, battery, lastSeen, activity)
-devices/{deviceId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
-devices/{deviceId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
-devices/{deviceId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
-devices/{deviceId}/messages/{autoId}     chat testuale (sender: "parent"|"child", text, timestamp)
-devices/{deviceId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
-parents/{uid}                            token FCM del genitore per le push
+devices/{childId}                      stato corrente (childName, lastLocation, battery,
+                                        lastSeen, activity, deviceTokenHash, fcmToken)
+devices/{childId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
+devices/{childId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
+devices/{childId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
+devices/{childId}/messages/{autoId}     chat testuale (sender, senderId, senderName, text, timestamp)
+devices/{childId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
+parents/{uid}                           nickname + token FCM del genitore per le push
 ```
 
-`devices/{deviceId}.fcmToken` (campo sul documento principale, non una
-sotto-collezione): token FCM del watch, per svegliarlo quando il
-genitore scrive in chat (vedi `register-watch-token.js`).
+`devices/{childId}.deviceTokenHash`: hash SHA-256 del token che
+identifica quel watch (mai il token in chiaro su Firestore — vedi
+`_lib/auth.js`/`resolveDeviceId`). `devices/{childId}.fcmToken`: token
+FCM del watch, per svegliarlo quando un genitore scrive in chat (vedi
+`register-watch-token.js`).
 
-MVP: un solo dispositivo (`devices/figlio`), un solo genitore.
-Multi-figlio/multi-genitore è in backlog Fase 2 (vedi `../CONTEXT.md`).
+**N bambini**: ogni bambino è un documento `devices/{childId}` a sé
+(`childId` è un id auto-generato da Firestore, tranne il primo bambino
+storico `"figlio"`). Non serve editare variabili d'ambiente per
+aggiungerne uno: la phone-app chiama `parent-command.js` (azione
+`create_child`), che genera id+token e salva solo l'hash — vedi il
+commento in cima a quel file. Multi-genitore invariato (vedi Setup).
 
 ## Endpoint (funzioni Vercel)
 
@@ -63,11 +71,17 @@ Multi-figlio/multi-genitore è in backlog Fase 2 (vedi `../CONTEXT.md`).
 | `/api/ingest-location` | POST | header `X-Device-Token` | watch-app (batch posizioni) |
 | `/api/trigger-event` | POST | header `X-Device-Token` | watch-app (SOS, ingresso/uscita geofence) — scrive l'evento e invia la push FCM nella stessa chiamata |
 | `/api/device-config` | GET | header `X-Device-Token` | watch-app (legge geofence attive) |
-| `/api/ha-status` | GET | header `Authorization: Bearer <token>` | Home Assistant (polling opzionale) |
-| `/api/send-message` | POST | header `X-Device-Token` | watch-app (chat: messaggio verso il genitore) — scrive + invia la push FCM nella stessa chiamata |
-| `/api/send-message-to-child` | POST | header `Authorization: Bearer <Firebase ID token>` | phone-app (chat: messaggio verso il watch) — scrive + invia la push FCM (solo dati, sveglia l'app) nella stessa chiamata |
+| `/api/ha-status` | GET | header `Authorization: Bearer <token>` + `?child=<childId>` facoltativo | Home Assistant (polling opzionale) |
+| `/api/send-message` | POST | header `X-Device-Token` | watch-app (chat: messaggio verso i genitori) — scrive + invia la push FCM nella stessa chiamata |
+| `/api/parent-command` | POST | header `Authorization: Bearer <Firebase ID token>` | phone-app — dispatcha su `body.action` (`message`, `request_location`, `cancel_sos`, `ack_event`, `set_nickname`, `create_child`) |
 | `/api/register-watch-token` | POST | header `X-Device-Token` | watch-app (registra il token FCM per ricevere la chat) |
 | `/api/messages` | GET | header `X-Device-Token` | watch-app (storico chat recente, per recuperare messaggi persi ad app chiusa) |
+
+`X-Device-Token` identifica **quale bambino** sta chiamando: il
+backend calcola l'hash del token ricevuto e cerca quale
+`devices/{childId}` lo ha salvato in `deviceTokenHash` (vedi
+`_lib/auth.js`/`resolveDeviceId`) — non più un unico token statico
+globale.
 
 Quasi tutta la phone-app legge/scrive Firestore direttamente via SDK
 con Firebase Auth (realtime, nessun costo extra nel piano gratuito per
@@ -127,10 +141,14 @@ in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
    questo repository GitHub, impostando **Root Directory** su
    `backend`. Nessuna carta richiesta per il piano Hobby gratuito.
 3. In *Project Settings -> Environment Variables* aggiungi (vedi
-   `.env.example`): `FIREBASE_SERVICE_ACCOUNT_B64`, `DEVICE_TOKEN`
-   (generato es. con `openssl rand -hex 32`), `HA_STATUS_TOKEN`,
+   `.env.example`): `FIREBASE_SERVICE_ACCOUNT_B64`, `HA_STATUS_TOKEN`,
    `CRON_SECRET` (altra stringa casuale, stesso valore che andrà
-   anche come secret GitHub — vedi punto 5).
+   anche come secret GitHub — vedi punto 5). `DEVICE_TOKEN` è
+   **legacy**: se il progetto esisteva già prima del supporto a N
+   bambini, lasciala impostata com'è (serve solo alla migrazione
+   automatica una tantum del primo bambino, vedi `_lib/auth.js`); per
+   un progetto nuovo non serve — ogni bambino ottiene il proprio token
+   dall'app (nickname → "Aggiungi bambino").
 4. Deploy: automatico ad ogni push su questo branch/repo una volta
    collegato il progetto — nessun comando manuale da rilanciare in
    seguito.

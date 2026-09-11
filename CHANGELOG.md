@@ -7,6 +7,55 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-09-11
+
+### Added (Fase 1/4 — supporto a N bambini, solo backend)
+- Registro bambini dinamico: ogni bambino è un documento
+  `devices/{childId}` (childId auto-generato da Firestore per i nuovi,
+  `"figlio"` resta l'id del primo — zero migrazione dei dati storici).
+- Autenticazione watch multi-device: `_lib/auth.js` sostituisce
+  `checkDeviceToken` (un unico token statico globale) con
+  `resolveDeviceId(req, db)` — hash SHA-256 del token ricevuto,
+  lookup su `devices` per `deviceTokenHash`. Solo l'hash è salvato su
+  Firestore, mai il token in chiaro. **Migrazione automatica**: se
+  l'hash-lookup non trova nulla ma il token combacia col vecchio
+  `process.env.DEVICE_TOKEN`, il device `"figlio"` viene aggiornato al
+  volo con il suo `deviceTokenHash` — il watch già installato continua
+  a funzionare senza nessun passaggio manuale.
+- `parent-command.js`: due nuove azioni, `create_child` (genera
+  childId + token per un nuovo bambino, salva solo l'hash, risponde col
+  token in chiaro una volta sola) e `set_nickname` (imposta
+  `devices/{childId}.childName`). Le 4 azioni esistenti (`message`,
+  `request_location`, `cancel_sos`, `ack_event`) richiedono ora un
+  `childId` esplicito nel body invece di agire implicitamente su
+  `"figlio"`.
+- Messaggi di chat portano ora `senderId`/`senderName` (denormalizzati
+  al momento dell'invio) oltre al vecchio `sender` (ruolo) — servirà a
+  distinguere i due genitori nella stessa conversazione (fase 4).
+- Notifiche push (SOS/geofence/posizione) includono ora il nome del
+  bambino nel testo — con un solo figlio era implicito, con N non più.
+- `ha-status.js` accetta un `?child=<childId>` facoltativo (default
+  `"figlio"`, nessuna rottura per una configurazione Home Assistant
+  già in uso).
+
+### Changed
+- Tutti gli endpoint `backend/api/*.js` non usano più la costante
+  `DEVICE_ID = "figlio"`: risolvono il bambino chiamante dal token
+  (watch) o dal `childId` nel body (comandi genitore).
+
+### Known limitations
+- Geofence, mappa e chat restano per ora a singolo bambino lato
+  entrambe le app (nessuna UI ancora aggiornata) — questa fase è solo
+  la fondazione backend, retrocompatibile: con un solo bambino nulla
+  cambia visibilmente per l'utente. Le fasi successive (geofence
+  condivise con toggle per bambino, mappa multi-bambino, selettore
+  destinatario in chat, Impostazioni con nickname/"Aggiungi bambino")
+  seguiranno in commit separati.
+- Nessuna modifica a `firestore.rules`/`firestore.indexes.json` in
+  questa fase: i nuovi campi (`deviceTokenHash`, `nickname`) sono già
+  coperti dalle regole esistenti su `devices/{deviceId}` e
+  `parents/{parentId}`.
+
 ## [0.36.0] - 2026-09-11
 
 ### Changed

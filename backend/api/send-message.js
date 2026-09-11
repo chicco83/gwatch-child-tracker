@@ -1,13 +1,14 @@
 /**
  * POST /api/send-message
- * Versione: 0.3.0
+ * Versione: 0.4.0
  *
  * Messaggio di chat inviato dal watch verso il genitore. Scrive il
  * messaggio e invia subito la push FCM a tutti i genitori nella stessa
  * chiamata (stesso motivo di trigger-event.js: su Vercel non esiste un
  * trigger Firestore onDocumentCreated).
  *
- * Auth: header "X-Device-Token".
+ * Auth: header "X-Device-Token" (identifica il bambino, vedi
+ * _lib/auth.js/resolveDeviceId).
  * Body: { text, timestamp? }
  *
  * Storico versioni:
@@ -27,14 +28,20 @@
  *   send-message-to-child.js verso il watch: onMessageReceived() gira
  *   sempre, anche in background, e FcmService.kt (phone-app) costruisce
  *   la notifica a mano E aggiorna subito la chat (IncomingMessageStore).
+ * - 0.4.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
+ *   ora supporta N bambini, il childId si risolve dal token. Il
+ *   messaggio ora porta anche senderId (childId) e senderName
+ *   (devices/{childId}.childName, fallback "Bambino") — necessari
+ *   perche' con piu' bambini "sender: child" da solo non basta piu' a
+ *   dire di chi si tratta. childId incluso anche nel payload della
+ *   push, cosi' la phone-app puo' aprire la conversazione giusta.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
-const { checkDeviceToken } = require("./_lib/auth");
+const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-const DEVICE_ID = "figlio";
 const MAX_TEXT_LENGTH = 500;
 const MESSAGE_RETENTION_HOURS = 24;
 
@@ -43,7 +50,12 @@ module.exports = async (req, res) => {
     res.status(405).send("Method Not Allowed");
     return;
   }
-  if (!checkDeviceToken(req)) {
+
+  getAdminApp();
+  const db = getFirestore();
+
+  const childId = await resolveDeviceId(req, db);
+  if (!childId) {
     res.status(401).send("Unauthorized");
     return;
   }
@@ -58,23 +70,27 @@ module.exports = async (req, res) => {
     return;
   }
 
-  getAdminApp();
-  const db = getFirestore();
-
-  const allowed = await checkAndConsumeQuota(db, DEVICE_ID);
+  const allowed = await checkAndConsumeQuota(db, childId);
   if (!allowed) {
     res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
     return;
   }
 
+  const deviceRef = db.collection("devices").doc(childId);
+  const deviceSnap = await deviceRef.get();
+  const senderName = deviceSnap.data()?.childName || "Bambino";
+
   const ts = timestamp ? Timestamp.fromMillis(timestamp) : Timestamp.now();
   const expiresAt = Timestamp.fromMillis(ts.toMillis() + MESSAGE_RETENTION_HOURS * 3_600_000);
 
-  await db
-    .collection("devices")
-    .doc(DEVICE_ID)
-    .collection("messages")
-    .add({ sender: "child", text, timestamp: ts, expiresAt });
+  await deviceRef.collection("messages").add({
+    sender: "child",
+    senderId: childId,
+    senderName,
+    text,
+    timestamp: ts,
+    expiresAt,
+  });
 
   const parentSnap = await db.collection("parents").get();
   const tokens = [];
@@ -90,7 +106,7 @@ module.exports = async (req, res) => {
     // (e la chat mai aggiornata) dal tray di sistema.
     await getMessaging().sendEachForMulticast({
       tokens,
-      data: { type: "chat", sender: "child", text },
+      data: { type: "chat", sender: "child", senderName, text, childId },
       android: { priority: "high" },
     });
   }
