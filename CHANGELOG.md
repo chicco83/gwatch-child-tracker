@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-09-11
+
+### Fixed
+- **Phone, MapScreen**: segnalato un logout inatteso premendo "Esci"
+  nella barra in alto — era un `TextButton` affiancato a "Messaggi"/
+  "Zone" che disconnetteva subito al tocco, senza nessuna conferma.
+  Aggiunto un `AlertDialog` di conferma ("Uscire dall'app?") prima di
+  eseguire il logout vero e proprio.
+
+### Known limitations
+- Richiesta simile sul watch ("a volte in avvio chiede l'accesso con
+  l'account genitore") **non è riproducibile nel codice**: la
+  watch-app non ha nessuna schermata di login Google (usa solo un
+  device token via FCM, vedi CONTEXT.md — decisione esplicita "niente
+  login Google sul watch"). Il prompt visto sul watch è quasi certamente
+  un prompt di sistema Wear OS/Google Play Services legato
+  all'account Google "adulto" usato per attivare il device, non
+  qualcosa di risolvibile lato app — da confermare con uno screenshot
+  alla prossima occorrenza.
+
 ## [0.34.0] - 2026-09-10
 
 ### Added

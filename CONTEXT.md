@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.34.0
-**Ultimo aggiornamento:** 2026-09-10
+**Versione contesto:** 0.35.0
+**Ultimo aggiornamento:** 2026-09-11
 
 ---
 
@@ -914,3 +914,16 @@ CHANGELOG.md  Storico versioni
   l'email della mamma come tester) resta fuori dalla portata di questo
   ambiente — nessun accesso a Play Console/Android SDK qui, sempre
   fatto lato utente come per ogni build finora in questo progetto.
+- 2026-09-11: Segnalato un logout inatteso sul telefono premendo
+  "Esci". **Causa verificata nel codice** (`MapScreen.kt`): era un
+  `TextButton` nella barra in alto, affiancato a "Messaggi"/"Zone",
+  che chiamava `onSignOut()` immediatamente al tocco — nessuna
+  conferma, facile da premere per sbaglio puntando uno degli altri due
+  pulsanti. Aggiunto un `AlertDialog` di conferma (v0.35.0). Stesso
+  messaggio menzionava anche un prompt "accesso con account genitore"
+  visto a volte all'avvio **sul watch**: verificato che la watch-app
+  non ha alcuna UI di login Google nel codice (solo device token via
+  FCM, decisione gia' presa e documentata sopra) — quasi certamente un
+  prompt di sistema Wear OS/Google Play Services legato all'account
+  Google "adulto" del device, non risolvibile lato app; da confermare
+  con uno screenshot se ricapita.

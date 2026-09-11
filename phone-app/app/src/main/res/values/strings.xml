@@ -65,4 +65,13 @@
     <!-- v0.25.0 (2026-09-10): esenzione ottimizzazioni batteria, per
          ricevere le notifiche dal watch anche ad app in background -->
     <string name="battery_optimization_hint">Per ricevere le notifiche dal watch anche con l\'app in background, consenti l\'esecuzione senza restrizioni nella prossima schermata.</string>
+
+    <!-- v0.6.0 (2026-09-11, MapScreen): conferma prima del logout — il
+         pulsante "Esci" stava nella barra in alto insieme a "Messaggi"/
+         "Zone", facile da premere per sbaglio, e disconnetteva subito
+         senza nessuna conferma -->
+    <string name="sign_out_confirm_title">Uscire dall\'app?</string>
+    <string name="sign_out_confirm_message">Dovrai accedere di nuovo con l\'account Google per tornare a vedere la posizione.</string>
+    <string name="sign_out_confirm_button">Esci</string>
+    <string name="sign_out_cancel">Annulla</string>
 </resources>

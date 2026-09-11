@@ -38,6 +38,13 @@ package com.gwatch.childtracker.phone.ui
 //   composta" — non richiede un tocco esplicito, coerente con com'e'
 //   gia' pensata questa schermata (si apre gia' mostrando l'ultima
 //   posizione).
+// v0.6.0 (2026-09-11): segnalato un logout inatteso premendo "Esci" —
+//   il pulsante era un TextButton nella TopAppBar, esattamente affianco
+//   a "Messaggi"/"Zone", che chiamava onSignOut() subito al tocco senza
+//   nessuna conferma: bastava un tocco leggermente spostato sugli altri
+//   due per disconnettersi per errore. Aggiunto un AlertDialog di
+//   conferma (stesso pattern gia' usato per l'SOS sul watch,
+//   sos_confirm_title/message) prima di chiamare onSignOut().
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +57,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -137,6 +145,27 @@ fun MapScreen(
     var showFullPath by remember { mutableStateOf(false) }
     var requestingLocation by remember { mutableStateOf(false) }
     var deactivatingSos by remember { mutableStateOf(false) }
+    // v0.6.0: vedi storico versioni sopra — conferma prima del logout.
+    var showSignOutConfirm by remember { mutableStateOf(false) }
+
+    if (showSignOutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirm = false },
+            title = { Text(stringResource(R.string.sign_out_confirm_title)) },
+            text = { Text(stringResource(R.string.sign_out_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSignOutConfirm = false
+                    onSignOut()
+                }) { Text(stringResource(R.string.sign_out_confirm_button)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirm = false }) {
+                    Text(stringResource(R.string.sign_out_cancel))
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -145,7 +174,7 @@ fun MapScreen(
                 actions = {
                     TextButton(onClick = onOpenChat) { Text(stringResource(R.string.chat_title)) }
                     TextButton(onClick = onOpenGeofences) { Text(stringResource(R.string.geofences_title)) }
-                    TextButton(onClick = onSignOut) { Text(stringResource(R.string.sign_out)) }
+                    TextButton(onClick = { showSignOutConfirm = true }) { Text(stringResource(R.string.sign_out)) }
                 },
             )
         },
