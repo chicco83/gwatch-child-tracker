@@ -7,6 +7,13 @@ package com.gwatch.childtracker.phone.data
 // sempre vuota nonostante il backend scriva/notifichi correttamente).
 // Aggiunto un log esplicito per ogni listener cosi' un errore reale e'
 // almeno visibile in logcat invece di sembrare "nessun dato".
+// v0.4.0 (2026-09-11): supporto N bambini (fase 2/4, vedi CONTEXT.md).
+// Le geofence non sono piu' lette/scritte sotto devices/{DEVICE_ID}/
+// geofences ma sulla nuova collezione radice "geofences" (campo
+// childIds — una zona puo' valere per piu' bambini), coerente con
+// backend/firestore.rules v0.6.0/device-config.js v0.4.0. Aggiunto
+// anche observeChildren(): query live su "devices" per popolare il
+// selettore di toggle per-bambino in GeofenceScreen.kt.
 
 import android.util.Log
 import com.google.firebase.Timestamp
@@ -15,6 +22,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.gwatch.childtracker.phone.data.model.ChatMessage
+import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
@@ -96,8 +104,11 @@ class DeviceRepository {
             awaitClose { registration.remove() }
         }
 
+    // v0.4.0: collezione radice "geofences" (non piu' annidata sotto un
+    // singolo device) — una zona puo' valere per piu' bambini, vedi
+    // GeofenceZone.childIds e backend/firestore.rules v0.6.0.
     fun observeGeofences(): Flow<List<GeofenceZone>> = callbackFlow {
-        val registration = deviceRef.collection("geofences").addSnapshotListener { snap, error ->
+        val registration = db.collection("geofences").addSnapshotListener { snap, error ->
             if (error != null) Log.e(TAG, "observeGeofences", error)
             if (snap == null) {
                 trySend(emptyList())
@@ -115,7 +126,29 @@ class DeviceRepository {
                         notifyOnEnter = d.getBoolean("notifyOnEnter") ?: true,
                         notifyOnExit = d.getBoolean("notifyOnExit") ?: true,
                         alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
+                        childIds = (d.get("childIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                     )
+                },
+            )
+        }
+        awaitClose { registration.remove() }
+    }
+
+    // v0.4.0: elenco bambini registrati (per il selettore toggle di
+    // GeofenceScreen.kt e, dalle prossime fasi, chat/mappa/impostazioni).
+    // Query live sull'intera collezione "devices", gia' leggibile da
+    // qualunque genitore autorizzato (backend/firestore.rules, isParent()
+    // non dipende dal singolo id).
+    fun observeChildren(): Flow<List<ChildInfo>> = callbackFlow {
+        val registration = db.collection("devices").addSnapshotListener { snap, error ->
+            if (error != null) Log.e(TAG, "observeChildren", error)
+            if (snap == null) {
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+            trySend(
+                snap.documents.map { d ->
+                    ChildInfo(id = d.id, name = d.getString("childName")?.takeIf { it.isNotBlank() } ?: d.id)
                 },
             )
         }
@@ -180,9 +213,9 @@ class DeviceRepository {
 
     suspend fun saveGeofence(zone: GeofenceZone) {
         val ref = if (zone.id.isBlank()) {
-            deviceRef.collection("geofences").document()
+            db.collection("geofences").document()
         } else {
-            deviceRef.collection("geofences").document(zone.id)
+            db.collection("geofences").document(zone.id)
         }
         ref.set(
             mapOf(
@@ -194,13 +227,14 @@ class DeviceRepository {
                 "notifyOnEnter" to zone.notifyOnEnter,
                 "notifyOnExit" to zone.notifyOnExit,
                 "alarmOnExit" to zone.alarmOnExit,
+                "childIds" to zone.childIds,
             ),
             SetOptions.merge(),
         ).await()
     }
 
     suspend fun deleteGeofence(id: String) {
-        deviceRef.collection("geofences").document(id).delete().await()
+        db.collection("geofences").document(id).delete().await()
     }
 
     // parents/{uid} esiste gia' (pre-creato da admin, vedi CONTEXT.md);

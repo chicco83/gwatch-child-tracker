@@ -60,6 +60,15 @@ package com.gwatch.childtracker.phone.ui
 //   restava fuori schermo. Aggiunta la stessa chiamata gia' usata in
 //   pickSearchResult() (mapView.controller.animateTo + setZoom(17.0))
 //   dentro onEdit.
+// v0.6.0 (2026-09-11): supporto N bambini (fase 2/4, vedi CONTEXT.md) —
+//   le geofence sono ora una risorsa condivisa (GeofenceZone.childIds),
+//   non piu' implicitamente "del" singolo device. Aggiunta una riga di
+//   toggle per bambino sia nel pannello di creazione/modifica
+//   (NewZoneToolbar) sia su ogni riga della lista (ZoneList), cosi' il
+//   genitore sceglie a chi si applica ciascuna zona. Per retrocompatibilita'
+//   una nuova zona parte con tutti i bambini gia' selezionati (stesso
+//   comportamento di oggi con un solo bambino), una zona in modifica
+//   riparte dalla sua selezione salvata.
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,6 +95,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +111,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.data.GeocodingClient
 import com.gwatch.childtracker.phone.data.GeocodingResult
+import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
 import kotlinx.coroutines.launch
 import org.osmdroid.events.MapEventsReceiver
@@ -126,6 +137,7 @@ private val RADIUS_RANGE = 20f..2000f
 @Composable
 fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val geofences by viewModel.geofences.collectAsState()
+    val children by viewModel.children.collectAsState()
 
     var pickedPoint by remember { mutableStateOf<GeoPoint?>(null) }
     var name by remember { mutableStateOf("") }
@@ -133,6 +145,12 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     var notifyOnEnter by remember { mutableStateOf(true) }
     var notifyOnExit by remember { mutableStateOf(true) }
     var alarmOnExit by remember { mutableStateOf(false) }
+    // A chi si applica la zona in creazione/modifica (v0.6.0) — di
+    // default tutti i bambini conosciuti per una zona nuova (stesso
+    // comportamento di oggi con un solo bambino), oppure la selezione
+    // gia' salvata quando si modifica una zona esistente (vedi
+    // LaunchedEffect piu' sotto).
+    var selectedChildIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     // Zona in modifica (tocco su "Modifica" in lista) invece che nuova
     // (tocco sulla mappa/ricerca indirizzo): null -> "Salva" crea,
     // non-null -> aggiorna lo stesso documento preservando lo stato
@@ -152,7 +170,17 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
         notifyOnEnter = true
         notifyOnExit = true
         alarmOnExit = false
+        selectedChildIds = emptySet()
         editingZone = null
+    }
+
+    // Precompila la selezione dei bambini quando si apre il pannello: la
+    // selezione salvata se si sta modificando una zona esistente, tutti i
+    // bambini conosciuti se se ne sta piazzando una nuova.
+    LaunchedEffect(pickedPoint) {
+        if (pickedPoint != null) {
+            selectedChildIds = editingZone?.childIds?.toSet() ?: children.map { it.id }.toSet()
+        }
     }
 
     val context = LocalContext.current
@@ -296,6 +324,11 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     onNotifyOnExitChange = { notifyOnExit = it },
                     alarmOnExit = alarmOnExit,
                     onAlarmOnExitChange = { alarmOnExit = it },
+                    children = children,
+                    selectedChildIds = selectedChildIds,
+                    onChildToggle = { childId, checked ->
+                        selectedChildIds = if (checked) selectedChildIds + childId else selectedChildIds - childId
+                    },
                     onSave = {
                         val picked = pickedPoint ?: return@NewZoneToolbar
                         if (name.isNotBlank()) {
@@ -309,6 +342,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                                 notifyOnEnter = notifyOnEnter,
                                 notifyOnExit = notifyOnExit,
                                 alarmOnExit = alarmOnExit,
+                                childIds = selectedChildIds.toList(),
                             )
                             viewModel.saveGeofence(zone) { resetForm() }
                         }
@@ -319,8 +353,13 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             } else {
                 ZoneList(
                     geofences = geofences,
+                    children = children,
                     onToggle = { zone, checked -> viewModel.saveGeofence(zone.copy(active = checked)) {} },
                     onDelete = { zone -> viewModel.deleteGeofence(zone.id) },
+                    onAssignChange = { zone, childId, checked ->
+                        val updated = if (checked) zone.childIds + childId else zone.childIds - childId
+                        viewModel.saveGeofence(zone.copy(childIds = updated)) {}
+                    },
                     onEdit = { zone ->
                         // v0.4.0 (precedente): solo stato Compose, la
                         // mappa restava dove si trovava prima del tocco
@@ -419,6 +458,9 @@ private fun NewZoneToolbar(
     onNotifyOnExitChange: (Boolean) -> Unit,
     alarmOnExit: Boolean,
     onAlarmOnExitChange: (Boolean) -> Unit,
+    children: List<ChildInfo>,
+    selectedChildIds: Set<String>,
+    onChildToggle: (String, Boolean) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -451,10 +493,46 @@ private fun NewZoneToolbar(
                 onCheckedChange = onAlarmOnExitChange,
             )
 
+            ChildToggleSection(
+                children = children,
+                selectedChildIds = selectedChildIds,
+                onChildToggle = onChildToggle,
+            )
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onSave) { Text(stringResource(R.string.save_geofence)) }
                 TextButton(onClick = onCancel) { Text(stringResource(R.string.geofence_cancel)) }
             }
+        }
+    }
+}
+
+/**
+ * Selettore "a chi si applica questa zona" (v0.6.0, supporto N bambini):
+ * un toggle per bambino conosciuto, usato sia nel pannello di creazione/
+ * modifica (NewZoneToolbar) sia su ogni riga della lista zone (ZoneList).
+ */
+@Composable
+private fun ChildToggleSection(
+    children: List<ChildInfo>,
+    selectedChildIds: Set<String>,
+    onChildToggle: (String, Boolean) -> Unit,
+) {
+    if (children.isEmpty()) {
+        Text(
+            text = stringResource(R.string.geofence_no_children_hint),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        return
+    }
+    Column {
+        Text(text = stringResource(R.string.geofence_assign_label), style = MaterialTheme.typography.bodySmall)
+        children.forEach { child ->
+            ToggleRow(
+                label = child.name,
+                checked = child.id in selectedChildIds,
+                onCheckedChange = { onChildToggle(child.id, it) },
+            )
         }
     }
 }
@@ -484,36 +562,45 @@ private fun ToggleRow(
 @Composable
 private fun ZoneList(
     geofences: List<GeofenceZone>,
+    children: List<ChildInfo>,
     onToggle: (GeofenceZone, Boolean) -> Unit,
     onDelete: (GeofenceZone) -> Unit,
+    onAssignChange: (GeofenceZone, String, Boolean) -> Unit,
     onEdit: (GeofenceZone) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (geofences.isEmpty()) return
     Card(
-        modifier = modifier.fillMaxWidth().heightIn(max = 220.dp).padding(12.dp),
+        modifier = modifier.fillMaxWidth().heightIn(max = 320.dp).padding(12.dp),
         elevation = CardDefaults.cardElevation(4.dp),
     ) {
         LazyColumn {
             itemsIndexed(geofences) { index, zone ->
                 if (index > 0) Divider()
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(zone.name)
-                        Text(
-                            text = stringResource(R.string.geofence_radius_label, zone.radiusMeters.toInt()),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(zone.name)
+                            Text(
+                                text = stringResource(R.string.geofence_radius_label, zone.radiusMeters.toInt()),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(checked = zone.active, onCheckedChange = { onToggle(zone, it) })
+                            TextButton(onClick = { onEdit(zone) }) { Text(stringResource(R.string.geofence_edit)) }
+                            TextButton(onClick = { onDelete(zone) }) { Text(stringResource(R.string.delete)) }
+                        }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = zone.active, onCheckedChange = { onToggle(zone, it) })
-                        TextButton(onClick = { onEdit(zone) }) { Text(stringResource(R.string.geofence_edit)) }
-                        TextButton(onClick = { onDelete(zone) }) { Text(stringResource(R.string.delete)) }
-                    }
+                    ChildToggleSection(
+                        children = children,
+                        selectedChildIds = zone.childIds.toSet(),
+                        onChildToggle = { childId, checked -> onAssignChange(zone, childId, checked) },
+                    )
                 }
             }
         }

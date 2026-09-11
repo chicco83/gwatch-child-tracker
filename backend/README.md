@@ -42,12 +42,15 @@ backend/
 
 ```
 devices/{childId}                      stato corrente (childName, lastLocation, battery,
-                                        lastSeen, activity, deviceTokenHash, fcmToken)
+                                        lastSeen, activity, deviceTokenHash, fcmToken,
+                                        geofencesMigrated)
 devices/{childId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
-devices/{childId}/geofences/{zoneId}    zone configurate dal genitore (name, lat, lon, radiusMeters, active)
 devices/{childId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
 devices/{childId}/messages/{autoId}     chat testuale (sender, senderId, senderName, text, timestamp)
 devices/{childId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
+geofences/{zoneId}                      zone configurate dal genitore (name, lat, lon, radiusMeters,
+                                        active, childIds: string[] — una zona puo' valere per piu'
+                                        bambini)
 parents/{uid}                           nickname + token FCM del genitore per le push
 ```
 
@@ -56,6 +59,16 @@ identifica quel watch (mai il token in chiaro su Firestore — vedi
 `_lib/auth.js`/`resolveDeviceId`). `devices/{childId}.fcmToken`: token
 FCM del watch, per svegliarlo quando un genitore scrive in chat (vedi
 `register-watch-token.js`).
+
+**Geofence come risorsa condivisa**: `geofences/{zoneId}` è una
+collezione radice, non più annidata sotto un singolo bambino — il
+campo `childIds` (array di `childId`) dice a chi si applica. Il watch
+riceve solo le proprie (`device-config.js`, query
+`where("childIds","array-contains",childId)`). Le zone create prima di
+questa versione vivevano in `devices/{childId}/geofences/{zoneId}`:
+`device-config.js` le migra in automatico alla nuova posizione al
+primo utilizzo per ciascun bambino (`devices/{childId}.geofencesMigrated`),
+nessun passaggio manuale richiesto.
 
 **N bambini**: ogni bambino è un documento `devices/{childId}` a sé
 (`childId` è un id auto-generato da Firestore, tranne il primo bambino

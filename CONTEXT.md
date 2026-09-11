@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.37.0
+**Versione contesto:** 0.38.0
 **Ultimo aggiornamento:** 2026-09-11
 
 ---
@@ -974,3 +974,33 @@ CHANGELOG.md  Storico versioni
   radice con `childIds[]` + toggle UI; phone SettingsScreen (nickname +
   "Aggiungi bambino") + mappa singola multi-bambino; chat con selettore
   destinatario su entrambe le app + `CHILD_ID` sul watch.
+- 2026-09-11: **Fase 2/4 completata (v0.38.0)**: geofence trasformate
+  da subcollection per-device (`devices/{childId}/geofences`) a
+  collezione radice condivisa `geofences/{zoneId}` con campo
+  `childIds: string[]`, per permettere a una zona di essere assegnata
+  a uno o più bambini (richiesta esplicita dell'utente nel giro di
+  correzione del piano: "sulla mappa zone lascia una sola mappa e
+  aggiungi a ogni zona un toggle per ogni bambino a cui assegnare
+  quella zona"). `device-config.js` ora interroga con
+  `array-contains` (query a singolo campo, nessun indice composito) e
+  filtra `active` in memoria. **Migrazione dati**: le zone create
+  prima di questa versione restavano nella vecchia posizione — gestita
+  con lo stesso pattern di auto-migrazione già in uso per il token
+  legacy (`_lib/auth.js`): al primo poll di `device-config.js` per
+  ciascun bambino, se `devices/{childId}.geofencesMigrated` non è
+  ancora true, le zone vengono copiate nella nuova collezione radice
+  e il flag impostato, per non ripetere la copia ai poll successivi.
+  Nessun passaggio manuale richiesto, nessuna interruzione per il
+  watch già installato. Lato phone-app, `GeofenceScreen.kt` ha ora un
+  selettore "Assegna a: [bambino]" (toggle per bambino, riusa lo
+  stesso composable sia nel pannello di creazione/modifica sia nella
+  lista zone) alimentato da un nuovo `DeviceRepository.observeChildren()`
+  (query live su `devices`, già leggibile da qualunque genitore con le
+  regole attuali). Per continuità con l'unico bambino di oggi, una
+  zona nuova parte con tutti i bambini conosciuti già selezionati.
+  **Prossime fasi**: fase 3 (SettingsScreen con nickname/"Aggiungi
+  bambino", mappa singola multi-bambino con marker/status-card per
+  ciascuno) e fase 4 (chat con selettore destinatario, bolle per
+  identità invece che per ruolo, `CHILD_ID` sul watch) — vedi
+  `/root/.claude/plans/clever-roaming-moth.md` per il piano completo
+  approvato.

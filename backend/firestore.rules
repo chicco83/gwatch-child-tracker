@@ -1,5 +1,5 @@
 // Regole di sicurezza Firestore — gwatch-child-tracker
-// Versione: 0.2.0
+// Versione: 0.6.0
 //
 // Tutte le scritture "di dati" (posizione, batteria, eventi SOS)
 // passano SOLO dalle funzioni backend tramite Admin SDK, che bypassa
@@ -34,6 +34,16 @@
 //   backend perche' e' li' che parte anche la push FCM che sveglia il
 //   destinatario (stesso motivo per cui locations/events sono
 //   backend-only, vedi backend/api/trigger-event.js).
+// - 0.6.0 (2026-09-11): supporto a N bambini (fase 2/4, vedi
+//   CONTEXT.md) — le geofence non sono piu' annidate sotto un singolo
+//   device (una zona puo' valere per piu' bambini contemporaneamente,
+//   campo childIds), quindi diventano una collezione radice
+//   geofences/{zoneId} invece di devices/{id}/geofences/{zoneId}.
+//   Stessa condizione di prima (isParent()), solo non piu' annidata.
+//   I documenti gia' esistenti nella vecchia posizione restano li' (non
+//   cancellati) e vengono migrati automaticamente al primo utilizzo dal
+//   backend (vedi backend/api/device-config.js) — nessun passaggio
+//   manuale richiesto.
 rules_version = '2';
 
 service cloud.firestore {
@@ -51,11 +61,6 @@ service cloud.firestore {
       match /locations/{locId} {
         allow read: if isParent();
         allow write: if false;
-      }
-
-      match /geofences/{zoneId} {
-        allow read: if isParent();
-        allow write: if isParent(); // unica scrittura diretta dal client
       }
 
       match /events/{eventId} {
@@ -77,6 +82,12 @@ service cloud.firestore {
       allow create: if false; // solo admin puo' pre-autorizzare un genitore
       allow read, update: if request.auth != null && request.auth.uid == parentId;
       allow delete: if false;
+    }
+
+    // v0.6.0: geofence come risorsa condivisa (childIds: string[]), non
+    // piu' annidata sotto un singolo device — vedi Storico versioni.
+    match /geofences/{zoneId} {
+      allow read, write: if isParent(); // unica scrittura diretta dal client
     }
   }
 }

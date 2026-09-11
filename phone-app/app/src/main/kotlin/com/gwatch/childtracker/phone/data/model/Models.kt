@@ -42,6 +42,19 @@ data class GeofenceZone(
     val notifyOnEnter: Boolean = true,
     val notifyOnExit: Boolean = true,
     val alarmOnExit: Boolean = false,
+    // v0.6.0 (2026-09-11): a chi si applica la zona — supporto N
+    // bambini (vedi CONTEXT.md fase 2/4). Le geofence sono ora una
+    // collezione radice condivisa (backend/firestore.rules), non piu'
+    // annidate sotto un singolo device.
+    val childIds: List<String> = emptyList(),
+)
+
+// v0.6.0 (2026-09-11): elenco bambini registrati (query live su
+// "devices", vedi DeviceRepository.observeChildren) — usato dal
+// selettore toggle per-bambino di GeofenceScreen.kt.
+data class ChildInfo(
+    val id: String = "",
+    val name: String = "",
 )
 
 data class DeviceEvent(

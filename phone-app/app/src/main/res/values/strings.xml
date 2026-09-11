@@ -32,6 +32,11 @@
     <string name="exit_alarm_body">Uscito da \"%1$s\"</string>
     <string name="exit_alarm_stop">Ferma allarme</string>
 
+    <!-- v0.6.0 (2026-09-11): selettore per-bambino, una zona puo' valere
+         per piu' bambini (supporto N bambini, vedi CONTEXT.md fase 2/4) -->
+    <string name="geofence_assign_label">Assegna a:</string>
+    <string name="geofence_no_children_hint">Nessun bambino registrato ancora</string>
+
     <!-- v0.2.0: chat -->
     <string name="chat_title">Messaggi</string>
     <string name="chat_no_messages">Nessun messaggio ancora</string>

@@ -7,6 +7,44 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-09-11
+
+### Added (Fase 2/4 — supporto a N bambini: geofence condivise)
+- Backend: le geofence non sono più annidate sotto un singolo device
+  (`devices/{childId}/geofences/{zoneId}`) ma vivono in una nuova
+  collezione radice `geofences/{zoneId}` con un campo `childIds:
+  string[]` — una zona può ora essere assegnata a uno o più bambini.
+  `device-config.js` (letto dal watch) interroga `geofences` con
+  `where("childIds","array-contains",childId)` — query a singolo
+  campo, nessun indice composito necessario (il filtro `active` è
+  applicato in memoria dopo la lettura).
+- Backend: **migrazione automatica** delle zone già esistenti — al
+  primo utilizzo per ciascun bambino, se non ancora fatta
+  (`devices/{childId}.geofencesMigrated`), `device-config.js` copia le
+  zone dalla vecchia subcollection alla nuova collezione radice
+  (`childIds: [childId]`), stesso pattern di auto-migrazione già usato
+  per il token legacy in `_lib/auth.js` — nessun passaggio manuale.
+- `firestore.rules`: `geofences/{zoneId}` promossa a collezione radice
+  (`allow read, write: if isParent()`), rimossa la vecchia regola
+  annidata.
+- `trigger-event.js`: la lettura della zona (nome, toggle
+  notifica/allarme) per le notifiche di ingresso/uscita ora punta alla
+  nuova collezione radice.
+- Phone-app: `GeofenceScreen.kt` guadagna una riga di toggle "Assegna
+  a: [bambino]" per ogni bambino registrato, sia nel pannello di
+  creazione/modifica zona sia su ogni riga della lista zone —
+  `DeviceRepository` espone `observeChildren()` (query live su
+  `devices`) e `observeGeofences()`/`saveGeofence()`/`deleteGeofence()`
+  ripuntano alla nuova collezione radice. Una zona nuova parte con
+  tutti i bambini conosciuti già selezionati (comportamento invariato
+  con un solo bambino); una zona in modifica riparte dalla sua
+  selezione salvata.
+
+### Known limitations
+- La UI mappa/chat/impostazioni resta ancora a singolo bambino
+  (`Constants.DEVICE_ID`) — arriva nelle fasi 3/4. Il selettore
+  per-bambino di questa fase riguarda solo le geofence.
+
 ## [0.37.0] - 2026-09-11
 
 ### Added (Fase 1/4 — supporto a N bambini, solo backend)

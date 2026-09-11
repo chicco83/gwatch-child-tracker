@@ -83,6 +83,14 @@
  *   piu'. Le geofence restano lette da devices/{childId}/geofences per
  *   ora (diventeranno una collezione condivisa in una fase successiva,
  *   vedi CONTEXT.md).
+ * - 0.10.0 (2026-09-11): la lettura della zona (nome + toggle
+ *   notifica/allarme) ora punta alla nuova collezione radice
+ *   "geofences" (vedi device-config.js v0.4.0 per la migrazione
+ *   automatica) invece della vecchia subcollection
+ *   devices/{childId}/geofences — quest'ultima poteva anche non
+ *   esistere piu' se il watch aveva gia' sincronizzato dopo la
+ *   migrazione. Nessun impatto se la zona non viene trovata: restano i
+ *   default prudenti gia' in uso (notifica sempre, nessun allarme).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -169,7 +177,7 @@ module.exports = async (req, res) => {
   let notifyOnExit = true;
   let alarmOnExit = false;
   if (type === "geofence_enter" || type === "geofence_exit") {
-    const zoneSnap = zoneId ? await deviceRef.collection("geofences").doc(zoneId).get() : null;
+    const zoneSnap = zoneId ? await db.collection("geofences").doc(zoneId).get() : null;
     const zone = zoneSnap?.exists ? zoneSnap.data() : null;
     if (zone) {
       zoneName = zone.name || zoneName;

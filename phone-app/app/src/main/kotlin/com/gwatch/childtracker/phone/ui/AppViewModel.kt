@@ -11,6 +11,7 @@ import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.model.ChatMessage
+import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
@@ -59,6 +60,13 @@ class AppViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val geofences: StateFlow<List<GeofenceZone>> = deviceRepository.observeGeofences()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // v0.29.0 (2026-09-11): elenco bambini registrati — usato per ora dal
+    // selettore toggle per-bambino di GeofenceScreen.kt (fase 2/4, vedi
+    // CONTEXT.md); le altre schermate (mappa, chat, impostazioni) lo
+    // useranno nelle fasi successive.
+    val children: StateFlow<List<ChildInfo>> = deviceRepository.observeChildren()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val events: StateFlow<List<DeviceEvent>> = deviceRepository.observeRecentEvents()
