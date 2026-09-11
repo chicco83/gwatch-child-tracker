@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onOpenGeofences = { navController.navigate("geofences") },
                         onOpenChat = { navController.navigate("chat") },
+                        onOpenSettings = { navController.navigate("settings") },
                         onSignOut = {
                             viewModel.signOut()
                             navController.navigate("login") { popUpTo("map") { inclusive = true } }
@@ -118,6 +119,9 @@ class MainActivity : ComponentActivity() {
                 }
                 composable("chat") {
                     ChatScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                }
+                composable("settings") {
+                    SettingsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
             }
         }

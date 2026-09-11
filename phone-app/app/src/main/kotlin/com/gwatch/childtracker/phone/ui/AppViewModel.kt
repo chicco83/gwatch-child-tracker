@@ -10,17 +10,24 @@ import com.gwatch.childtracker.phone.auth.AuthRepository
 import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
+import com.gwatch.childtracker.phone.data.NewChildResult
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
 import com.gwatch.childtracker.phone.data.model.LocationPoint
+import com.gwatch.childtracker.phone.util.Constants
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -44,6 +51,18 @@ import kotlinx.coroutines.tasks.await
 // messaggi in uscita, ma per quelli in entrata: IncomingMessageStore
 // (nuovo, in data/), popolato da FcmService.kt alla ricezione della
 // push, combinato qui esattamente come _optimisticMessages.
+// v0.29.0 (2026-09-11): fase 3/4 — supporto N bambini (vedi CONTEXT.md).
+// "deviceState"/"history"/"events" (singolari, un solo bambino fisso)
+// diventano "deviceStates"/"historyByChild"/"eventsByChild" (mappe
+// childId -> dato), derivate da "children" con flatMapLatest+combine:
+// quando la lista bambini cambia, ri-crea l'insieme di listener
+// Firestore, uno per bambino. requestLocation/cancelSos/ackEvent ora
+// richiedono un childId esplicito (il backend lo richiede gia' dalla
+// fase 1 — bug latente corretto in BackendClient.kt v0.4.0). sendMessage
+// resta invece sul solo Constants.DEVICE_ID: il selettore destinatario
+// per la chat e' rimandato alla fase 4. Aggiunti anche ownNickname/
+// updateOwnNickname/setChildNickname/createChild per la nuova
+// SettingsScreen.kt.
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
@@ -53,24 +72,33 @@ class AppViewModel(
     private val _user = MutableStateFlow(authRepository.currentUser)
     val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
 
-    val deviceState: StateFlow<DeviceState> = deviceRepository.observeDeviceState()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceState())
-
-    val history: StateFlow<List<LocationPoint>> = deviceRepository.observeHistory()
+    val children: StateFlow<List<ChildInfo>> = deviceRepository.observeChildren()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val deviceStates: StateFlow<Map<String, DeviceState>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeDeviceState(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val historyByChild: StateFlow<Map<String, List<LocationPoint>>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeHistory(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val eventsByChild: StateFlow<Map<String, List<DeviceEvent>>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeRecentEvents(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val geofences: StateFlow<List<GeofenceZone>> = deviceRepository.observeGeofences()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // v0.29.0 (2026-09-11): elenco bambini registrati — usato per ora dal
-    // selettore toggle per-bambino di GeofenceScreen.kt (fase 2/4, vedi
-    // CONTEXT.md); le altre schermate (mappa, chat, impostazioni) lo
-    // useranno nelle fasi successive.
-    val children: StateFlow<List<ChildInfo>> = deviceRepository.observeChildren()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val events: StateFlow<List<DeviceEvent>> = deviceRepository.observeRecentEvents()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    // Proprio nickname (parents/{uid}.nickname) — segue l'utente loggato,
+    // null se nessuno ha ancora fatto login o non l'ha ancora impostato.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val ownNickname: StateFlow<String?> = user
+        .flatMapLatest { u -> if (u == null) flowOf(null) else deviceRepository.observeOwnNickname(u.uid) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _optimisticMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
 
@@ -83,6 +111,16 @@ class AppViewModel(
         val stillPending = (outgoingPending + incomingPending).filterNot { (it.sender to it.text) in remoteKeys }
         (remote + stillPending).sortedBy { it.timestampMillis }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Combina un flow per bambino (stesso pattern per deviceStates/historyByChild/eventsByChild). */
+    private fun <T> combineByChild(
+        children: List<ChildInfo>,
+        observe: (childId: String) -> Flow<T>,
+    ): Flow<Map<String, T>> {
+        if (children.isEmpty()) return flowOf(emptyMap())
+        val perChild = children.map { child -> observe(child.id).map { child.id to it } }
+        return combine(perChild) { pairs -> pairs.toMap() }
+    }
 
     fun signInIntent(): Intent = authRepository.signInIntent()
 
@@ -125,7 +163,8 @@ class AppViewModel(
      * Ottimista: il messaggio appare subito in "messages" (vedi sopra),
      * senza aspettare che il listener Firestore lo recuperi — se
      * l'invio fallisce viene tolto di nuovo, non e' mai partito
-     * davvero.
+     * davvero. Destinatario ancora fisso su Constants.DEVICE_ID: il
+     * selettore "Scrivi a: ..." arriva in fase 4.
      */
     fun sendMessage(text: String, onSent: (Boolean) -> Unit) {
         val user = _user.value ?: return onSent(false)
@@ -134,7 +173,7 @@ class AppViewModel(
         viewModelScope.launch {
             val ok = runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.sendMessageToChild(idToken, text)
+                backendClient.sendMessageToChild(idToken, Constants.DEVICE_ID, text)
             }.getOrDefault(false)
             if (!ok) {
                 _optimisticMessages.value = _optimisticMessages.value.filterNot { it === optimistic }
@@ -144,30 +183,31 @@ class AppViewModel(
     }
 
     /**
-     * Chiede al watch di inviare subito la posizione attuale (push FCM,
-     * vedi backend/api/request-location.js), invece di aspettare il
-     * prossimo upload periodico. onResult(true) se il backend ha
-     * accettato la richiesta — la posizione vera e propria arriva poi
-     * come aggiornamento separato di deviceState via Firestore.
+     * Chiede al watch di un bambino di inviare subito la posizione
+     * attuale (push FCM, vedi backend/api/parent-command.js), invece di
+     * aspettare il prossimo upload periodico. onResult(true) se il
+     * backend ha accettato la richiesta — la posizione vera e propria
+     * arriva poi come aggiornamento separato di deviceStates[childId]
+     * via Firestore.
      */
-    fun requestLocation(onResult: (Boolean) -> Unit) {
+    fun requestLocation(childId: String, onResult: (Boolean) -> Unit) {
         val user = _user.value ?: return onResult(false)
         viewModelScope.launch {
             val ok = runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.requestLocation(idToken)
+                backendClient.requestLocation(idToken, childId)
             }.getOrDefault(false)
             onResult(ok)
         }
     }
 
-    /** Disattiva un SOS in corso (vedi backend/api/cancel-sos.js). */
-    fun cancelSos(onResult: (Boolean) -> Unit) {
+    /** Disattiva un SOS in corso per un bambino (vedi backend/api/parent-command.js, azione cancel_sos). */
+    fun cancelSos(childId: String, onResult: (Boolean) -> Unit) {
         val user = _user.value ?: return onResult(false)
         viewModelScope.launch {
             val ok = runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.cancelSos(idToken)
+                backendClient.cancelSos(idToken, childId)
             }.getOrDefault(false)
             onResult(ok)
         }
@@ -176,17 +216,54 @@ class AppViewModel(
     /**
      * Marca un evento come "visto" — chiamato da MapScreen.kt quando
      * mostra un evento "posizione inviata dal bambino" non ancora
-     * marcato (vedi backend/api/ack-event.js, che notifica il watch).
+     * marcato (vedi backend/api/parent-command.js, azione ack_event).
      * Fire-and-forget: nessun feedback in UI, non e' un'azione che
      * l'utente ha scelto esplicitamente di fare.
      */
-    fun ackEvent(eventId: String) {
+    fun ackEvent(childId: String, eventId: String) {
         val user = _user.value ?: return
         viewModelScope.launch {
             runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.ackEvent(idToken, eventId)
+                backendClient.ackEvent(idToken, childId, eventId)
             }
+        }
+    }
+
+    /** Aggiorna il proprio nickname (scrittura diretta Firestore, vedi DeviceRepository). */
+    fun updateOwnNickname(nickname: String, onDone: (Boolean) -> Unit) {
+        val user = _user.value ?: return onDone(false)
+        viewModelScope.launch {
+            val ok = runCatching { deviceRepository.updateOwnNickname(user.uid, nickname) }.isSuccess
+            onDone(ok)
+        }
+    }
+
+    /** Rinomina un bambino (passa dal backend, devices/* e' scrivibile solo da li'). */
+    fun setChildNickname(childId: String, nickname: String, onDone: (Boolean) -> Unit) {
+        val user = _user.value ?: return onDone(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.setChildNickname(idToken, childId, nickname)
+            }.getOrDefault(false)
+            onDone(ok)
+        }
+    }
+
+    /**
+     * Registra un nuovo bambino. onResult(null) se la chiamata fallisce,
+     * altrimenti il childId + il token in chiaro da mostrare una volta
+     * sola (vedi BackendClient.createChild).
+     */
+    fun createChild(nickname: String, onResult: (NewChildResult?) -> Unit) {
+        val user = _user.value ?: return onResult(null)
+        viewModelScope.launch {
+            val result = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.createChild(idToken, nickname)
+            }.getOrNull()
+            onResult(result)
         }
     }
 

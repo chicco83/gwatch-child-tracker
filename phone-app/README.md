@@ -32,19 +32,20 @@ phone-app/
         TrackerApplication.kt         Canale notifica "alerts" + init osmdroid
         auth/AuthRepository.kt        Login Google + Firebase Auth
         data/
-          model/Models.kt             DeviceState, LocationPoint, GeofenceZone, DeviceEvent, ChatMessage
-          DeviceRepository.kt         Listener Firestore in tempo reale + scrittura geofence
-          BackendClient.kt            Unica chiamata REST (invio chat, serve la push FCM)
+          model/Models.kt             DeviceState, LocationPoint, GeofenceZone, ChildInfo, DeviceEvent, ChatMessage
+          DeviceRepository.kt         Listener Firestore in tempo reale (per bambino) + scrittura geofence/nickname
+          BackendClient.kt            Chiamate REST verso parent-command.js (chat, comandi, nickname, aggiungi bambino)
         messaging/FcmService.kt       Ricezione push SOS/geofence/chat, registra il token
         ui/
-          MainActivity.kt             NavHost login/mappa/zone/chat
-          AppViewModel.kt             Stato condiviso (StateFlow su Firestore)
+          MainActivity.kt             NavHost login/mappa/zone/chat/impostazioni
+          AppViewModel.kt             Stato condiviso (StateFlow per bambino su Firestore)
           LoginScreen.kt
-          MapScreen.kt                Mappa (osmdroid) + card stato + eventi recenti
-          GeofenceScreen.kt           Aggiungi/modifica/elimina zone (tocco su mappa)
+          MapScreen.kt                Mappa unica (osmdroid) con TUTTI i bambini + card stato + eventi recenti
+          GeofenceScreen.kt           Aggiungi/modifica/elimina zone (tocco su mappa) + assegnazione per bambino
           ChatScreen.kt               Chat testuale col watch
+          SettingsScreen.kt           Nickname proprio/dei bambini, "Aggiungi bambino"
         util/
-          Constants.kt                DEVICE_ID, BACKEND_BASE_URL (deve combaciare col backend)
+          Constants.kt                BACKEND_BASE_URL (deve combaciare col backend); DEVICE_ID legacy, solo per la chat (fase 4 lo sostituirà)
           TimeFormat.kt
       res/
 ```
@@ -63,9 +64,16 @@ phone-app/
   OpenStreetMap (MAPNIK), marker per l'ultima posizione, polyline per
   lo storico, poligoni-cerchio per le geofence.
 - **Geofence**: uniche scritture dirette dal client. `GeofenceScreen`
-  scrive/aggiorna/cancella documenti in `devices/figlio/geofences/`;
+  scrive/aggiorna/cancella documenti nella collezione radice condivisa
+  `geofences/` (campo `childIds`, una zona può valere per più bambini);
   il watch le legge poi da `/api/device-config` (nessuna sincronia
   diretta phone→watch, passa dal backend).
+- **N bambini**: `AppViewModel.children` è una query live su `devices`
+  (nessuna lista fissa). Mappa/eventi/storico sono mappe `childId ->
+  dato` (`deviceStates`/`historyByChild`/`eventsByChild`), una per
+  bambino — la mappa mostra tutti i bambini insieme, non uno switcher.
+  `SettingsScreen` gestisce nickname e "Aggiungi bambino" (genera
+  childId+token lato backend, mostrato una volta sola).
 - **Notifiche push**: al login viene registrato il token FCM del
   telefono in `parents/{uid}.fcmTokens` (array, un genitore può avere
   più dispositivi). `trigger-event` sul backend invia la push a tutti i
@@ -74,14 +82,16 @@ phone-app/
   anche se il backend ne conserva 12 mesi, per restare leggibile/veloce.
 - **Chat**: unica scrittura che passa dal backend invece che da
   Firestore direttamente (`BackendClient.sendMessageToChild`, header
-  `Authorization: Bearer <ID token Firebase>`) — serve per inviare
-  anche la push FCM che sveglia il watch nella stessa chiamata, cosa
-  che il solo scrivere su Firestore non farebbe (nessun trigger
-  `onDocumentCreated` su Vercel, vedi `backend/api/send-message-to-child.js`).
-  La lettura resta invece un listener Firestore diretto
+  `Authorization: Bearer <ID token Firebase>`, verso
+  `backend/api/parent-command.js`) — serve per inviare anche la push
+  FCM che sveglia il watch nella stessa chiamata, cosa che il solo
+  scrivere su Firestore non farebbe (nessun trigger `onDocumentCreated`
+  su Vercel). La lettura resta invece un listener Firestore diretto
   (`DeviceRepository.observeMessages`), come tutto il resto. Scelta
   FCM invece del polling anche qui: risparmio batteria sul watch (vedi
-  `CONTEXT.md`, log decisioni).
+  `CONTEXT.md`, log decisioni). **Nota**: la chat resta per ora a
+  singolo destinatario fisso (`Constants.DEVICE_ID`) — il selettore
+  "Scrivi a: ..." per più bambini arriva in fase 4 (vedi CONTEXT.md).
 
 ## Setup Firebase — già fatto
 

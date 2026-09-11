@@ -65,7 +65,9 @@
     <string name="map_request_location_failed">Richiesta fallita (watch non raggiungibile)</string>
 
     <!-- v0.4.0 (2026-09-10): banner SOS attivo -->
-    <string name="sos_banner_title">🆘 SOS ATTIVO</string>
+    <!-- v0.8.0 (2026-09-11): rinominata con placeholder per il nome del
+         bambino — con N bambini serve sapere subito di chi e' il SOS -->
+    <string name="sos_banner_title_named">🆘 SOS ATTIVO — %1$s</string>
     <string name="sos_banner_deactivate">Disattiva</string>
     <string name="sos_deactivate_success">SOS disattivato</string>
     <string name="sos_deactivate_failed">Disattivazione fallita, riprova</string>
@@ -86,4 +88,24 @@
     <!-- v0.7.0 (2026-09-11): icona hamburger in barra, apre un menu a
          tendina con "Logout" invece di un pulsante diretto -->
     <string name="menu_content_description">Menu</string>
+
+    <!-- v0.8.0 (2026-09-11): fase 3/4, SettingsScreen.kt — nickname
+         proprio/dei bambini, "Aggiungi bambino" -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_own_nickname_label">Il tuo nickname</string>
+    <string name="settings_own_nickname_save">Salva</string>
+    <string name="settings_own_nickname_saved">Nickname salvato</string>
+    <string name="settings_own_nickname_failed">Salvataggio fallito, riprova</string>
+    <string name="settings_children_section">Bambini</string>
+    <string name="settings_child_nickname_saved">Nickname aggiornato</string>
+    <string name="settings_child_nickname_failed">Aggiornamento fallito, riprova</string>
+    <string name="settings_add_child_section">Aggiungi bambino</string>
+    <string name="settings_add_child_nickname_label">Nickname del nuovo bambino</string>
+    <string name="settings_add_child_button">Aggiungi</string>
+    <string name="settings_add_child_failed">Registrazione fallita, riprova</string>
+    <string name="settings_add_child_token_title">Bambino registrato</string>
+    <string name="settings_add_child_token_message">Copia subito questo codice: ti servirà per configurare il nuovo watch in local.properties (chiave device.token). Non sarà più visibile dopo aver chiuso questa finestra.</string>
+    <string name="settings_add_child_token_copy">Copia</string>
+    <string name="settings_add_child_token_copied">Copiato negli appunti</string>
+    <string name="settings_add_child_token_close">Ho copiato, chiudi</string>
 </resources>

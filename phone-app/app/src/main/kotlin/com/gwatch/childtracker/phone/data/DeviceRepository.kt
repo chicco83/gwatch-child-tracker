@@ -14,6 +14,13 @@ package com.gwatch.childtracker.phone.data
 // backend/firestore.rules v0.6.0/device-config.js v0.4.0. Aggiunto
 // anche observeChildren(): query live su "devices" per popolare il
 // selettore di toggle per-bambino in GeofenceScreen.kt.
+// v0.5.0 (2026-09-11): fase 3/4 — MapScreen mostra ora tutti i bambini
+// insieme, non piu' un solo "deviceRef" fisso. observeDeviceState/
+// observeHistory/observeRecentEvents prendono un childId esplicito
+// invece di usare sempre Constants.DEVICE_ID (che resta il default
+// solo per observeMessages, ancora a singola chat fino alla fase 4).
+// Aggiunti anche observeOwnNickname/updateOwnNickname
+// (parents/{uid}.nickname) per la nuova SettingsScreen.kt.
 
 import android.util.Log
 import com.google.firebase.Timestamp
@@ -38,17 +45,18 @@ import kotlinx.coroutines.tasks.await
 /**
  * Legge/scrive direttamente su Firestore lato client, protetto dalle
  * regole di sicurezza (backend/firestore.rules): un genitore autorizzato
- * puo' leggere tutto sotto devices/{deviceId} e scrivere solo le
- * geofence; posizione/batteria/eventi sono scritti solo dal backend
- * tramite Admin SDK (bypassa le regole), mai dal client.
+ * puo' leggere tutto sotto devices/{childId} (per ogni bambino, vedi
+ * observeChildren) e scrivere solo le geofence e il proprio nickname;
+ * posizione/batteria/eventi sono scritti solo dal backend tramite Admin
+ * SDK (bypassa le regole), mai dal client.
  */
 class DeviceRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val deviceRef = db.collection("devices").document(Constants.DEVICE_ID)
 
-    fun observeDeviceState(): Flow<DeviceState> = callbackFlow {
-        val registration = deviceRef.addSnapshotListener { snap, error ->
+    fun observeDeviceState(childId: String): Flow<DeviceState> = callbackFlow {
+        val registration = db.collection("devices").document(childId).addSnapshotListener { snap, error ->
             if (error != null) Log.e(TAG, "observeDeviceState", error)
             if (snap == null || !snap.exists()) {
                 trySend(DeviceState())
@@ -71,10 +79,10 @@ class DeviceRepository {
         awaitClose { registration.remove() }
     }
 
-    fun observeHistory(hours: Long = Constants.HISTORY_WINDOW_HOURS): Flow<List<LocationPoint>> =
+    fun observeHistory(childId: String, hours: Long = Constants.HISTORY_WINDOW_HOURS): Flow<List<LocationPoint>> =
         callbackFlow {
             val since = Timestamp(Date(System.currentTimeMillis() - hours * 3_600_000L))
-            val query = deviceRef.collection("locations")
+            val query = db.collection("devices").document(childId).collection("locations")
                 .whereGreaterThan("timestamp", since)
                 .orderBy("timestamp", Query.Direction.ASCENDING)
 
@@ -155,8 +163,8 @@ class DeviceRepository {
         awaitClose { registration.remove() }
     }
 
-    fun observeRecentEvents(limit: Long = 20): Flow<List<DeviceEvent>> = callbackFlow {
-        val registration = deviceRef.collection("events")
+    fun observeRecentEvents(childId: String, limit: Long = 20): Flow<List<DeviceEvent>> = callbackFlow {
+        val registration = db.collection("devices").document(childId).collection("events")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit)
             .addSnapshotListener { snap, error ->
@@ -242,6 +250,23 @@ class DeviceRepository {
     suspend fun registerFcmToken(uid: String, token: String) {
         db.collection("parents").document(uid)
             .update("fcmTokens", FieldValue.arrayUnion(token))
+            .await()
+    }
+
+    // v0.5.0: nickname del genitore — scritto direttamente dal client
+    // (le regole gia' permettono update su parents/{parentId} == proprio
+    // uid, stesso pattern di registerFcmToken sopra).
+    fun observeOwnNickname(uid: String): Flow<String?> = callbackFlow {
+        val registration = db.collection("parents").document(uid).addSnapshotListener { snap, error ->
+            if (error != null) Log.e(TAG, "observeOwnNickname", error)
+            trySend(snap?.getString("nickname"))
+        }
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun updateOwnNickname(uid: String, nickname: String) {
+        db.collection("parents").document(uid)
+            .set(mapOf("nickname" to nickname), SetOptions.merge())
             .await()
     }
 

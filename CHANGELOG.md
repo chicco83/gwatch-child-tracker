@@ -7,6 +7,45 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-09-11
+
+### Added (Fase 3/4 — supporto a N bambini: impostazioni e mappa multi-bambino)
+- Nuova `SettingsScreen.kt` (phone-app), raggiungibile dal menu
+  hamburger di `MapScreen.kt` accanto a "Logout": nickname proprio
+  (scritto direttamente su `parents/{uid}.nickname`), nickname di ogni
+  bambino registrato (passa da `parent-command.js`, azione
+  `set_nickname`), "Aggiungi bambino" (azione `create_child` — mostra
+  il token generato una volta sola, con un `AlertDialog` non
+  dismissabile a caso e un pulsante "Copia" negli appunti, coerente col
+  fatto che il token non sarà più recuperabile in seguito).
+- `MapScreen.kt` mostra ora **tutti i bambini insieme su una sola
+  mappa** (non uno switcher): un marker per bambino, riga orizzontale
+  scorrevole di status-card (una per bambino, ciascuna col proprio
+  pulsante "Aggiorna posizione" e il proprio stato di caricamento),
+  lista di banner SOS (invece di uno singolo — più bambini potrebbero
+  avere un SOS attivo insieme), percorso storico per bambino con colori
+  distinti quando "Percorso 24h" è attivo. Le geofence restano
+  disegnate una sola volta ciascuna (risorsa condivisa, fase 2/4).
+- `AppViewModel.kt`: `deviceState`/`history`/`events` (singolari)
+  sostituiti da `deviceStates`/`historyByChild`/`eventsByChild` (mappe
+  `childId -> dato`), derivate dalla lista bambini con
+  `flatMapLatest`+`combine`. Aggiunti `ownNickname`, `updateOwnNickname`,
+  `setChildNickname`, `createChild`.
+
+### Fixed
+- **Bug latente introdotto in fase 1** (mai emerso perché la UI a
+  valle non era stata ancora aggiornata): `BackendClient.kt` non
+  mandava `childId` nel body di `message`/`request_location`/
+  `cancel_sos`/`ack_event`, azioni che `parent-command.js` richiede
+  esplicitamente dalla fase 1 — ogni chiamata rispondeva già 400
+  `'childId' mancante`. Corretto aggiungendo il parametro a tutte e
+  quattro.
+
+### Known limitations
+- La chat resta a singolo destinatario fisso (`Constants.DEVICE_ID`):
+  il selettore "Scrivi a: ..." e le bolle per identità (invece che per
+  ruolo) arrivano in fase 4.
+
 ## [0.38.0] - 2026-09-11
 
 ### Added (Fase 2/4 — supporto a N bambini: geofence condivise)

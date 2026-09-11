@@ -59,6 +59,18 @@ package com.gwatch.childtracker.phone.ui
 //   3) il pulsante "Aggiorna posizione" si sposta sulla stessa riga
 //      della StatusCard (testo stato + batteria), invece di stare in
 //      una card MapControls separata sotto.
+// v0.8.0 (2026-09-11): fase 3/4 — supporto N bambini (vedi CONTEXT.md).
+//   Una sola mappa mostra ora TUTTI i bambini insieme (non uno switcher
+//   che ne mostra uno alla volta, richiesta esplicita dell'utente): un
+//   marker per bambino (etichettato col nickname), riga orizzontale
+//   scorrevole di status-card (una per bambino, ognuna col proprio
+//   pulsante "Aggiorna posizione"), lista di banner SOS invece di uno
+//   singolo (piu' bambini potrebbero avere un SOS attivo insieme). Le
+//   geofence restano disegnate una sola volta ciascuna (sono gia' una
+//   risorsa condivisa, vedi GeofenceScreen.kt fase 2/4), non duplicate
+//   per bambino. Aggiunta anche una voce "Impostazioni" nel menu
+//   hamburger, accanto a "Logout" (nuova SettingsScreen.kt: nickname
+//   proprio/dei bambini, "Aggiungi bambino").
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -68,8 +80,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -102,6 +116,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
+import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.util.formatRelativeTime
@@ -115,14 +130,20 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import org.osmdroid.views.overlay.Polyline
 
-// Roma come default finche' non arriva il primo fix dal watch.
+// Roma come default finche' non arriva il primo fix da qualunque watch.
 private val DEFAULT_POSITION = GeoPoint(41.9028, 12.4964)
 
 // Finestra del percorso mostrato quando lo switch "Percorso 24h" e'
-// attivo. Filtra lato client la stessa `history` gia' caricata da
+// attivo. Filtra lato client la stessa `historyByChild` gia' caricata da
 // AppViewModel (finestra piu' ampia, Constants.HISTORY_WINDOW_HOURS),
 // senza bisogno di una query Firestore separata.
 private const val PATH_WINDOW_HOURS = 24L
+
+// Tavolozza per distinguere il percorso di bambini diversi sulla mappa
+// (marker/zone restano invece a colore fisso, non serve distinguerli).
+private val PATH_COLORS = listOf(0xFF4285F4.toInt(), 0xFFEA4335.toInt(), 0xFF34A853.toInt(), 0xFFFBBC05.toInt())
+
+private data class ChildEvent(val childName: String, val event: DeviceEvent)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,12 +151,14 @@ fun MapScreen(
     viewModel: AppViewModel,
     onOpenGeofences: () -> Unit,
     onOpenChat: () -> Unit,
+    onOpenSettings: () -> Unit,
     onSignOut: () -> Unit,
 ) {
-    val deviceState by viewModel.deviceState.collectAsState()
-    val history by viewModel.history.collectAsState()
+    val children by viewModel.children.collectAsState()
+    val deviceStates by viewModel.deviceStates.collectAsState()
+    val historyByChild by viewModel.historyByChild.collectAsState()
     val geofences by viewModel.geofences.collectAsState()
-    val events by viewModel.events.collectAsState()
+    val eventsByChild by viewModel.eventsByChild.collectAsState()
 
     val context = LocalContext.current
     val mapView = remember {
@@ -149,25 +172,27 @@ fun MapScreen(
     DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
 
     // Vedi storico versioni v0.5.0 sopra. Filtro sul "source": una
-    // richiesta di posizione fatta dal genitore stesso (MapControls
-    // sotto) non deve generare "il genitore ha visto la tua posizione"
-    // sul watch, non avrebbe senso.
-    LaunchedEffect(events) {
-        events
-            .filter { !it.acknowledged && (it.type == "sos" || (it.type == "location_request" && it.source != "parent")) }
-            .forEach { viewModel.ackEvent(it.id) }
+    // richiesta di posizione fatta dal genitore stesso non deve generare
+    // "il genitore ha visto la tua posizione" sul watch, non avrebbe
+    // senso. v0.8.0: itera su tutti i bambini, non solo uno.
+    LaunchedEffect(eventsByChild) {
+        eventsByChild.forEach { (childId, events) ->
+            events
+                .filter { !it.acknowledged && (it.type == "sos" || (it.type == "location_request" && it.source != "parent")) }
+                .forEach { viewModel.ackEvent(childId, it.id) }
+        }
     }
 
-    // Centra la mappa sull'ultima posizione nota solo alla prima
-    // ricezione: dopo, l'utente deve poter muovere liberamente la mappa
-    // senza che un punto GPS successivo la "strappi" da sotto le dita.
+    // Centra la mappa sulla prima posizione nota (di un bambino
+    // qualsiasi) solo alla prima ricezione: dopo, l'utente deve poter
+    // muovere liberamente la mappa senza che un punto GPS successivo la
+    // "strappi" da sotto le dita.
     var centered by remember { mutableStateOf(false) }
     var showFullPath by remember { mutableStateOf(false) }
-    var requestingLocation by remember { mutableStateOf(false) }
-    var deactivatingSos by remember { mutableStateOf(false) }
+    var deactivatingSosFor by remember { mutableStateOf<String?>(null) }
     // v0.6.0: vedi storico versioni sopra — conferma prima del logout.
     var showSignOutConfirm by remember { mutableStateOf(false) }
-    // v0.7.0: stato apertura del menu hamburger (contiene solo "Logout").
+    // v0.7.0: stato apertura del menu hamburger.
     var showMenu by remember { mutableStateOf(false) }
 
     if (showSignOutConfirm) {
@@ -209,6 +234,13 @@ fun MapScreen(
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_title)) },
+                            onClick = {
+                                showMenu = false
+                                onOpenSettings()
+                            },
+                        )
+                        DropdownMenuItem(
                             text = { Text(stringResource(R.string.sign_out)) },
                             onClick = {
                                 showMenu = false
@@ -227,34 +259,41 @@ fun MapScreen(
                 update = { map ->
                     map.overlays.clear()
 
-                    deviceState.lastLocation?.let { loc ->
-                        val point = GeoPoint(loc.lat, loc.lon)
-                        map.overlays.add(
-                            Marker(map).apply {
-                                position = point
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                title = context.getString(R.string.last_known_position)
-                            },
-                        )
-                        if (!centered) {
-                            map.controller.setCenter(point)
-                            map.controller.setZoom(15.0)
-                            centered = true
-                        }
-                    }
-
-                    if (showFullPath) {
-                        val cutoff = System.currentTimeMillis() - PATH_WINDOW_HOURS * 3_600_000L
-                        val recentHistory = history.filter { it.timestampMillis >= cutoff }
-                        if (recentHistory.size >= 2) {
+                    children.forEachIndexed { index, child ->
+                        val state = deviceStates[child.id] ?: return@forEachIndexed
+                        state.lastLocation?.let { loc ->
+                            val point = GeoPoint(loc.lat, loc.lon)
                             map.overlays.add(
-                                Polyline().apply {
-                                    setPoints(recentHistory.map { GeoPoint(it.lat, it.lon) })
+                                Marker(map).apply {
+                                    position = point
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    title = child.name
                                 },
                             )
+                            if (!centered) {
+                                map.controller.setCenter(point)
+                                map.controller.setZoom(15.0)
+                                centered = true
+                            }
+                        }
+
+                        if (showFullPath) {
+                            val cutoff = System.currentTimeMillis() - PATH_WINDOW_HOURS * 3_600_000L
+                            val recentHistory = historyByChild[child.id].orEmpty().filter { it.timestampMillis >= cutoff }
+                            if (recentHistory.size >= 2) {
+                                map.overlays.add(
+                                    Polyline().apply {
+                                        setPoints(recentHistory.map { GeoPoint(it.lat, it.lon) })
+                                        outlinePaint.color = PATH_COLORS[index % PATH_COLORS.size]
+                                    },
+                                )
+                            }
                         }
                     }
 
+                    // Le geofence sono una risorsa condivisa (fase 2/4):
+                    // disegnate una sola volta ciascuna, non duplicate
+                    // per bambino assegnato.
                     geofences.forEach { zone ->
                         val center = GeoPoint(zone.lat, zone.lon)
                         map.overlays.add(
@@ -272,13 +311,14 @@ fun MapScreen(
             )
 
             Column(modifier = Modifier.align(Alignment.TopCenter)) {
-                if (deviceState.sosActive) {
+                children.filter { deviceStates[it.id]?.sosActive == true }.forEach { child ->
                     SosBanner(
-                        deactivating = deactivatingSos,
+                        childName = child.name,
+                        deactivating = deactivatingSosFor == child.id,
                         onDeactivate = {
-                            deactivatingSos = true
-                            viewModel.cancelSos { ok ->
-                                deactivatingSos = false
+                            deactivatingSosFor = child.id
+                            viewModel.cancelSos(child.id) { ok ->
+                                deactivatingSosFor = null
                                 val feedbackRes = if (ok) {
                                     R.string.sos_deactivate_success
                                 } else {
@@ -289,30 +329,24 @@ fun MapScreen(
                         },
                     )
                 }
-                StatusCard(
-                    state = deviceState,
-                    requesting = requestingLocation,
-                    onRequestLocation = {
-                        requestingLocation = true
-                        viewModel.requestLocation { ok ->
-                            requestingLocation = false
-                            val feedbackRes = if (ok) {
-                                R.string.map_request_location_sent
-                            } else {
-                                R.string.map_request_location_failed
-                            }
-                            Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                StatusCardRow(
+                    children = children,
+                    deviceStates = deviceStates,
+                    onRequestLocation = { childId, onResult -> viewModel.requestLocation(childId, onResult) },
                 )
             }
-            EventsList(events = events, modifier = Modifier.align(Alignment.BottomCenter))
+            EventsList(
+                childEvents = children.flatMap { child ->
+                    eventsByChild[child.id].orEmpty().map { ChildEvent(child.name, it) }
+                }.sortedByDescending { it.event.timestampMillis },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
 
 @Composable
-private fun SosBanner(deactivating: Boolean, onDeactivate: () -> Unit) {
+private fun SosBanner(childName: String, deactivating: Boolean, onDeactivate: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error),
@@ -324,7 +358,7 @@ private fun SosBanner(deactivating: Boolean, onDeactivate: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = stringResource(R.string.sos_banner_title),
+                text = stringResource(R.string.sos_banner_title_named, childName),
                 color = MaterialTheme.colorScheme.onError,
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -338,54 +372,98 @@ private fun SosBanner(deactivating: Boolean, onDeactivate: () -> Unit) {
     }
 }
 
+// v0.8.0: riga orizzontale scorrevole di status-card, una per bambino —
+// prima una singola StatusCard fissa (un solo bambino possibile). Ogni
+// card gestisce il proprio stato "richiesta in corso", legato all'esito
+// asincrono reale della chiamata (non un fire-and-forget sincrono).
+@Composable
+private fun StatusCardRow(
+    children: List<ChildInfo>,
+    deviceStates: Map<String, DeviceState>,
+    onRequestLocation: (childId: String, onResult: (Boolean) -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (children.isEmpty()) return
+    val context = LocalContext.current
+    LazyRow(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        items(children) { child ->
+            var requesting by remember(child.id) { mutableStateOf(false) }
+            StatusCard(
+                childName = child.name,
+                state = deviceStates[child.id] ?: DeviceState(),
+                requesting = requesting,
+                onRequestLocation = {
+                    requesting = true
+                    onRequestLocation(child.id) { ok ->
+                        requesting = false
+                        val feedbackRes = if (ok) {
+                            R.string.map_request_location_sent
+                        } else {
+                            R.string.map_request_location_failed
+                        }
+                        Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.width(260.dp).padding(start = 12.dp, end = 4.dp),
+            )
+        }
+    }
+}
+
 // v0.7.0: prima card separata (MapControls) sotto la StatusCard —
 // eliminata, il pulsante ora sta sulla stessa riga dello stato (vedi
 // StatusCard sotto) e lo switch "Percorso 24h" e' salito in TopAppBar.
 @Composable
 private fun StatusCard(
+    childName: String,
     state: DeviceState,
     requesting: Boolean,
     onRequestLocation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column {
-                Text(
-                    text = state.lastSeenMillis?.let { formatRelativeTime(it) }
-                        ?: stringResource(R.string.no_data_yet),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                state.battery?.let { battery ->
+    Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = childName, style = MaterialTheme.typography.titleSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column {
                     Text(
-                        text = stringResource(R.string.battery_format, battery),
+                        text = state.lastSeenMillis?.let { formatRelativeTime(it) }
+                            ?: stringResource(R.string.no_data_yet),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    state.battery?.let { battery ->
+                        Text(
+                            text = stringResource(R.string.battery_format, battery),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
-            }
-            TextButton(onClick = onRequestLocation, enabled = !requesting) {
-                Text(
-                    stringResource(
-                        if (requesting) R.string.map_requesting_location else R.string.map_request_location,
-                    ),
-                )
+                TextButton(onClick = onRequestLocation, enabled = !requesting) {
+                    Text(
+                        stringResource(
+                            if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                        ),
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun EventsList(events: List<DeviceEvent>, modifier: Modifier = Modifier) {
-    if (events.isEmpty()) return
+private fun EventsList(childEvents: List<ChildEvent>, modifier: Modifier = Modifier) {
+    if (childEvents.isEmpty()) return
     val formatter = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
     LazyColumn(modifier = modifier.fillMaxWidth().heightIn(max = 160.dp).padding(horizontal = 12.dp)) {
-        items(events) { event ->
+        items(childEvents) { childEvent ->
+            val event = childEvent.event
             Text(
-                text = "${eventLabel(event.type, event.zoneName)} · ${formatter.format(Date(event.timestampMillis))}",
+                text = "${childEvent.childName} — ${eventLabel(event.type, event.zoneName)} · " +
+                    formatter.format(Date(event.timestampMillis)),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(vertical = 4.dp),
             )

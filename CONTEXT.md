@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.38.0
+**Versione contesto:** 0.39.0
 **Ultimo aggiornamento:** 2026-09-11
 
 ---
@@ -1004,3 +1004,26 @@ CHANGELOG.md  Storico versioni
   identità invece che per ruolo, `CHILD_ID` sul watch) — vedi
   `/root/.claude/plans/clever-roaming-moth.md` per il piano completo
   approvato.
+- 2026-09-11: **Fase 3/4 completata (v0.39.0)**: nuova `SettingsScreen.kt`
+  (nickname proprio, nickname per bambino, "Aggiungi bambino" con token
+  mostrato una volta sola) e `MapScreen.kt` riscritta per mostrare TUTTI
+  i bambini su una sola mappa (marker multipli, riga scorrevole di
+  status-card, lista banner SOS) invece di un singolo bambino fisso —
+  come richiesto esplicitamente dall'utente ("una sola mappa", non uno
+  switcher. `AppViewModel` passa da stato singolare
+  (deviceState/history/events) a mappe per-bambino
+  (deviceStates/historyByChild/eventsByChild) via flatMapLatest+combine
+  sulla lista bambini. **Bug corretto**: `BackendClient.kt` non mandava
+  ancora `childId` nel body delle quattro azioni che `parent-command.js`
+  lo richiedono esplicitamente dalla fase 1 (message/request_location/
+  cancel_sos/ack_event) — erano quindi già rotte in produzione dal
+  deploy della fase 1 (rispondevano 400), solo non ancora notato perché
+  nessuno aveva ancora ricompilato/testato la phone-app nel frattempo.
+  Corretto aggiungendo il parametro mancante a tutte e quattro.
+  **Prossima fase (4/4, ultima)**: chat con selettore destinatario sul
+  telefono ("Scrivi a: ..."), bolle allineate per identità
+  (`senderId`) invece che per ruolo su entrambe le app, `CHILD_ID` sul
+  watch (nuova chiave `local.properties`/`BuildConfig`, parallela a
+  `device.token`) per sapere quale sia il proprio thread. A quel punto
+  il piano approvato in plan mode
+  (`/root/.claude/plans/clever-roaming-moth.md`) sarà completo.
