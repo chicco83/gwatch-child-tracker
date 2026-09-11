@@ -3,7 +3,12 @@
 # automatico da Android Studio), servono le due chiavi custom lette da
 # app/build.gradle.kts e iniettate come BuildConfig:
 
-# Deve combaciare con DEVICE_TOKEN impostato su Vercel (backend/.env.example)
+# Token del bambino generato dall'app phone (Impostazioni -> "Aggiungi
+# bambino"), mostrato una volta sola al momento della creazione. Non e'
+# piu' un valore statico condiviso impostato su Vercel (DEVICE_TOKEN,
+# MVP a un solo bambino): il backend lo verifica per hash lookup su
+# Firestore (devices/{childId}.deviceTokenHash), un token diverso per
+# ogni bambino registrato — vedi CONTEXT.md, fase 1/4.
 device.token=
 
 # URL del backend, senza slash finale

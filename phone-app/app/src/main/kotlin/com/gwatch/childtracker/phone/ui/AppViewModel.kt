@@ -17,7 +17,6 @@ import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
 import com.gwatch.childtracker.phone.data.model.LocationPoint
-import com.gwatch.childtracker.phone.util.Constants
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -63,6 +63,16 @@ import kotlinx.coroutines.tasks.await
 // per la chat e' rimandato alla fase 4. Aggiunti anche ownNickname/
 // updateOwnNickname/setChildNickname/createChild per la nuova
 // SettingsScreen.kt.
+// v0.30.0 (2026-09-11): fase 4/4 (ultima) — selettore destinatario
+// chat. "messages" non e' piu' un flow fisso su Constants.DEVICE_ID: fa
+// flatMapLatest su "selectedChatChildId" (scelto dall'utente in
+// ChatScreen.kt, o il primo bambino noto se non ancora scelto), ricrea
+// il listener Firestore sul thread giusto quando cambia destinatario.
+// sendMessage ora scrive senderId (proprio uid)/senderName (proprio
+// nickname)/childId sul messaggio ottimistico, per allinearlo allo
+// stesso schema del documento reale (ChatScreen.kt allinea le bolle su
+// senderId == proprio uid, non piu' sul solo ruolo "parent"/"child" —
+// necessario ora che due genitori condividono lo stesso thread).
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
@@ -102,15 +112,45 @@ class AppViewModel(
 
     private val _optimisticMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
 
-    val messages: StateFlow<List<ChatMessage>> = combine(
-        deviceRepository.observeMessages(),
-        _optimisticMessages,
-        IncomingMessageStore.messages,
-    ) { remote, outgoingPending, incomingPending ->
-        val remoteKeys = remote.map { it.sender to it.text }.toSet()
-        val stillPending = (outgoingPending + incomingPending).filterNot { (it.sender to it.text) in remoteKeys }
-        (remote + stillPending).sortedBy { it.timestampMillis }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val _selectedChatChildId = MutableStateFlow<String?>(null)
+
+    /** Thread di chat scelto dall'utente in ChatScreen.kt ("Scrivi a: ..."), null se non ancora scelto. */
+    val selectedChatChildId: StateFlow<String?> = _selectedChatChildId.asStateFlow()
+
+    /** Cambia il destinatario della chat corrente (selettore in ChatScreen.kt). */
+    fun selectChatChild(childId: String) {
+        _selectedChatChildId.value = childId
+    }
+
+    // Thread effettivo: quello scelto esplicitamente, o il primo bambino
+    // noto finche' l'utente non ne sceglie uno (stesso comportamento di
+    // oggi con un solo bambino, nessuna scelta richiesta finche' non ce
+    // n'e' piu' di uno).
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val effectiveChatChildId: Flow<String?> = combine(_selectedChatChildId, children) { selected, list ->
+        selected ?: list.firstOrNull()?.id
+    }.distinctUntilChanged()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val messages: StateFlow<List<ChatMessage>> = effectiveChatChildId
+        .flatMapLatest { childId ->
+            if (childId == null) {
+                flowOf(emptyList())
+            } else {
+                combine(
+                    deviceRepository.observeMessages(childId),
+                    _optimisticMessages,
+                    IncomingMessageStore.messages,
+                ) { remote, outgoingPending, incomingPending ->
+                    val remoteKeys = remote.map { (it.senderId ?: it.sender) to it.text }.toSet()
+                    val stillPending = (outgoingPending + incomingPending)
+                        .filter { it.childId == childId }
+                        .filterNot { ((it.senderId ?: it.sender) to it.text) in remoteKeys }
+                    (remote + stillPending).sortedBy { it.timestampMillis }
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Combina un flow per bambino (stesso pattern per deviceStates/historyByChild/eventsByChild). */
     private fun <T> combineByChild(
@@ -163,17 +203,26 @@ class AppViewModel(
      * Ottimista: il messaggio appare subito in "messages" (vedi sopra),
      * senza aspettare che il listener Firestore lo recuperi — se
      * l'invio fallisce viene tolto di nuovo, non e' mai partito
-     * davvero. Destinatario ancora fisso su Constants.DEVICE_ID: il
-     * selettore "Scrivi a: ..." arriva in fase 4.
+     * davvero. Va al thread "effettivo" corrente (vedi
+     * effectiveChatChildId sopra): quello scelto in ChatScreen.kt, o il
+     * primo bambino noto se l'utente non ha ancora scelto.
      */
     fun sendMessage(text: String, onSent: (Boolean) -> Unit) {
         val user = _user.value ?: return onSent(false)
-        val optimistic = ChatMessage(sender = "parent", text = text, timestampMillis = System.currentTimeMillis())
+        val childId = _selectedChatChildId.value ?: children.value.firstOrNull()?.id ?: return onSent(false)
+        val optimistic = ChatMessage(
+            sender = "parent",
+            senderId = user.uid,
+            senderName = ownNickname.value,
+            childId = childId,
+            text = text,
+            timestampMillis = System.currentTimeMillis(),
+        )
         _optimisticMessages.value = _optimisticMessages.value + optimistic
         viewModelScope.launch {
             val ok = runCatching {
                 val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.sendMessageToChild(idToken, Constants.DEVICE_ID, text)
+                backendClient.sendMessageToChild(idToken, childId, text)
             }.getOrDefault(false)
             if (!ok) {
                 _optimisticMessages.value = _optimisticMessages.value.filterNot { it === optimistic }

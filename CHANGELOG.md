@@ -7,6 +7,45 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-09-11
+
+### Added (Fase 4/4 — supporto a N bambini: chat con destinatario, completa il piano)
+- Phone-app: `ChatScreen.kt` mostra un selettore "Scrivi a: [bambino] ▾"
+  (visibile solo con più di un bambino registrato — nessuna scelta
+  richiesta con un solo bambino, retrocompatibile). `AppViewModel.kt`
+  gestisce `selectedChatChildId` (di default il primo bambino) e deriva
+  `messages` per il thread scelto (`devices/{childId}/messages`),
+  combinando remoto + echi ottimistici locali filtrati per `childId`.
+  Le bolle si allineano ora su `senderId == proprio uid` invece che sul
+  solo ruolo "parent"/"child" (necessario perché due genitori
+  condividono lo stesso thread), col nome mostrato da `senderName`.
+- Watch-app: `ChatMessage.kt` riceve `senderName`; `FcmService.kt` lo
+  legge dal payload push data-only e lo passa a `MessageStore`;
+  `ChatScreen.kt` mostra `senderName` (nickname del genitore) sopra i
+  messaggi ricevuti invece dell'etichetta fissa "Genitore" (rimasta
+  come fallback se un genitore non ha ancora impostato un nickname).
+- Corretto un commento obsoleto in `watch-app/local.properties.example`
+  e nel relativo README (parlavano ancora di un `DEVICE_TOKEN` statico
+  su Vercel, superato dalla fase 1 — auth per hash lookup su Firestore,
+  un token diverso per bambino).
+
+### Changed
+- **Deviazione dal piano approvato**: il piano originale prevedeva un
+  `BuildConfig.CHILD_ID` sul watch (nuova chiave `local.properties`)
+  per sapere "chi sono io" nel confronto `senderId`. Non implementato:
+  ogni watch legge/scrive solo il proprio thread dedicato
+  (`devices/{childId}/messages`), quindi `sender=="child"` è già
+  inequivocabilmente "io" per l'allineamento delle bolle, senza
+  ambiguità possibile (nessun messaggio di un altro bambino può mai
+  comparire in quel thread). Aggiungere `CHILD_ID` sarebbe stata
+  un'astrazione non necessaria — coerente con la linea del progetto di
+  non introdurre complessità oltre quella richiesta dal problema reale.
+  Vedi commento di versione in `network/model/ChatMessage.kt`.
+
+Con questa fase il piano "Supporto a N bambini/watch, nickname, chat
+con destinatario, zone multi-assegnate"
+(`/root/.claude/plans/clever-roaming-moth.md`) è completo.
+
 ## [0.39.0] - 2026-09-11
 
 ### Added (Fase 3/4 — supporto a N bambini: impostazioni e mappa multi-bambino)

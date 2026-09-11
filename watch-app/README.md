@@ -79,6 +79,13 @@ watch-app/
   `/api/register-watch-token`; lo storico recente arriva da
   `/api/messages` all'apertura della `ChatScreen` (il watch non ha un
   SDK Firestore completo, solo `firebase-messaging` per la push).
+  **N bambini**: ogni watch parla solo del proprio thread
+  (`devices/{childId}/messages`, `childId` risolto lato backend dal
+  proprio token — nessun `CHILD_ID` da configurare qui), quindi
+  `sender=="child"` basta per allineare le bolle; il nome mostrato
+  sopra i messaggi ricevuti è `senderName` (nickname del genitore che
+  ha scritto, denormalizzato lato backend), con "Genitore" come
+  fallback se non ancora impostato.
 
 ## Setup Firebase (chat) — già fatto
 
@@ -96,9 +103,12 @@ la chat usa solo FCM, niente login Google sul watch.
    recente).
 2. Copia `local.properties.example` in `local.properties` (nella
    stessa cartella, già ignorato da git) e compila:
-   - `device.token`: **stesso valore** di `DEVICE_TOKEN` impostato su
-     Vercel (backend/.env.example) — senza questo il watch non riesce
-     ad autenticarsi col backend.
+   - `device.token`: il token generato dalla phone-app (Impostazioni ->
+     "Aggiungi bambino"), mostrato una volta sola al momento della
+     creazione — senza questo il watch non riesce ad autenticarsi col
+     backend (vedi CONTEXT.md, fase 1/4: ogni bambino ha il proprio
+     token, verificato via hash lookup su Firestore, non più un
+     `DEVICE_TOKEN` statico unico su Vercel).
    - `backend.base.url`: lascia il default
      `https://gwatch-child-tracker.vercel.app` a meno che tu non l'abbia
      cambiato.

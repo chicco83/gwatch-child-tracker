@@ -1,9 +1,10 @@
 package com.gwatch.childtracker.phone.util
 
 object Constants {
-    // Deve corrispondere al DEVICE_ID hardcoded nel backend (vedi
-    // backend/api/ingest-location.js): MVP a singolo figlio/dispositivo.
-    const val DEVICE_ID = "figlio"
+    // v0.5.0 (2026-09-11): rimosso DEVICE_ID — supportava un solo
+    // figlio/dispositivo fisso (MVP), sostituito da N bambini dinamici
+    // (query live su "devices", vedi AppViewModel.children) in fase 3/4
+    // (vedi CONTEXT.md).
 
     // Finestra di storico mostrata sulla mappa: il backend conserva 12
     // mesi (vedi CONTEXT.md), ma qui mostriamo solo le ultime ore per

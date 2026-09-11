@@ -285,8 +285,14 @@ private fun MessageBubble(message: ChatMessage) {
         ) {
             Column {
                 if (!isOwn) {
+                    // v0.7.0 (2026-09-11): fase 4/4, supporto N bambini (vedi
+                    // CONTEXT.md) — prima era sempre l'etichetta fissa
+                    // chat_sender_parent, ora mostra il nickname reale del
+                    // genitore che ha scritto (denormalizzato lato backend in
+                    // parent-command.js), con lo stesso fallback fisso se un
+                    // genitore non ha ancora impostato un nickname.
                     Text(
-                        text = stringResourceCompat(R.string.chat_sender_parent),
+                        text = message.senderName ?: stringResourceCompat(R.string.chat_sender_parent),
                         color = SenderNameColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,

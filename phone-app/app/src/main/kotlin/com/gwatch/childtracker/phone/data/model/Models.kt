@@ -76,6 +76,17 @@ data class DeviceEvent(
 data class ChatMessage(
     val id: String = "",
     val sender: String = "parent", // "parent" | "child"
+    // v0.7.0 (2026-09-11): fase 4/4, supporto N bambini (vedi CONTEXT.md).
+    // senderId (uid Firebase del genitore, o childId)/senderName
+    // (nickname denormalizzato al momento dell'invio) — necessari perche'
+    // ora due genitori condividono lo stesso thread: "mio" non si deduce
+    // piu' dal solo "sender" (ruolo), serve senderId == proprio uid.
+    // childId dice a quale thread appartiene il messaggio (serve per
+    // instradare l'eco ottimistico/in arrivo verso il thread giusto
+    // quando ci sono piu' bambini, vedi AppViewModel.messages).
+    val senderId: String? = null,
+    val senderName: String? = null,
+    val childId: String = "",
     val text: String = "",
     val timestampMillis: Long = 0L,
 )

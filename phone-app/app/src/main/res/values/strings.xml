@@ -39,6 +39,9 @@
 
     <!-- v0.2.0: chat -->
     <string name="chat_title">Messaggi</string>
+    <!-- v0.5.0 (2026-09-11, ChatScreen fase 4/4): selettore destinatario,
+         visibile solo con piu' di un bambino registrato -->
+    <string name="chat_recipient_label">Scrivi a: %1$s ▾</string>
     <string name="chat_no_messages">Nessun messaggio ancora</string>
     <!-- v0.25.1 (2026-09-10): titolo notifica per i messaggi in arrivo
          dal watch, costruita a mano da FcmService.kt (push data-only,

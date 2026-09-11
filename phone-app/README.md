@@ -45,7 +45,7 @@ phone-app/
           ChatScreen.kt               Chat testuale col watch
           SettingsScreen.kt           Nickname proprio/dei bambini, "Aggiungi bambino"
         util/
-          Constants.kt                BACKEND_BASE_URL (deve combaciare col backend); DEVICE_ID legacy, solo per la chat (fase 4 lo sostituirà)
+          Constants.kt                BACKEND_BASE_URL, HISTORY_WINDOW_HOURS
           TimeFormat.kt
       res/
 ```
@@ -89,9 +89,12 @@ phone-app/
   su Vercel). La lettura resta invece un listener Firestore diretto
   (`DeviceRepository.observeMessages`), come tutto il resto. Scelta
   FCM invece del polling anche qui: risparmio batteria sul watch (vedi
-  `CONTEXT.md`, log decisioni). **Nota**: la chat resta per ora a
-  singolo destinatario fisso (`Constants.DEVICE_ID`) — il selettore
-  "Scrivi a: ..." per più bambini arriva in fase 4 (vedi CONTEXT.md).
+  `CONTEXT.md`, log decisioni). **N bambini**: `ChatScreen` mostra un
+  selettore "Scrivi a: ..." quando c'è più di un bambino registrato
+  (nessuna scelta richiesta con un solo bambino); le bolle si allineano
+  su `senderId == proprio uid` invece che sul solo ruolo
+  "parent"/"child", necessario ora che due genitori possono condividere
+  lo stesso thread.
 
 ## Setup Firebase — già fatto
 

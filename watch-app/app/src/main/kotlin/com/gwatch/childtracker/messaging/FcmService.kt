@@ -63,6 +63,12 @@ package com.gwatch.childtracker.messaging
 //   Aggiunto un PendingIntent verso MainActivity, con l'extra
 //   EXTRA_OPEN_CHAT per i messaggi di chat (le altre notifiche aprono
 //   semplicemente la schermata principale).
+// v0.7.0 (2026-09-11): fase 4/4, supporto N bambini (vedi CONTEXT.md).
+//   handleChatMessage ora legge anche "senderName" dal payload data-only
+//   (denormalizzato lato backend in parent-command.js dal nickname del
+//   genitore che ha scritto) e lo passa a ChatMessage, cosi' ChatScreen
+//   puo' mostrare il nome vero sopra i messaggi ricevuti invece di
+//   un'etichetta generica "Genitore" fissa.
 // v0.6.4 (2026-09-10): confermato via screenshot — tap ok ("Apri app"),
 //   ma l'icona resta quella generica del fumetto (ic_notification, per
 //   design solo una maschera monocromatica: e' cosi' che Android/Wear
@@ -136,6 +142,7 @@ class FcmService : FirebaseMessagingService() {
 
         val chatMessage = ChatMessage(
             sender = data["sender"] ?: "parent",
+            senderName = data["senderName"],
             text = text,
             timestampMillis = System.currentTimeMillis(),
         )

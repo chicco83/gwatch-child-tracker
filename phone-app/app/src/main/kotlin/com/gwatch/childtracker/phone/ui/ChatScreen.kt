@@ -45,6 +45,15 @@ package com.gwatch.childtracker.phone.ui
 //   ora: coi campi attuali un messaggio "ricevuto" puo' venire solo dal
 //   figlio, ma se in futuro si tracciasse quale genitore ha scritto
 //   cosa nel multi-genitore, sarebbe la stessa etichetta a distinguerli).
+// v0.5.0 (2026-09-11): fase 4/4, supporto N bambini (vedi CONTEXT.md).
+//   Aggiunto un selettore destinatario ("Scrivi a: ..."), visibile solo
+//   se c'e' piu' di un bambino registrato (con uno solo il comportamento
+//   resta identico a prima, nessuna scelta richiesta). Le bolle non si
+//   allineano piu' sul ruolo ("parent"/"child" — non basta piu' con due
+//   genitori nello stesso thread) ma su senderId == proprio uid; il nome
+//   mostrato sopra i messaggi ricevuti e' ora quello vero
+//   (message.senderName, denormalizzato lato backend), non piu' sempre
+//   "Bambino"/"Genitore" hardcoded.
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -64,6 +73,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -89,6 +100,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.data.model.ChatMessage
+import com.gwatch.childtracker.phone.data.model.ChildInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -102,9 +114,15 @@ private val SEND_BUTTON_WIDTH = 88.dp
 @Composable
 fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val messages by viewModel.messages.collectAsState()
+    val children by viewModel.children.collectAsState()
+    val selectedChatChildId by viewModel.selectedChatChildId.collectAsState()
+    val user by viewModel.user.collectAsState()
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val context = LocalContext.current
+
+    val effectiveChildId = selectedChatChildId ?: children.firstOrNull()?.id
+    val effectiveChildName = children.find { it.id == effectiveChildId }?.name
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
@@ -115,6 +133,19 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             TopAppBar(
                 title = { Text(stringResource(R.string.chat_title)) },
                 navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } },
+                actions = {
+                    // v0.5.0: selettore destinatario — visibile solo con
+                    // piu' di un bambino registrato (con uno solo il
+                    // comportamento resta invariato, nessuna scelta da
+                    // fare).
+                    if (children.size > 1) {
+                        ChatRecipientSelector(
+                            children = children,
+                            selectedName = effectiveChildName,
+                            onSelect = { viewModel.selectChatChild(it) },
+                        )
+                    }
+                },
             )
         },
     ) { padding ->
@@ -134,7 +165,7 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 76.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    items(messages) { message -> MessageBubble(message) }
+                    items(messages) { message -> MessageBubble(message, ownUid = user?.uid) }
                 }
             }
 
@@ -183,10 +214,40 @@ fun ChatScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     }
 }
 
+/**
+ * Selettore destinatario ("Scrivi a: ..."), fase 4/4 — vedi storico
+ * versioni v0.5.0 in cima al file. Stesso pattern DropdownMenu gia'
+ * usato per il menu hamburger di MapScreen.kt.
+ */
+@Composable
+private fun ChatRecipientSelector(
+    children: List<ChildInfo>,
+    selectedName: String?,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    TextButton(onClick = { expanded = true }) {
+        Text(stringResource(R.string.chat_recipient_label, selectedName ?: ""))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        children.forEach { child ->
+            DropdownMenuItem(
+                text = { Text(child.name) },
+                onClick = {
+                    expanded = false
+                    onSelect(child.id)
+                },
+            )
+        }
+    }
+}
+
 // Colori stile WhatsApp, con varianti light/dark (a differenza del
 // watch, sempre a sfondo nero, il telefono segue il tema di sistema —
-// vedi isSystemInDarkTheme() sotto). "FromParent" = i propri messaggi
-// su questa app (il genitore e' chi la usa).
+// vedi isSystemInDarkTheme() sotto). "Own" = i propri messaggi su
+// questa app (senderId == proprio uid, non piu' solo "sender==parent":
+// con due genitori nello stesso thread un messaggio "sender==parent"
+// puo' averlo scritto l'altro genitore).
 private val OwnBubbleLight = Color(0xFFDCF8C6)
 private val OwnBubbleDark = Color(0xFF005C4B)
 private val ReceivedBubbleLight = Color(0xFFFFFFFF)
@@ -194,12 +255,12 @@ private val ReceivedBubbleDark = Color(0xFF202C33)
 private val SenderNameColor = Color(0xFF128C7E)
 
 @Composable
-private fun MessageBubble(message: ChatMessage) {
-    val fromParent = message.sender == "parent"
+private fun MessageBubble(message: ChatMessage, ownUid: String?) {
+    val isOwn = ownUid != null && message.senderId == ownUid
     val darkTheme = isSystemInDarkTheme()
     val formatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    val bubbleColor = if (fromParent) {
+    val bubbleColor = if (isOwn) {
         if (darkTheme) OwnBubbleDark else OwnBubbleLight
     } else {
         if (darkTheme) ReceivedBubbleDark else ReceivedBubbleLight
@@ -208,13 +269,13 @@ private fun MessageBubble(message: ChatMessage) {
     val bubbleShape = RoundedCornerShape(
         topStart = 12.dp,
         topEnd = 12.dp,
-        bottomStart = if (fromParent) 12.dp else 2.dp,
-        bottomEnd = if (fromParent) 2.dp else 12.dp,
+        bottomStart = if (isOwn) 12.dp else 2.dp,
+        bottomEnd = if (isOwn) 2.dp else 12.dp,
     )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (fromParent) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
     ) {
         Box(
             modifier = Modifier
@@ -224,9 +285,9 @@ private fun MessageBubble(message: ChatMessage) {
                 .padding(10.dp),
         ) {
             Column {
-                if (!fromParent) {
+                if (!isOwn) {
                     Text(
-                        text = stringResource(R.string.chat_sender_child),
+                        text = message.senderName ?: stringResource(R.string.chat_sender_child),
                         color = SenderNameColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,

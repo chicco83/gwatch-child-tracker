@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.39.0
+**Versione contesto:** 0.40.0
 **Ultimo aggiornamento:** 2026-09-11
 
 ---
@@ -1027,3 +1027,24 @@ CHANGELOG.md  Storico versioni
   `device.token`) per sapere quale sia il proprio thread. A quel punto
   il piano approvato in plan mode
   (`/root/.claude/plans/clever-roaming-moth.md`) sarà completo.
+- 2026-09-11: **Fase 4/4 completata (v0.40.0) — piano N bambini chiuso**:
+  chat con selettore destinatario. Phone-app: `ChatScreen.kt` mostra
+  "Scrivi a: [bambino] ▾" (solo con >1 bambino registrato), bolle
+  allineate per `senderId == proprio uid` (non più sul solo ruolo
+  "parent"/"child", necessario perché due genitori condividono lo
+  stesso thread `devices/{childId}/messages`). Watch-app:
+  `ChatMessage.kt`/`FcmService.kt`/`ChatScreen.kt` mostrano ora
+  `senderName` (nickname del genitore) sopra i messaggi ricevuti,
+  invece dell'etichetta fissa "Genitore" (mantenuta come fallback).
+  **Deviazione dal piano approvato**: niente `BuildConfig.CHILD_ID` sul
+  watch — ogni watch ha già un thread dedicato a un solo bambino
+  (`devices/{childId}/messages`), quindi `sender=="child"` basta da
+  solo per sapere "chi sono io" senza ambiguità; aggiungere un
+  `CHILD_ID` esplicito sarebbe stata un'astrazione in più non
+  giustificata dal problema reale. Nessun'altra modifica strutturale al
+  watch (geofence/location/eventi, già parametrizzati per childId dalle
+  fasi precedenti). Il piano
+  (`/root/.claude/plans/clever-roaming-moth.md`) è ora interamente
+  implementato lato codice; resta da fare solo la parte manuale
+  dell'utente (pubblicare `firestore.rules` aggiornate se non già
+  fatto per la fase 2, poi build/test in Android Studio).

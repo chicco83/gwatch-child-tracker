@@ -21,6 +21,11 @@ package com.gwatch.childtracker.phone.data
 // solo per observeMessages, ancora a singola chat fino alla fase 4).
 // Aggiunti anche observeOwnNickname/updateOwnNickname
 // (parents/{uid}.nickname) per la nuova SettingsScreen.kt.
+// v0.6.0 (2026-09-11): fase 4/4 — observeMessages prende ora un childId
+// esplicito (thread scelto dal selettore destinatario di ChatScreen.kt,
+// non piu' sempre Constants.DEVICE_ID) e mappa anche senderId/
+// senderName/childId dal documento, denormalizzati al momento
+// dell'invio (vedi backend/api/send-message.js, parent-command.js).
 
 import android.util.Log
 import com.google.firebase.Timestamp
@@ -53,7 +58,6 @@ import kotlinx.coroutines.tasks.await
 class DeviceRepository {
 
     private val db = FirebaseFirestore.getInstance()
-    private val deviceRef = db.collection("devices").document(Constants.DEVICE_ID)
 
     fun observeDeviceState(childId: String): Flow<DeviceState> = callbackFlow {
         val registration = db.collection("devices").document(childId).addSnapshotListener { snap, error ->
@@ -193,9 +197,9 @@ class DeviceRepository {
 
     // Sola lettura: l'invio passa da BackendClient.sendMessageToChild
     // (serve la push FCM nella stessa chiamata, vedi
-    // backend/api/send-message-to-child.js), non da qui.
-    fun observeMessages(limit: Long = 50): Flow<List<ChatMessage>> = callbackFlow {
-        val registration = deviceRef.collection("messages")
+    // backend/api/send-message.js), non da qui.
+    fun observeMessages(childId: String, limit: Long = 50): Flow<List<ChatMessage>> = callbackFlow {
+        val registration = db.collection("devices").document(childId).collection("messages")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit)
             .addSnapshotListener { snap, error ->
@@ -210,6 +214,9 @@ class DeviceRepository {
                         ChatMessage(
                             id = d.id,
                             sender = d.getString("sender") ?: "parent",
+                            senderId = d.getString("senderId"),
+                            senderName = d.getString("senderName"),
+                            childId = childId,
                             text = d.getString("text") ?: "",
                             timestampMillis = ts,
                         )
