@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.42.0
+**Versione contesto:** 0.43.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1095,3 +1095,18 @@ CHANGELOG.md  Storico versioni
   lavoro deve iniziare con un `git fetch`/diff contro l'ultimo commit
   noto — non si può più assumere che lo stato remoto rifletta solo le
   modifiche fatte in questa sessione.
+- 2026-09-18: **Primo build reale phone-app in Android Studio, fallito
+  (v0.43.0)**: `AppViewModel.kt:289` "Missing '}'" + "Unclosed comment".
+  Causa un bug mio, non dell'AI locale — un KDoc a riga singola con la
+  prosa `"devices/* e' scrivibile..."`: quel `/*` letterale nel testo
+  apre un commento annidato (Kotlin annida i block comment), il `*/`
+  di fine riga chiude quello annidato invece di quello esterno, e il
+  KDoc resta aperto fino a EOF, inghiottendo tutto il codice dopo.
+  Bug della fase 3/4, mai emerso prima perche' questa sessione non ha
+  mai avuto un SDK Android per compilare davvero — solo lettura
+  manuale del codice. Corretto, e controllato l'intero codebase Kotlin
+  (script Python che tokenizza // e /* */ correttamente, gestendo
+  l'annidamento) per lo stesso pattern altrove: nessun altro caso.
+  Promemoria per il futuro: mai usare un asterisco letterale dopo uno
+  slash in un commento Kotlin (es. path Firestore con wildcard tipo
+  "devices/*") — scrivere "devices/{childId}" o descriverlo a parole.

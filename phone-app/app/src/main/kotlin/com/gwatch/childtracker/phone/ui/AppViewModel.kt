@@ -288,7 +288,15 @@ class AppViewModel(
         }
     }
 
-    /** Rinomina un bambino (passa dal backend, devices/* e' scrivibile solo da li'). */
+    // Bug (2026-09-18, trovato dalla build reale in Android Studio): il
+    // KDoc qui sotto era "/** ... devices/* ... */" — quel "devices/*"
+    // (wildcard Firestore nella prosa) apre un commento annidato in
+    // Kotlin (i block comment si annidano), che il "*/" di fine riga
+    // chiudeva al posto di quello esterno: il commento restava aperto
+    // fino a fine file ("Unclosed comment"), con conseguente "Missing
+    // '}'" alla prima graffa che il parser non vedeva piu'. Riscritto
+    // senza l'asterisco per non riaprire il problema.
+    /** Rinomina un bambino (passa dal backend, la collezione devices e' scrivibile solo da li'). */
     fun setChildNickname(childId: String, nickname: String, onDone: (Boolean) -> Unit) {
         val user = _user.value ?: return onDone(false)
         viewModelScope.launch {

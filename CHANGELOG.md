@@ -7,6 +7,21 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-09-18
+
+### Fixed
+- **`AppViewModel.kt` non compilava** (primo build reale in Android
+  Studio dopo i fix precedenti — "Missing '}'" e "Unclosed comment" a
+  fine file). Causa: un KDoc a riga singola conteneva la prosa
+  `"devices/* e' scrivibile..."` — quel `/*` dentro il testo apre un
+  commento annidato (i block comment Kotlin si annidano), e il `*/` di
+  fine riga chiudeva quello annidato invece di quello esterno: il KDoc
+  restava aperto fino a fine file, inghiottendo tutto il codice
+  successivo. Bug pre-esistente di questa sessione (fase 3/4, mai
+  emerso prima per mancanza di SDK Android da compilare). Riscritto
+  senza l'asterisco letterale. Controllato l'intero codebase Kotlin
+  (entrambe le app) per lo stesso pattern: nessun altro caso.
+
 ## [0.42.0] - 2026-09-18
 
 ### Fixed
