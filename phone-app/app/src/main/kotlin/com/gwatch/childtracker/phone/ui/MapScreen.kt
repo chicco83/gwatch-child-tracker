@@ -93,6 +93,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -439,6 +440,11 @@ private fun StatusCard(
                         Text(
                             text = stringResource(R.string.battery_format, battery),
                             style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                battery > 50 -> Color.Green
+                                battery > 25 -> Color(0xFFFFA000)
+                                else -> Color.Red
+                            },
                         )
                     }
                 }
@@ -465,6 +471,11 @@ private fun EventsList(childEvents: List<ChildEvent>, modifier: Modifier = Modif
                 text = "${childEvent.childName} — ${eventLabel(event.type, event.zoneName)} · " +
                     formatter.format(Date(event.timestampMillis)),
                 style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                battery > 50 -> Color.Green
+                                battery > 25 -> Color(0xFFFFA000)
+                                else -> Color.Red
+                            },
                 modifier = Modifier.padding(vertical = 4.dp),
             )
         }
