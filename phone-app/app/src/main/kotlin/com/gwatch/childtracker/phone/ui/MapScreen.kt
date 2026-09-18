@@ -94,6 +94,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -437,23 +438,30 @@ private fun StatusCard(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     state.battery?.let { battery ->
-                        Text(
-                            text = stringResource(R.string.battery_format, battery),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = when {
-                                battery > 50 -> Color.Green
-                                battery > 25 -> Color(0xFFFFA000)
-                                else -> Color.Red
-                            },
-                        )
-                    }
-                }
-                TextButton(onClick = onRequestLocation, enabled = !requesting) {
-                    Text(
-                        stringResource(
-                            if (requesting) R.string.map_requesting_location else R.string.map_request_location,
-                        ),
-                    )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.battery_format, battery),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = when {
+                                    battery > 50 -> Color.Green
+                                    battery > 25 -> Color(0xFFFFA000)
+                                    else -> Color.Red
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            LinearProgressIndicator(
+                                progress = { Float.valueOf(battery) / 100f },
+                                modifier = Modifier.weight(1f).height(6.dp),
+                                color = when {
+                                    battery > 50 -> Color.Green
+                                    battery > 25 -> Color(0xFFFFA000)
+                                    else -> Color.Red
+                                },
+                            )
+                        }
                 }
             }
         }
