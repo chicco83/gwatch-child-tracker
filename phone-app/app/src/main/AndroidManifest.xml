@@ -56,5 +56,18 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.ChildTrackerPhone" />
+
+        <!-- 2026-09-18: allarme SOS che bypassa il silenzioso/DND, stesso
+             pattern dell'allarme di uscita zona sopra -->
+        <service
+            android:name=".alarm.SosAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <activity
+            android:name=".alarm.SosAlarmActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.ChildTrackerPhone" />
     </application>
 </manifest>

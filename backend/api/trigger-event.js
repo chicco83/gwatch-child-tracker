@@ -98,6 +98,17 @@
  *   l'intera collezione parents e iterare gli array fcmTokens a ogni evento:
  *   -1 lettura Firestore per notifica, token obsoleti smaltiti da FCM stesso.
  *   L'iscrizione al topic avviene lato phone-app (TrackerApplication.kt).
+ * - 0.11.0 (2026-09-18): richiesto dall'utente — la notifica SOS sul
+ *   telefono doveva poter suonare anche a telefono in silenzioso/DND,
+ *   come gia' fa l'allarme di uscita zona (vedi ExitAlarmService.kt).
+ *   Al primo "sos" di un episodio (stesso gate di shouldNotify, per non
+ *   far ripartire l'allarme ad ogni ping di sos-heartbeat.js) viene ora
+ *   mandata anche una seconda push data-only "sos_alarm" (stesso
+ *   pattern di "exit_alarm" sotto: deve poter avviare un foreground
+ *   Service anche ad app in background/uccisa). A differenza
+ *   dell'allarme di uscita zona, che e' opt-in per-zona
+ *   (alarmOnExit), l'SOS e' sempre un allarme sonoro: e' la funzione di
+ *   sicurezza piu' critica dell'app.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -248,8 +259,11 @@ module.exports = wrapHandler(async (req, res) => {
     type === "geofence_exit" ? notifyOnExit :
     true;
   const shouldAlarm = type === "geofence_exit" && alarmOnExit;
+  // v0.11.0: vedi Storico versioni sopra — l'SOS suona sempre, non e'
+  // opt-in come l'allarme di uscita zona.
+  const shouldSosAlarm = type === "sos" && shouldNotify;
 
-  if (shouldNotify || shouldAlarm) {
+  if (shouldNotify || shouldAlarm || shouldSosAlarm) {
     // corretto da qwen3.8-Flash-Next il 16-9-26: invio via topic, nessun array di
     // token da leggere/controllare (il blocco semplice mantiene le graffe bilanciate)
     {
@@ -270,6 +284,16 @@ module.exports = wrapHandler(async (req, res) => {
         await getMessaging().send({
           topic: PARENTS_TOPIC,
           data: { type: "exit_alarm", zoneName, childId },
+          android: { priority: "high" },
+        });
+      }
+      if (shouldSosAlarm) {
+        // v0.11.0: stesso motivo di "exit_alarm" sopra — data-only per
+        // poter avviare SosAlarmService anche ad app in
+        // background/uccisa (vedi phone-app/.../alarm/SosAlarmService.kt).
+        await getMessaging().send({
+          topic: PARENTS_TOPIC,
+          data: { type: "sos_alarm", childName, childId },
           android: { priority: "high" },
         });
       }

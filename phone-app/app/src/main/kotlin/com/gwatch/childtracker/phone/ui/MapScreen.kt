@@ -79,6 +79,14 @@ package com.gwatch.childtracker.phone.ui
 //   circa meta' schermo, segnalato dall'utente con screenshot — vedi
 //   commento sulla LazyRow in StatusCardRow per la causa
 //   (heightIn(max) mancante, a differenza di EventsList) e il fix.
+// v0.11.0 (2026-09-18): ancora segnalato dall'utente dopo v0.10.0 — la
+//   card doveva essere larga quanto lo schermo e piu' bassa, e il
+//   colore soglia della batteria copriva anche l'etichetta "Batteria
+//   watch:", non solo il valore. Sostituita la LazyRow di
+//   StatusCardRow con una Column + forEach (elimina alla radice il
+//   problema v0.10.0 invece di limitarsi a un heightIn), card a riga
+//   singola invece che a due righe impilate (piu' bassa), etichetta e
+//   valore batteria in due Text separati (solo il valore e' colorato).
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -92,7 +100,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -397,10 +404,18 @@ private fun SosBanner(childName: String, deactivating: Boolean, onDeactivate: ()
     }
 }
 
-// v0.8.0: riga orizzontale scorrevole di status-card, una per bambino —
-// prima una singola StatusCard fissa (un solo bambino possibile). Ogni
-// card gestisce il proprio stato "richiesta in corso", legato all'esito
-// asincrono reale della chiamata (non un fire-and-forget sincrono).
+// v0.8.0: una card per bambino, colonna verticale (non piu' riga
+// scorrevole, vedi v0.11.0 sotto). Ogni card gestisce il proprio stato
+// "richiesta in corso", legato all'esito asincrono reale della chiamata
+// (non un fire-and-forget sincrono).
+// v0.11.0 (2026-09-18): richiesta utente — la card doveva essere larga
+// quanto lo schermo (non piu' una LazyRow di card strette da 260dp) e
+// piu' bassa/compatta. Sostituita la LazyRow con una semplice Column +
+// forEach: con pochi bambini (caso reale di questo progetto) non serve
+// virtualizzazione, ed elimina alla radice il problema di v0.10.0
+// (LazyRow/LazyColumn senza vincolo di altezza che si espande a
+// riempire lo spazio disponibile) invece di limitarsi a tapparlo con
+// heightIn — una Column normale si adatta sempre al proprio contenuto.
 @Composable
 private fun StatusCardRow(
     children: List<ChildInfo>,
@@ -410,17 +425,8 @@ private fun StatusCardRow(
 ) {
     if (children.isEmpty()) return
     val context = LocalContext.current
-    // v0.10.0 (2026-09-18): segnalato dall'utente — la card diventava alta
-    // circa meta' schermo. Causa: a differenza di EventsList sotto (che
-    // usa gia' heightIn(max = 160.dp), vedi sotto), questa LazyRow non
-    // aveva nessun vincolo di altezza. Una LazyRow/LazyColumn senza un
-    // Modifier che ne limiti l'altezza si espande a riempire tutto lo
-    // spazio verticale disponibile lasciato dal Box genitore
-    // (Modifier.fillMaxSize()) invece di adattarsi al contenuto, e la
-    // Card al suo interno riceve percio' vincoli "tight" che la
-    // costringono a riempire quello spazio anziche' restare compatta.
-    LazyRow(modifier = modifier.fillMaxWidth().heightIn(max = 140.dp).padding(vertical = 4.dp)) {
-        items(children) { child ->
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        children.forEach { child ->
             var requesting by remember(child.id) { mutableStateOf(false) }
             StatusCard(
                 childName = child.name,
@@ -438,7 +444,7 @@ private fun StatusCardRow(
                         Toast.makeText(context, context.getString(feedbackRes), Toast.LENGTH_SHORT).show()
                     }
                 },
-                modifier = Modifier.width(260.dp).padding(start = 12.dp, end = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
     }
@@ -465,21 +471,31 @@ private fun StatusCard(
     // ChatScreen.kt/GeofenceScreen.kt): non compilava. Riscritta la
     // struttura, tenuto solo il colore testo (verde/arancio/rosso),
     // tolta la progress bar per non reintrodurre il vincolo weight().
+    // v0.11.0 (2026-09-18): segnalato dall'utente — il colore
+    // batteria era applicato a UN SOLO Text che conteneva l'intera
+    // stringa "Batteria watch: 89%" (stringResource battery_format),
+    // quindi anche l'etichetta "Batteria watch:" risultava colorata,
+    // non solo il valore. Ora sono due Text separati nello stesso Row:
+    // l'etichetta resta nel colore di default, solo "89%" e' colorato.
+    // Contestualmente, card a riga singola invece che a due righe
+    // impilate (vedi Storico versioni sopra su StatusCardRow): meno
+    // alta, coerente con "abbassala" richiesto dall'utente.
     Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = childName, style = MaterialTheme.typography.titleSmall)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(text = childName, style = MaterialTheme.typography.titleSmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = state.lastSeenMillis?.let { formatRelativeTime(it) }
                             ?: stringResource(R.string.no_data_yet),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                     state.battery?.let { battery ->
+                        Text(text = " · ${stringResource(R.string.battery_label)} ", style = MaterialTheme.typography.bodySmall)
                         Text(
                             text = stringResource(R.string.battery_format, battery),
                             style = MaterialTheme.typography.bodySmall,
@@ -491,13 +507,13 @@ private fun StatusCard(
                         )
                     }
                 }
-                TextButton(onClick = onRequestLocation, enabled = !requesting) {
-                    Text(
-                        stringResource(
-                            if (requesting) R.string.map_requesting_location else R.string.map_request_location,
-                        ),
-                    )
-                }
+            }
+            TextButton(onClick = onRequestLocation, enabled = !requesting) {
+                Text(
+                    stringResource(
+                        if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                    ),
+                )
             }
         }
     }

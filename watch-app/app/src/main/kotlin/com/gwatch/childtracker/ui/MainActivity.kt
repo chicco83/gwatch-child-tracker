@@ -256,9 +256,21 @@ class MainActivity : ComponentActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<GeofenceSyncWorker>(6, TimeUnit.HOURS).build(),
         )
+        // 2026-09-18: era ExistingWorkPolicy.KEEP — se un lavoro con
+        // questo stesso nome univoco esisteva gia' nel database di
+        // WorkManager (anche completato mesi fa), riaprire l'app non
+        // accodava una nuova esecuzione: bisognava aspettare il
+        // prossimo giro periodico (6h) o un riavvio del watch (dove
+        // BootReceiver.kt usa gia' REPLACE). Causa concreta del bug
+        // "zone create in precedenza non ricompaiono sulla phone-app"
+        // segnalato piu' volte dall'utente dopo il fix della
+        // migrazione lato backend (device-config.js): il fix era gia'
+        // live, ma il watch semplicemente non lo richiamava mai
+        // riaprendo solo l'app. REPLACE forza sempre una sync fresca
+        // ad ogni apertura, coerente con BootReceiver.
         workManager.enqueueUniqueWork(
             GeofenceSyncWorker.ONE_SHOT_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<GeofenceSyncWorker>().build(),
         )
     }

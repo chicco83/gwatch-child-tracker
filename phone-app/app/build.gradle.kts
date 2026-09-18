@@ -55,8 +55,11 @@ android {
         // incrementati dopo il primo bump. Bump ad ogni release d'ora in poi.
         // v0.4.0 (2026-09-18): fix buildConfig=true + fix altezza
         // StatusCard (vedi Storico versioni sopra e MapScreen.kt).
-        versionCode = 4
-        versionName = "0.4.0"
+        // v0.5.0 (2026-09-18): StatusCard a tutta larghezza/riga singola,
+        // colore solo sul valore batteria; allarme SOS che bypassa il
+        // silenzioso/DND (vedi alarm/SosAlarmService.kt).
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

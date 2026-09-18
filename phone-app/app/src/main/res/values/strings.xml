@@ -3,7 +3,11 @@
     <string name="login_subtitle">Accedi con l\'account genitore autorizzato per vedere la posizione.</string>
     <string name="sign_in_with_google">Accedi con Google</string>
     <string name="no_data_yet">Nessuna posizione ricevuta ancora</string>
-    <string name="battery_format">Batteria watch: %d%%</string>
+    <!-- 2026-09-18: separata l'etichetta dal valore (StatusCard,
+         MapScreen.kt) — solo il valore va colorato in base alla soglia,
+         non tutta la stringa "Batteria watch: X%" come prima -->
+    <string name="battery_label">Batteria:</string>
+    <string name="battery_format">%d%%</string>
     <string name="last_known_position">Ultima posizione nota</string>
     <string name="geofences_title">Zone</string>
     <!-- v0.7.0 (2026-09-11): rinominato "Esci" -> "Logout", ora dentro
@@ -31,6 +35,13 @@
     <string name="exit_alarm_title">🔔 Allarme uscita zona</string>
     <string name="exit_alarm_body">Uscito da \"%1$s\"</string>
     <string name="exit_alarm_stop">Ferma allarme</string>
+
+    <!-- 2026-09-18: allarme SOS che bypassa il silenzioso/DND (vedi
+         SosAlarmService.kt/SosAlarmActivity.kt) -->
+    <string name="sos_alarm_title">🆘 SOS — %1$s</string>
+    <string name="sos_alarm_body">Premuto il pulsante SOS sul watch. Ferma il suono e apri la mappa per vedere la posizione.</string>
+    <string name="sos_alarm_open_map">Apri mappa e ferma allarme</string>
+    <string name="sos_alarm_unknown_child">Bambino</string>
 
     <!-- v0.6.0 (2026-09-11): selettore per-bambino, una zona puo' valere
          per piu' bambini (supporto N bambini, vedi CONTEXT.md fase 2/4) -->

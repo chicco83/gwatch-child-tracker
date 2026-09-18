@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.53.0
+**Versione contesto:** 0.54.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1416,3 +1416,42 @@ CHANGELOG.md  Storico versioni
   per questo — comportamento di WorkManager voluto (evitare sync
   ridondanti ad ogni apertura app), non un bug; annotato qui solo come
   nota diagnostica per non ripetere l'indagine in futuro.
+- 2026-09-18: **Causa reale (e fix) delle zone ancora assenti +
+  allarme SOS bypass silenzioso + StatusCard a tutta larghezza
+  (v0.54.0)**. La causa ipotizzata nella voce precedente era corretta
+  ma il fix restava "aspetta o riavvia" — troppo fragile, l'utente ha
+  ritestato e le zone erano ancora assenti. Risolto alla radice:
+  `MainActivity.onCreate` (watch) ora accoda il one-shot
+  `GeofenceSyncWorker` con `ExistingWorkPolicy.REPLACE` invece di
+  `KEEP` (allineato a `BootReceiver`, che usava gia' `REPLACE`) — ogni
+  apertura dell'app forza una sync fresca, non serve piu' aspettare il
+  giro periodico (6h) o riavviare il watch.
+  Allarme SOS: richiesto dall'utente ("puo' bypassare la modalita'
+  silenziosa e far suonare il cellulare?") — la risposta era si',
+  l'app lo fa gia' per l'allarme di uscita zona
+  (`ExitAlarmService`/`ExitAlarmActivity`, `AudioAttributes.
+  USAGE_ALARM`). Riusato lo stesso pattern per un nuovo
+  `SosAlarmService`/`SosAlarmActivity`, innescato da una nuova push
+  data-only `sos_alarm` che `trigger-event.js` manda al primo SOS di
+  un episodio (stesso gate anti-spam di `shouldNotify`). A differenza
+  dell'allarme di uscita zona (opt-in per-zona, `alarmOnExit`), l'SOS
+  suona sempre — e' la funzione di sicurezza piu' critica dell'app.
+  StatusCard: l'utente ha segnalato che restava non soddisfacente
+  anche dopo v0.52.0 ("allargalo a tutto schermo e abbassalo") e che
+  il colore soglia della batteria copriva anche l'etichetta "Batteria
+  watch:", non solo il valore (un solo `Text` con l'intera stringa
+  `battery_format`). Ridisegnata: `StatusCardRow` non e' piu' una
+  `LazyRow` (v0.52.0 l'aveva solo vincolata con `heightIn`, non
+  eliminata come causa) ma una `Column` + `forEach` — con pochi
+  bambini non serve virtualizzazione, e una `Column` normale si adatta
+  sempre al proprio contenuto senza il rischio v0.52.0. Ogni
+  `StatusCard` e' ora una riga singola larga quanto lo schermo
+  (nome, "X min fa · batteria%", pulsante), con etichetta e valore
+  batteria in due `Text` separati cosi' solo il valore e' colorato.
+  Domande dell'utente su "altri valori da condividere" e accesso a
+  temperatura/segnale LTE del watch: risposto in chat (non ancora
+  implementato, nessuna decisione presa) — temperatura batteria
+  accessibile via `ACTION_BATTERY_CHANGED`/`EXTRA_TEMPERATURE` (nessun
+  permesso speciale), segnale LTE via `TelephonyManager` (richiede
+  `READ_PHONE_STATE`); da valutare in una fase successiva se
+  richiesto esplicitamente.

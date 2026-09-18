@@ -56,8 +56,11 @@ android {
         // un numero che cambia, un vecchio APK non reinstallato per
         // errore sarebbe indistinguibile da uno aggiornato). Bump ad
         // ogni release d'ora in poi.
-        versionCode = 4
-        versionName = "0.4.0"
+        // v0.5.0 (2026-09-18): GeofenceSyncWorker one-shot ora usa
+        // ExistingWorkPolicy.REPLACE invece di KEEP (vedi MainActivity.kt)
+        // — riapre l'app forza sempre una sync fresca delle zone.
+        versionCode = 5
+        versionName = "0.5.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

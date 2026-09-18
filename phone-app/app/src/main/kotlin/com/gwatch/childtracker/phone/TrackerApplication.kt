@@ -28,6 +28,17 @@ class TrackerApplication : Application() {
                     enableVibration(false)
                 },
             )
+            // 2026-09-18: canale separato per l'allarme SOS, stesso
+            // identico motivo di ALARM_CHANNEL_ID sopra — suono/vibrazione
+            // gestiti a mano da SosAlarmService (AudioAttributes.
+            // USAGE_ALARM, bypassa il volume suoneria/silenzioso), il
+            // canale non deve suonare anche il proprio default sopra.
+            manager.createNotificationChannel(
+                NotificationChannel(SOS_ALARM_CHANNEL_ID, "Allarme SOS", NotificationManager.IMPORTANCE_HIGH).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                },
+            )
         }
 
         // osmdroid: user agent obbligatorio (policy dei tile server
@@ -56,5 +67,6 @@ class TrackerApplication : Application() {
     companion object {
         const val CHANNEL_ID = "alerts"
         const val ALARM_CHANNEL_ID = "exit_alarm"
+        const val SOS_ALARM_CHANNEL_ID = "sos_alarm"
     }
 }

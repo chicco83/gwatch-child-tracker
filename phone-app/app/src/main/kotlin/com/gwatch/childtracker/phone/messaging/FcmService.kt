@@ -30,6 +30,13 @@ package com.gwatch.childtracker.phone.messaging
 //   impostato nessun contentIntent sulla notifica. Aggiunto un
 //   PendingIntent verso MainActivity con l'extra EXTRA_OPEN_CHAT, letta
 //   li' per navigare subito alla schermata Chat (vedi MainActivity.kt).
+// v0.5.0 (2026-09-18): richiesto dall'utente — l'SOS deve poter
+//   suonare anche a telefono in silenzioso/DND. Gestito "sos_alarm"
+//   (push data-only separata mandata da trigger-event.js al primo SOS
+//   di un episodio) come gia' fatto per "exit_alarm": avvia
+//   SosAlarmService invece di affidarsi alla notifica passiva del
+//   fallback sotto (che rispetta il volume suoneria come qualunque
+//   altra notifica).
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -42,6 +49,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.gwatch.childtracker.phone.R
 import com.gwatch.childtracker.phone.TrackerApplication
 import com.gwatch.childtracker.phone.alarm.ExitAlarmService
+import com.gwatch.childtracker.phone.alarm.SosAlarmService
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.model.ChatMessage
@@ -70,6 +78,11 @@ class FcmService : FirebaseMessagingService() {
             "exit_alarm" -> {
                 val zoneName = message.data["zoneName"] ?: getString(R.string.geofence_unknown_zone)
                 ExitAlarmService.start(this, zoneName)
+                return
+            }
+            "sos_alarm" -> {
+                val childName = message.data["childName"] ?: getString(R.string.sos_alarm_unknown_child)
+                SosAlarmService.start(this, childName)
                 return
             }
             "chat" -> {

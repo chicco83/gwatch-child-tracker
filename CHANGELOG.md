@@ -7,6 +7,44 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-09-18
+
+### Added
+- phone-app: allarme SOS che bypassa il silenzioso/DND, richiesto
+  dall'utente. Riusa lo stesso pattern gia' collaudato dell'allarme di
+  uscita zona (`ExitAlarmService`/`ExitAlarmActivity`): nuovo
+  `SosAlarmService`/`SosAlarmActivity`, `AudioAttributes.USAGE_ALARM`
+  (bypassa il volume suoneria come fanno le sveglie), full-screen
+  intent sopra il lockscreen, vibrazione in loop, cap di sicurezza 10
+  minuti. A differenza dell'allarme di uscita zona (opt-in per-zona),
+  l'SOS suona sempre — `backend/api/trigger-event.js` manda ora anche
+  una push data-only `sos_alarm` al primo SOS di un episodio (stesso
+  gate anti-spam gia' in uso per la notifica normale).
+
+### Changed
+- phone-app: `StatusCard` (mappa) ridisegnata a riga singola larga
+  quanto lo schermo, invece della riga scorrevole di card strette
+  260dp — richiesto dall'utente dopo un secondo giro di test reale.
+  Sostituita anche la `LazyRow` sottostante con una `Column` + forEach,
+  che elimina alla radice il problema v0.52.0 (nessun bisogno di
+  virtualizzazione con pochi bambini).
+- phone-app: il colore soglia della batteria (verde/arancio/rosso) ora
+  si applica solo al valore percentuale, non piu' anche all'etichetta
+  "Batteria watch:" che stava nello stesso `Text` — segnalato
+  dall'utente ("lascia verde solo il valore della carica").
+
+### Fixed
+- watch-app: causa reale del bug "le zone create in precedenza non
+  ricompaiono sulla phone-app", persistente anche dopo il fix della
+  migrazione lato backend (v0.49.0). `MainActivity.onCreate` accodava
+  il lavoro one-shot `GeofenceSyncWorker` con
+  `ExistingWorkPolicy.KEEP`: se un lavoro con lo stesso nome univoco
+  esisteva gia' nel database di WorkManager (anche se completato mesi
+  fa, prima del fix), riaprire l'app non forzava una nuova chiamata a
+  `GET /api/device-config` — serviva il giro periodico (6h) o un
+  riavvio del watch (`BootReceiver` usa gia' `REPLACE`). Cambiato a
+  `REPLACE`: ogni apertura dell'app forza ora una sync fresca.
+
 ## [0.52.0] - 2026-09-18
 
 ### Fixed
