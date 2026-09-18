@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.49.0
+**Versione contesto:** 0.50.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -433,6 +433,84 @@ continuano a funzionare senza alcuna degradazione.
 - Chiamate/messaggi whitelist
 - Widget posizione sulla home del telefono
 - Escalation SOS con reinvio automatico se non confermato
+
+### Complicazione watch (stato SOS/messaggi/invio) — IN STANDBY
+
+Richiesta utente (2026-09-18): integrare stato SOS, invio posizione,
+messaggio inviato/ricevuto in una watchface. **Deliberatamente NON
+avviata ora** — piano scritto e messo in backlog su richiesta esplicita
+("lasciamo il punto in standby per una fase successiva"), da
+riprendere in una fase futura dopo aver stabilizzato i bug GPS/
+notifiche attualmente in corso.
+
+**Approccio scelto: Complicazione, non una watchface custom.** Una
+watchface sostitutiva (WatchFaceService, rendering canvas proprio,
+gestione manuale della modalità ambient/basso consumo) è un
+sottosistema enormemente più grosso e costringerebbe l'utente ad
+abbandonare il quadrante che già usa. Una **complicazione**
+(`androidx.wear.watchface.complications.datasource.ComplicationDataSourceService`)
+è invece un piccolo riquadro dati che l'utente aggiunge al SUO
+quadrante attuale (se lo supporta), stesso meccanismo di "batteria"/
+"passi" già familiare su Wear OS.
+
+**Limite intrinseco**: una complicazione mostra un solo stato alla
+volta (icona + testo breve, tipo `SHORT_TEXT`), non 4 notifiche
+distinte in contemporanea. Priorità proposta (il primo stato vero
+vince):
+1. SOS attivo (icona rossa, "SOS attivo")
+2. Messaggio non letto dal genitore (icona busta, nome mittente o
+   conteggio)
+3. Esito ultimo invio posizione/SOS (✓ inviato / in corso / GPS
+   assente — riusa lo stato già esposto da `GpsAvailability`/gli esiti
+   dei worker)
+4. Altrimenti: stato "a riposo" (nessuna icona particolare, o ultima
+   posizione inviata)
+
+Se il quadrante dell'utente ha più slot liberi, si può eventualmente
+duplicare su 2 slot (es. uno per SOS/messaggi, uno per stato invio) —
+da valutare in fase di implementazione reale, non bloccante per il
+disegno.
+
+**Componenti da aggiungere (watch-app)**:
+- Nuovo `ComplicationDataSourceService` (servizio, non Activity) —
+  risponde a `onComplicationRequest` restituendo il tipo `SHORT_TEXT`
+  con icona+testo secondo la priorità sopra, letto da uno stato locale
+  cache (non da una query Firestore sincrona: il sistema chiama questo
+  servizio on-demand e si aspetta una risposta rapida).
+- Lo stato cache va aggiornato dagli stessi punti che già esistono:
+  `SosState` (SOS attivo/disattivo), un nuovo stato "messaggi non
+  letti" (da agganciare a `FcmService`/`ChatScreen.kt`, non ancora
+  tracciato oggi in nessun singleton), l'esito dei worker
+  (`LocationRequestWorker`/`SosWorker`, già esposto in parte da
+  `GpsAvailability`). Dopo ogni cambiamento, chiamare
+  `ComplicationDataSourceUpdateRequester` per dire al sistema di
+  richiedere subito un refresh (altrimenti la complicazione si
+  aggiorna solo ai refresh periodici schedulati dal sistema, non in
+  tempo reale).
+- Tap sulla complicazione: apre l'app sulla schermata pertinente
+  (chat se il trigger è un messaggio, schermo principale altrimenti) —
+  `PendingIntent` standard, stesso pattern già usato per le notifiche
+  push esistenti (`FcmService.kt`).
+- Dichiarazione in `AndroidManifest.xml` (nuovo `<service>` con
+  intent-filter `android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST`
+  + metadata XML che elenca i tipi di dato supportati) — componente
+  mai usato finora in questo progetto, quindi zero rischio di
+  regressione su codice esistente, ma anche zero esperienza pregressa
+  da riusare: la prima implementazione andrà verificata su hardware
+  reale più del solito (nessun modo di simulare le complicazioni da
+  questa sessione, che non ha un Android SDK).
+
+**Passo manuale utente (non automatizzabile)**: aggiungere la
+complicazione al proprio quadrante è un'azione che l'utente deve fare
+lui stesso dalle impostazioni del quadrante sul watch (Wear OS non
+permette a un'app di auto-installarsi come complicazione attiva) —
+va documentato chiaramente al momento del rilascio, incluso il fatto
+che funziona solo su quadranti che supportano complicazioni
+personalizzate (non tutti i quadranti preinstallati Samsung lo fanno).
+
+**Stima rischio/sforzo**: medio — nessuna riscrittura di codice
+esistente, ma un componente Android interamente nuovo per questo
+progetto. Da avviare solo a bug GPS/notifiche correnti chiusi.
 
 ## Struttura repo
 
@@ -1268,3 +1346,15 @@ CHANGELOG.md  Storico versioni
   l'utente: ricompilare/reinstallare pulita la phone-app (non solo il
   watch) e verificare che "v0.3.0" (o superiore) compaia sotto
   "Dov'è" prima di ricontrollare entrambi i problemi.
+- 2026-09-18: **Piano complicazione watch (stato SOS/messaggi/invio)
+  scritto e messo in standby (v0.50.0)**, su richiesta esplicita
+  dell'utente ("fai un piano e lasciamo il punto in standby per una
+  fase successiva") — nessun codice toccato, solo pianificazione in
+  Backlog Fase 3. Approccio scelto in fase di discussione con
+  l'utente: una Complicazione Wear OS (si aggiunge al quadrante che
+  l'utente già usa) invece di una watchface custom sostitutiva (molto
+  più costosa e costringerebbe a cambiare quadrante). Dettaglio
+  tecnico completo (priorità fra i 4 stati, componenti nuovi lato
+  watch-app, passo manuale utente per attivarla) nella sezione
+  "Complicazione watch" sotto "Backlog Fase 3". Da riprendere solo
+  dopo aver chiuso i bug GPS/notifiche attualmente in diagnosi.
