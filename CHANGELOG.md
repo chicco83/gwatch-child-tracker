@@ -7,6 +7,27 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-09-18
+
+### Added
+- **Numero di versione visibile in app**, accanto al nome, su entrambe
+  le app (`MapScreen.kt` sul telefono, `MainActivity.kt` sul watch) —
+  richiesto dall'utente per poter verificare a colpo d'occhio, senza
+  aprire le Impostazioni di sistema, se l'ultima build compilata sia
+  davvero quella installata (rilevante per la diagnosi in corso).
+
+### Confirmed
+- **Tracking automatico periodico**: già presente e funzionante di suo
+  (non serviva un nuovo sviluppo) — `LocationTrackingService.kt`
+  richiede un fix ogni 10 minuti da fermo/1 minuto in movimento,
+  bufferizzati e caricati verso il backend ogni 15 minuti
+  (`LocationUploadWorker`, periodico) o subito se il buffer supera 15
+  punti — più frequente della richiesta utente di "ogni 30 minuti".
+  Dipende dallo stesso `FusedLocationProviderClient` del bug in
+  diagnosi (fix GPS che non arriva mai): se il GPS non si aggancia,
+  anche questo tracking automatico resta silenzioso, non solo l'invio
+  manuale/SOS.
+
 ## [0.46.0] - 2026-09-18
 
 ### Fixed

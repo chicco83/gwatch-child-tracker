@@ -24,6 +24,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import com.gwatch.childtracker.BuildConfig
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -379,7 +380,12 @@ private fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
+        // 2026-09-18: aggiunta la versione (BuildConfig.VERSION_NAME) sotto
+        // il nome app — richiesto dall'utente per verificare a colpo
+        // d'occhio, senza aprire le Impostazioni di sistema, se l'ultima
+        // build compilata sia davvero quella installata sul watch.
         Text(text = stringResourceCompat(R.string.app_name))
+        Text(text = "v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.caption3)
         if (sosActive) {
             Text(
                 text = stringResourceCompat(R.string.sos_active_banner),

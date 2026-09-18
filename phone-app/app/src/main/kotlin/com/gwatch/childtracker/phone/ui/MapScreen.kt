@@ -73,6 +73,7 @@ package com.gwatch.childtracker.phone.ui
 //   proprio/dei bambini, "Aggiungi bambino").
 
 import android.widget.Toast
+import com.gwatch.childtracker.phone.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -218,7 +219,22 @@ fun MapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
+                // 2026-09-18: aggiunta la versione (BuildConfig.VERSION_NAME)
+                // accanto al nome app — richiesto dall'utente per poter
+                // verificare da schermo, senza aprire le Impostazioni di
+                // sistema, se l'ultima build compilata sia davvero quella
+                // installata (rilevante durante questa diagnosi: una build
+                // vecchia non reinstallata per errore avrebbe lo stesso
+                // comportamento del bug in corso).
+                title = {
+                    Column {
+                        Text(stringResource(R.string.app_name))
+                        Text(
+                            text = "v${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                },
                 actions = {
                     TextButton(onClick = onOpenChat) { Text(stringResource(R.string.chat_title)) }
                     TextButton(onClick = onOpenGeofences) { Text(stringResource(R.string.geofences_title)) }

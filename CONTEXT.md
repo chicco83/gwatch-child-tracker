@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.46.0
+**Versione contesto:** 0.47.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1184,3 +1184,25 @@ CHANGELOG.md  Storico versioni
   mano nelle impostazioni) — non ancora confermato via Logcat, cui
   l'utente non sapeva accedere; fornite istruzioni per farlo dal tab
   "Logcat" di Android Studio invece che da riga di comando adb.
+- 2026-09-18: **Numero di versione in app + conferma tracking
+  automatico (v0.47.0)**. Richiesta utente: mostrare la versione
+  accanto al nome app (telefono e watch) — aggiunto
+  `BuildConfig.VERSION_NAME` sotto/accanto al titolo in
+  `phone-app/.../ui/MapScreen.kt` (TopAppBar) e
+  `watch-app/.../ui/MainActivity.kt` (schermata principale). Verificato
+  con lo stesso tokenizer Python usato in precedenza (nessun compilatore
+  disponibile in sessione): bilanciamento graffe/parentesi/commenti OK
+  su entrambi i file.
+  Richiesta utente: "l'orologio deve comunicare la posizione in
+  automatica ogni 30 minuti" — verificato che esiste già ed è più
+  frequente del richiesto: `LocationTrackingService.kt` chiede un fix
+  ogni 10' da fermo / 1' in movimento (sampling adattivo via
+  ActivityRecognition), bufferizza in `PendingLocationStore` e carica
+  verso `/api/ingest-location` ogni 15' (`LocationUploadWorker`,
+  periodico schedulato in `MainActivity.kt`) o subito se il buffer
+  supera 15 punti. Nessuna modifica al codice necessaria — ma dipende
+  dallo stesso `FusedLocationProviderClient` del bug "fix GPS non
+  disponibile" in diagnosi (v0.45.0/0.46.0): se il GPS non si aggancia,
+  anche questo tracking periodico resta silenzioso, non solo
+  l'invio manuale/SOS. Utente sta provando un riavvio del watch per
+  vedere se risolve il mancato fix GPS — esito non ancora riportato.
