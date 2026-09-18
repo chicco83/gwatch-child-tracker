@@ -47,6 +47,12 @@ class LocationRequestWorker(
     // mancante o fix GPS mai arrivato. Prima nessuno dei due casi
     // lasciava traccia in Logcat (Result.failure()/retry() silenziosi).
     // Aggiunto Log.w su entrambi.
+    // v0.8.0 (2026-09-18): Logcat reale ha confermato la causa esatta —
+    // "fix GPS non disponibile (null)" ripetuto per oltre un'ora.
+    // Aggiunto GpsAvailability.markUnavailable()/markAvailable() qui,
+    // letto dalla UI (MainActivity.kt) per disabilitare il pulsante
+    // "Invia posizione" con un messaggio esplicito invece di lasciarlo
+    // ritentare in silenzio (vedi GpsAvailability.kt).
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         val hasPermission = ContextCompat.checkSelfPermission(
@@ -75,8 +81,10 @@ class LocationRequestWorker(
         }
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
+            GpsAvailability.markUnavailable()
             return Result.retry()
         }
+        GpsAvailability.markAvailable()
 
         val battery = currentBatteryPercent()
 

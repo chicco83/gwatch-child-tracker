@@ -25,6 +25,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import com.gwatch.childtracker.BuildConfig
+import com.gwatch.childtracker.location.GpsAvailability
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -168,6 +169,7 @@ class MainActivity : ComponentActivity() {
         }
         requestPermissionsAndStart()
         registerFcmToken()
+        observeWorkOutcomes()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -283,6 +285,17 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    // v0.7.0 (2026-09-18): il Toast di conferma era osservato solo sul
+    // work.id della singola pressione (getWorkInfoByIdLiveData), legato
+    // al ciclo di vita di QUESTA Activity: se il GPS restava assente per
+    // minuti/ore (caso reale confermato via Logcat) e nel frattempo
+    // l'utente chiudeva/riapriva l'app, il "posizione/SOS inviata"
+    // finale poteva non arrivare mai a schermo. Spostata la conferma su
+    // observeWorkOutcomes() (chiamato una sola volta in onCreate), che
+    // osserva il nome univoco del lavoro invece del singolo id: cosi'
+    // riaprendo l'app si vede comunque l'esito, anche se il fix GPS e'
+    // arrivato a watch in tasca. Qui restano solo l'accodamento e il
+    // Toast immediato "in corso".
     private fun sendSos() {
         val work = OneTimeWorkRequestBuilder<SosWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -293,16 +306,6 @@ class MainActivity : ComponentActivity() {
             work,
         )
         Toast.makeText(this, getString(R.string.sos_sending), Toast.LENGTH_SHORT).show()
-
-        WorkManager.getInstance(this).getWorkInfoByIdLiveData(work.id).observe(this) { info ->
-            when (info?.state) {
-                WorkInfo.State.SUCCEEDED ->
-                    Toast.makeText(this, getString(R.string.sos_sent), Toast.LENGTH_LONG).show()
-                WorkInfo.State.FAILED ->
-                    Toast.makeText(this, getString(R.string.sos_failed), Toast.LENGTH_LONG).show()
-                else -> Unit
-            }
-        }
     }
 
     // v0.3.0 (2026-09-10): pulsante "Invia posizione attuale" — invio
@@ -317,6 +320,8 @@ class MainActivity : ComponentActivity() {
     // genitore diceva sempre "il bambino ha inviato la posizione" anche
     // quando era stato lui stesso a chiederla da "Aggiorna posizione"
     // sulla phone-app. Vedi LocationRequestWorker.kt.
+    // v0.7.0 (2026-09-18): vedi il commento su sendSos() sopra — stessa
+    // ragione, stesso spostamento della conferma su observeWorkOutcomes().
     private fun sendLocationNow() {
         val work = OneTimeWorkRequestBuilder<LocationRequestWorker>()
             .setInputData(workDataOf(LocationRequestWorker.KEY_SOURCE to LocationRequestWorker.SOURCE_CHILD))
@@ -327,13 +332,48 @@ class MainActivity : ComponentActivity() {
             work,
         )
         Toast.makeText(this, getString(R.string.location_sending), Toast.LENGTH_SHORT).show()
+    }
 
-        WorkManager.getInstance(this).getWorkInfoByIdLiveData(work.id).observe(this) { info ->
-            when (info?.state) {
-                WorkInfo.State.SUCCEEDED ->
+    // v0.7.0 (2026-09-18): osservatore unico, registrato una sola volta
+    // in onCreate, sul NOME del lavoro (getWorkInfosForUniqueWorkLiveData)
+    // invece che sul singolo work.id di ogni pressione — vedi i commenti
+    // su sendSos()/sendLocationNow() sopra per il motivo. lastNotified*
+    // evita di ripetere lo stesso Toast se l'utente riapre l'app dopo
+    // aver gia' visto l'esito di quel preciso lavoro; un nuovo lavoro
+    // (nuova pressione, nuovo id via ExistingWorkPolicy.REPLACE) supera
+    // sempre il controllo e notifica di nuovo.
+    private var lastNotifiedSosWorkId: java.util.UUID? = null
+    private var lastNotifiedLocationWorkId: java.util.UUID? = null
+
+    private fun observeWorkOutcomes() {
+        val workManager = WorkManager.getInstance(this)
+        workManager.getWorkInfosForUniqueWorkLiveData(SosWorker.WORK_NAME).observe(this) { infos ->
+            val info = infos.firstOrNull() ?: return@observe
+            if (info.id == lastNotifiedSosWorkId) return@observe
+            when (info.state) {
+                WorkInfo.State.SUCCEEDED -> {
+                    lastNotifiedSosWorkId = info.id
+                    Toast.makeText(this, getString(R.string.sos_sent), Toast.LENGTH_LONG).show()
+                }
+                WorkInfo.State.FAILED -> {
+                    lastNotifiedSosWorkId = info.id
+                    Toast.makeText(this, getString(R.string.sos_failed), Toast.LENGTH_LONG).show()
+                }
+                else -> Unit
+            }
+        }
+        workManager.getWorkInfosForUniqueWorkLiveData(LocationRequestWorker.WORK_NAME).observe(this) { infos ->
+            val info = infos.firstOrNull() ?: return@observe
+            if (info.id == lastNotifiedLocationWorkId) return@observe
+            when (info.state) {
+                WorkInfo.State.SUCCEEDED -> {
+                    lastNotifiedLocationWorkId = info.id
                     Toast.makeText(this, getString(R.string.location_sent), Toast.LENGTH_LONG).show()
-                WorkInfo.State.FAILED ->
+                }
+                WorkInfo.State.FAILED -> {
+                    lastNotifiedLocationWorkId = info.id
                     Toast.makeText(this, getString(R.string.location_failed), Toast.LENGTH_LONG).show()
+                }
                 else -> Unit
             }
         }
@@ -372,6 +412,12 @@ private fun MainScreen(
     // dopo la conferma ne' quando il genitore lo disattiva da remoto
     // (vedi SosState.kt/SosLocationService.kt).
     val sosActive by SosState.active.collectAsState()
+    // v0.7.0 (2026-09-18): letto da GpsAvailability (vedi
+    // location/GpsAvailability.kt) per disabilitare "Invia posizione"
+    // quando il GPS non risponde, con un testo esplicito invece di
+    // lasciare il pulsante premibile a vuoto. SOS resta SEMPRE
+    // abilitato, a prescindere da questo stato — non va mai bloccato.
+    val gpsAvailable by GpsAvailability.available.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -404,7 +450,16 @@ private fun MainScreen(
         Chip(
             onClick = onLocationClick,
             modifier = Modifier.fillMaxWidth(),
-            label = { CenteredChipLabel(stringResourceCompat(R.string.location_button)) },
+            enabled = gpsAvailable != false,
+            label = {
+                CenteredChipLabel(
+                    if (gpsAvailable == false) {
+                        stringResourceCompat(R.string.location_gps_unavailable)
+                    } else {
+                        stringResourceCompat(R.string.location_button)
+                    },
+                )
+            },
         )
         Chip(
             onClick = onChatClick,

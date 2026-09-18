@@ -20,6 +20,12 @@
     <string name="location_sending">Invio posizione in corso…</string>
     <string name="location_sent">Posizione inviata</string>
     <string name="location_failed">Invio posizione fallito</string>
+    <!-- v0.8.0 (2026-09-18): etichetta del pulsante "Invia posizione"
+         quando GpsAvailability segnala GPS assente (vedi
+         location/GpsAvailability.kt) — il pulsante resta disabilitato
+         finche' non arriva un fix, invece di sembrare rotto premendolo
+         a vuoto. -->
+    <string name="location_gps_unavailable">Posizione non disponibile, segnale GPS assente</string>
 
     <!-- v0.2.0: chat -->
     <string name="chat_button">Messaggi</string>

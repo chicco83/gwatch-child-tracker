@@ -56,8 +56,8 @@ android {
         // un numero che cambia, un vecchio APK non reinstallato per
         // errore sarebbe indistinguibile da uno aggiornato). Bump ad
         // ogni release d'ora in poi.
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

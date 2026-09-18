@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.gwatch.childtracker.location.GpsAvailability
 import com.gwatch.childtracker.network.BackendClient
 import kotlinx.coroutines.tasks.await
 
@@ -33,6 +34,10 @@ class SosWorker(
     // dal primo test hardware reale, confermato dai log Vercel: zero
     // chiamate a /api/trigger-event). Aggiunto Log.w sui due casi che
     // bloccano l'invio prima ancora della chiamata di rete.
+    // v0.6.0 (2026-09-18): stesso fix di LocationRequestWorker.kt v0.8.0
+    // — GpsAvailability.markUnavailable()/markAvailable(), letto dalla UI
+    // per lo stato del pulsante "Invia posizione" (SOS resta sempre
+    // abilitato, non va mai bloccato).
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         val hasPermission = ContextCompat.checkSelfPermission(
@@ -59,8 +64,10 @@ class SosWorker(
         }
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
+            GpsAvailability.markUnavailable()
             return Result.retry()
         }
+        GpsAvailability.markAvailable()
 
         val battery = currentBatteryPercent()
 

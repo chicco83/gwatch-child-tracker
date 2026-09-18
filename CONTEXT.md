@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.47.0
+**Versione contesto:** 0.48.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1206,3 +1206,34 @@ CHANGELOG.md  Storico versioni
   anche questo tracking periodico resta silenzioso, non solo
   l'invio manuale/SOS. Utente sta provando un riavvio del watch per
   vedere se risolve il mancato fix GPS — esito non ancora riportato.
+- 2026-09-18: **GPS assente: SOS sempre attivo, "Invia posizione"
+  disabilitato con messaggio esplicito, conferma più affidabile
+  (v0.48.0)**. Decisione discussa con l'utente: proposto io di NON
+  disabilitare mai SOS (è la funzione di sicurezza più critica, e il
+  caso "GPS assente" — es. al chiuso — è spesso proprio quello in cui
+  serve di più), utente d'accordo. Introdotto `GpsAvailability`
+  (singleton condiviso, stesso pattern di `SosState`), aggiornato da
+  `LocationTrackingService` (tracking periodico, ogni 10'/1') e dai
+  worker `LocationRequestWorker`/`SosWorker` (invio manuale/SOS) —
+  nessun nuovo polling GPS, riusa i fix già richiesti da queste tre
+  fonti esistenti. `MainScreen` in `MainActivity.kt` disabilita il
+  Chip "Invia posizione" quando `GpsAvailability.available == false`,
+  mostrando "Posizione non disponibile, segnale GPS assente" al posto
+  dell'etichetta normale.
+  Richiesta utente aggiuntiva: "deve esserci una comunicazione quando
+  il fix viene ottenuto e la posizione inviata" — la conferma
+  (`Toast`) esisteva già ma era legata al `work.id` della singola
+  pressione (`getWorkInfoByIdLiveData`), quindi al ciclo di vita di
+  quella specifica istanza di Activity: con un GPS assente per
+  minuti/ore (caso reale confermato via Logcat), chiudere/riaprire
+  l'app nel frattempo poteva far perdere la conferma finale.
+  Sostituita con un unico observer per nome univoco del lavoro
+  (`getWorkInfosForUniqueWorkLiveData`, registrato una sola volta in
+  `onCreate`, con dedup su `lastNotified*WorkId` per non ripetere lo
+  stesso Toast ad ogni riapertura): riaprendo l'app si vede comunque
+  l'esito reale. Limite noto (documentato in CHANGELOG, non risolto
+  qui): se il processo watch viene terminato del tutto dal sistema
+  mentre il GPS è ancora assente, non c'è comunque un Toast
+  retroattivo alla riapertura — richiederebbe una notifica di sistema
+  invece di un Toast legato all'Activity, fuori scope per questa
+  iterazione.

@@ -45,6 +45,11 @@ class LocationTrackingService : Service() {
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
+            // v0.8.0 (2026-09-18): segnala a GpsAvailability che il GPS
+            // risponde — riusa questo callback gia' esistente (tracking
+            // periodico automatico), nessun polling aggiuntivo. Vedi
+            // GpsAvailability.kt per il contesto completo.
+            GpsAvailability.markAvailable()
             val point = LocationPoint(
                 lat = location.latitude,
                 lon = location.longitude,

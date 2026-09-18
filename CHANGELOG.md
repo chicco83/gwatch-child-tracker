@@ -7,6 +7,42 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-09-18
+
+### Added
+- **`GpsAvailability`** (nuovo, `watch-app/.../location/GpsAvailability.kt`):
+  stato condiviso "il GPS risponde?", aggiornato da
+  `LocationTrackingService` (tracking periodico automatico) e da
+  `LocationRequestWorker`/`SosWorker` (invio manuale/SOS) — nessun
+  polling GPS aggiuntivo, riusa i fix già richiesti da queste tre fonti.
+- **Pulsante "Invia posizione"**: disabilitato quando `GpsAvailability`
+  segnala GPS assente, con etichetta "Posizione non disponibile,
+  segnale GPS assente" al posto di "Invia posizione" — richiesto
+  dall'utente dopo la diagnosi via Logcat (v0.45.0/0.46.0) che ha
+  confermato il fix GPS mancante come causa reale. **SOS resta sempre
+  abilitato** (scelta esplicita, non richiesta dell'utente ma
+  raccomandazione accettata): è la funzione di sicurezza più critica,
+  non va mai bloccata — è spesso proprio in mancanza di segnale (al
+  chiuso) che serve di più, e deve poter partire comunque non appena un
+  fix arriva.
+- **Conferma "posizione/SOS inviata" più affidabile**: prima veniva
+  osservato solo il `work.id` della singola pressione, legato al ciclo
+  di vita dell'Activity — se il GPS restava assente per minuti/ore
+  (caso reale) e l'utente chiudeva/riapriva l'app nel frattempo, la
+  conferma finale poteva non comparire mai. Ora `MainActivity.kt`
+  osserva una volta sola (in `onCreate`) il **nome univoco** del lavoro
+  (`getWorkInfosForUniqueWorkLiveData`) invece del singolo id: riaprendo
+  l'app si vede comunque l'esito reale (successo o fallimento
+  definitivo), anche se il fix è arrivato ad app chiusa.
+
+### Known limitations
+- La conferma resta legata al processo dell'app: se il sistema termina
+  del tutto il processo watch (non solo l'Activity) mentre il GPS è
+  ancora assente, alla riapertura non c'è comunque nulla da "recuperare"
+  a livello di notifica — WorkManager riprenderà comunque il lavoro in
+  background, ma senza un Toast retroattivo. Non risolto in questa
+  versione (richiederebbe una notifica di sistema invece di un Toast).
+
 ## [0.47.0] - 2026-09-18
 
 ### Added
