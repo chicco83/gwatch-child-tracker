@@ -73,4 +73,4 @@ module.exports = wrapHandler(async (req, res) => {
     battery: data.battery ?? null,
     last_seen: data.lastSeen ? data.lastSeen.toDate().toISOString() : null,
   });
-};
+});

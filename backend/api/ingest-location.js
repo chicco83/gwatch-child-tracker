@@ -119,4 +119,4 @@ module.exports = wrapHandler(async (req, res) => {
 
   await batch.commit();
   successResponse(res, { received: points.length });
-};
+});

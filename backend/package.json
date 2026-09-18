@@ -5,7 +5,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "firebase-admin": "^12.5.0"

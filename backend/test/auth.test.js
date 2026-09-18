@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 // Test per _lib/auth.js — corretto da qwen3.8-Flash-Next il 16-9-26.
-import { test, describe } from "node:test";
-import assert from "node:assert/strict";
-import { timingSafeEquals, checkHaToken } from "../api/_lib/auth.js";
+// Bug (2026-09-18): sintassi import ESM in un progetto senza
+// "type": "module" in package.json (tutto il resto del backend e'
+// CommonJS, vedi _lib/auth.js stesso) — "node --test test/" (lo
+// script "test" di package.json) falliva a caricare questo file con
+// "Cannot use import statement outside a module". Riportato a
+// require(), come quota.test.js.
+const { test, describe } = require("node:test");
+const assert = require("node:assert/strict");
+const { timingSafeEquals, checkHaToken } = require("../api/_lib/auth.js");
 describe("timingSafeEquals", () => {
   test("stesso valore -> true", () => {
     assert.equal(timingSafeEquals("abc", "abc"), true);

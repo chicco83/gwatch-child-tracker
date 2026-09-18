@@ -39,14 +39,19 @@ class TrackerApplication : Application() {
             osmdroidBasePath = File(cacheDir, "osmdroid")
             osmdroidTileCache = File(osmdroidBasePath, "tiles")
         }
-    }
 
-        // corretto da qwen3.8-Flash-Next il 16-9-26: iscrizione al topic FCM dei genitori (vedi Constants.kt).
-        // L'iscrizione e idempotente: ripetuta ad ogni avvio dell'app, cosi' sopravvive
-        // anche a reset dati/cancellazione del token. runCatching perche un eventuale
-        // fallimento (es. offline al primo avvio) non deve mai bloccare l'avvio; in quel
-        // caso la ri-iscrizione di FcmService.onNewToken copre il buco.
+        // Bug (qwen3.8turbo-coder, 2026-09-18): questa chiamata era stata
+        // messa DOPO la chiusura di onCreate() invece che al suo interno —
+        // uno statement eseguibile piazzato direttamente nel corpo della
+        // classe, non valido in Kotlin (la app non compilava piu'). Vedi
+        // Constants.kt: iscrizione al topic FCM dei genitori. L'iscrizione
+        // e' idempotente: ripetuta ad ogni avvio dell'app, cosi' sopravvive
+        // anche a reset dati/cancellazione del token. runCatching perche' un
+        // eventuale fallimento (es. offline al primo avvio) non deve mai
+        // bloccare l'avvio; in quel caso la ri-iscrizione di
+        // FcmService.onNewToken copre il buco.
         runCatching { FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC) }
+    }
 
     companion object {
         const val CHANNEL_ID = "alerts"

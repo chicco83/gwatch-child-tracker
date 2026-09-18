@@ -94,7 +94,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -423,6 +422,16 @@ private fun StatusCard(
     onRequestLocation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Storico versioni (sezione batteria)
+    // v0.9.0 (2026-09-18): la UX del battery indicator colorato
+    // (qwen3.8turbo-coder) era corretta nell'idea ma rotta
+    // nell'esecuzione — graffe/parentesi sbilanciate (il pulsante
+    // "Aggiorna posizione" era rimasto incastrato dentro il Row della
+    // batteria) e un LinearProgressIndicator con Modifier.weight(),
+    // API interna in questa versione di Compose (vedi nota storica su
+    // ChatScreen.kt/GeofenceScreen.kt): non compilava. Riscritta la
+    // struttura, tenuto solo il colore testo (verde/arancio/rosso),
+    // tolta la progress bar per non reintrodurre il vincolo weight().
     Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(text = childName, style = MaterialTheme.typography.titleSmall)
@@ -438,37 +447,23 @@ private fun StatusCard(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     state.battery?.let { battery ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.battery_format, battery),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = when {
-                                    battery > 50 -> Color.Green
-                                    battery > 25 -> Color(0xFFFFA000)
-                                    else -> Color.Red
-                                },
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            LinearProgressIndicator(
-                                progress = { Float.valueOf(battery) / 100f },
-                                modifier = Modifier.weight(1f).height(6.dp),
-                                color = when {
-                                    battery > 50 -> Color.Green
-                                    battery > 25 -> Color(0xFFFFA000)
-                                    else -> Color.Red
-                                },
-                    )
-            TextButton(onClick = onRequestLocation, enabled = !requesting) {
-            Text(
-                stringResource(
-                    if (requesting) R.string.map_requesting_location else R.string.map_request_location,
-                ),
-                    )
+                        Text(
+                            text = stringResource(R.string.battery_format, battery),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                battery > 50 -> Color.Green
+                                battery > 25 -> Color(0xFFFFA000)
+                                else -> Color.Red
+                            },
+                        )
+                    }
                 }
-                        }
+                TextButton(onClick = onRequestLocation, enabled = !requesting) {
+                    Text(
+                        stringResource(
+                            if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                        ),
+                    )
                 }
             }
         }
@@ -486,11 +481,6 @@ private fun EventsList(childEvents: List<ChildEvent>, modifier: Modifier = Modif
                 text = "${childEvent.childName} — ${eventLabel(event.type, event.zoneName)} · " +
                     formatter.format(Date(event.timestampMillis)),
                 style = MaterialTheme.typography.bodySmall,
-                            color = when {
-                                battery > 50 -> Color.Green
-                                battery > 25 -> Color(0xFFFFA000)
-                                else -> Color.Red
-                            },
                 modifier = Modifier.padding(vertical = 4.dp),
             )
         }

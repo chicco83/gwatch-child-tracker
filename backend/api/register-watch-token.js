@@ -66,4 +66,4 @@ module.exports = wrapHandler(async (req, res) => {
     .set({ fcmToken: token }, { merge: true });
 
   successResponse(res);
-};
+});

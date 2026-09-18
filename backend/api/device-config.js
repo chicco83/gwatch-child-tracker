@@ -80,4 +80,4 @@ module.exports = wrapHandler(async (req, res) => {
     .filter((g) => g.active !== false);
 
   res.status(200).json({ geofences });
-};
+});

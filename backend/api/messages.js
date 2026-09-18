@@ -71,4 +71,4 @@ module.exports = wrapHandler(async (req, res) => {
     .reverse(); // ordine cronologico per la UI
 
   res.status(200).json({ messages });
-};
+});

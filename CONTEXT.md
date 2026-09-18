@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.41.0
+**Versione contesto:** 0.42.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1062,3 +1062,36 @@ CHANGELOG.md  Storico versioni
   (mai fatale per la richiesta), con auto-pulizia del token se
   Firebase segnala che non è più registrato. Nessuna migrazione dati
   richiesta.
+- 2026-09-18: **Review di un'altra AI locale pushata su GitHub
+  (v0.42.0)**. L'utente aveva fatto girare un'AI in locale (commit
+  taggati "qwen3.8turbo-coder"/"qwen3.8-Flash-Next") che ha pushato
+  direttamente su questo stesso branch, bypassando questa sessione.
+  Richiesto di controllare cosa avesse fatto. Trovati diversi bug
+  gravi, alcuni bloccanti: **tutti i 10 endpoint backend** avevano una
+  parentesi di chiusura mancante attorno a un nuovo `wrapHandler(...)`
+  (errore di sintassi, funzioni non caricabili — backend completamente
+  giù), **la phone-app non compilava affatto**
+  (`TrackerApplication.kt` aveva uno statement fuori da qualunque
+  funzione), e `MapScreen.kt` (nuovo indicatore batteria colorato)
+  aveva graffe sbilanciate più un `Modifier.weight()` che reintroduceva
+  esattamente il vincolo Compose già documentato altrove nel progetto.
+  Un commit intermedio (7232da8) aveva anche `_lib/errors.js`
+  completamente vuoto — se quel commit e' stato live su Vercel prima
+  del successivo, il backend è stato giù per errore di caricamento
+  modulo per l'intera finestra. Tutto corretto e verificato
+  (`node -c` su tutti i file backend, `npm test` con tutti i 10 test
+  verdi dopo `npm ci`; il Kotlin non è compilabile in questa sessione,
+  nessun SDK Android disponibile, verificato a mano riga per riga).
+  **Non fatto un revert totale**: mescolate ai bug c'erano idee valide
+  già ben eseguite altrove (confronto costant-time sui token statici
+  con test dedicati, push ai genitori via topic FCM invece di
+  leggere/iterare l'intera collezione parents ad ogni evento, pulizia
+  mancante del gruppo "events" in cleanup.js, bump compileSdk/targetSdk
+  a 35 — requisito Play Store ormai imminente) — tenute, corrette dove
+  necessario, il resto (bug bloccanti + un mix-up di retention in
+  `_lib/quota.js`, 7→365 giorni per un riuso sbagliato di una costante)
+  riparato. Lezione per il futuro: se un'altra AI continua a pushare
+  direttamente su questo branch senza passare da qui, ogni ripresa di
+  lavoro deve iniziare con un `git fetch`/diff contro l'ultimo commit
+  noto — non si può più assumere che lo stato remoto rifletta solo le
+  modifiche fatte in questa sessione.

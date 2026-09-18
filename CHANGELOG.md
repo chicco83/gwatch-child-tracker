@@ -7,6 +7,79 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-09-18
+
+### Fixed
+- **Review di un'altra AI locale (tag "qwen3.8turbo-coder"/"qwen3.8-Flash-Next")
+  che aveva pushato direttamente su questo branch**: conteneva alcune idee
+  valide ma con difetti di esecuzione gravi, alcuni al punto da rompere
+  completamente sia il backend che la phone-app. Corretti tutti prima che
+  arrivassero al bambino/genitore in produzione:
+  - **Backend completamente giù**: tutti e 10 gli endpoint
+    (`ingest-location`, `sos-heartbeat`, `register-watch-token`,
+    `device-config`, `ha-status`, `messages`, `parent-command`,
+    `cleanup`, `trigger-event`, `send-message`) erano stati avvolti in
+    un nuovo `wrapHandler(...)` (vedi `_lib/errors.js`) senza la
+    parentesi di chiusura corrispondente — errore di sintassi che
+    impediva il caricamento di ogni singola funzione. Corretto
+    aggiungendo la `)` mancante ovunque.
+  - **Phone-app non compilava**: `TrackerApplication.kt` aveva la
+    chiamata di iscrizione al topic FCM `"parents"` piazzata *dopo* la
+    chiusura di `onCreate()`, come statement diretto nel corpo della
+    classe — non valido in Kotlin. Spostata dentro `onCreate()`.
+  - **`MapScreen.kt` (indicatore batteria colorato)**: la UX era una
+    buona idea (verde/arancio/rosso in base alla percentuale) ma
+    l'esecuzione aveva graffe/parentesi sbilanciate (il pulsante
+    "Aggiorna posizione" era rimasto incastrato dentro il blocco della
+    batteria) e un `LinearProgressIndicator` con `Modifier.weight()` —
+    API interna in questa versione di Compose, esattamente il vincolo
+    già documentato altrove nel progetto. Riscritta la sezione: tenuto
+    il testo colorato, tolta la progress bar per non reintrodurre
+    `weight()`. Rimosso anche un blocco di colore copiato per errore in
+    `EventsList`, dove referenziava una variabile `battery` inesistente
+    in quello scope (altro errore di compilazione).
+  - **`_lib/quota.js`**: la retention del contatore di quota giornaliero
+    era stata agganciata per errore a `config.RETENTION_HOURS` (la
+    retention dello storico posizioni, 12 mesi) invece di restare un
+    valore proprio — portava i documenti di quota da 7 a 365 giorni di
+    vita. Ripristinata una costante dedicata.
+  - **`test/auth.test.js`**: sintassi `import` ESM in un progetto
+    CommonJS senza `"type": "module"` — il test non veniva nemmeno
+    caricato da `npm test`. Riportato a `require()`. `package.json`:
+    lo script `test` (`node --test test/`) falliva a risolvere la
+    cartella su Node 22 in questo ambiente — reso esplicito
+    (`test/*.test.js`). Tutti i 10 test (auth + quota) passano ora.
+  - Verificato con `node -c` su tutti i file `.js` del backend e con
+    `npm test` (dopo `npm ci`): tutto verde.
+
+### Added (idee valide della review, tenute)
+- Confronto costant-time (`crypto.timingSafeEqual`) per i due token
+  statici superstiti (`DEVICE_TOKEN` legacy, `HA_STATUS_TOKEN`) invece
+  di `===`, con fail-closed esplicito se `HA_STATUS_TOKEN` non è
+  impostata — mitiga un timing attack teorico. Test unitari aggiunti e
+  verificati (`test/auth.test.js`).
+- Push ai genitori (chat dal bambino, SOS, geofence) via topic FCM
+  `"parents"` invece di leggere l'intera collezione `parents` e
+  iterare gli array `fcmTokens` ad ogni evento — una lettura Firestore
+  in meno per notifica, token obsoleti gestiti da FCM stesso.
+  Sottoscrizione lato phone-app in `TrackerApplication.onCreate()` e
+  ri-sottoscrizione in `FcmService.onNewToken()` (entrambe idempotenti).
+- `cleanup.js`: aggiunta la pulizia del gruppo di collezioni "events"
+  (era rimasto scoperto dal cron dopo il riordino multi-bambino);
+  `trigger-event.js` ora scrive `expiresAt` sugli eventi.
+- `compileSdk`/`targetSdk` portati a 35 su entrambe le app +
+  `enableEdgeToEdge()` esplicito sul telefono — requisito Play Store
+  per i nuovi upload (34 non più accettato). AGP/Gradle allineati tra
+  le due app (8.13.2/8.13).
+- Indicatore batteria colorato (verde >50%, arancio 25-50%, rosso
+  <25%) nelle status-card della mappa — tenuto, corretto come sopra.
+
+### Known limitations
+- `PLAN-qwen3.8turbo-coder.md` e `TESTING-E2E.md`, creati dalla stessa
+  review, restano nel repo come documentazione di quella sessione — a
+  differenza di CONTEXT.md/CHANGELOG.md non sono mantenuti né
+  considerati fonte di verità sullo stato del progetto.
+
 ## [0.41.0] - 2026-09-18
 
 ### Fixed

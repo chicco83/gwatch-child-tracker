@@ -284,4 +284,4 @@ module.exports = wrapHandler(async (req, res) => {
     default:
       res.status(400).send("Bad Request: 'action' non valido");
   }
-};
+});

@@ -85,4 +85,4 @@ module.exports = wrapHandler(async (req, res) => {
   );
 
   successResponse(res);
-};
+});
