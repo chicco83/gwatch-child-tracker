@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.58.0
+**Versione contesto:** 0.59.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1593,3 +1593,44 @@ CHANGELOG.md  Storico versioni
   codice che LEGGE ed INVIA questi valori, `BatteryInfo.kt` e le
   estensioni di `LocationPoint`/`triggerEvent`) resta su un build piu'
   vecchio — richiede un rebuild/reinstall separato sul watch fisico.
+- 2026-09-18: **Regole Firestore ripubblicate, confermato dall'utente
+  (screenshot Console) + tre fix UI su GeofenceScreen (v0.59.0)**.
+
+  L'utente ha controllato la cronologia di pubblicazione delle regole
+  nella Firebase Console: l'ultima pubblicazione live risultava del 10
+  settembre alle 22:17, mentre il commit che aggiunge la regola radice
+  `geofences/{zoneId}` (2f21641) e' dell'11 settembre alle 16:26 — cioe'
+  DOPO l'ultima pubblicazione, confermando esattamente l'ipotesi gia'
+  scritta in v0.57.0. Fornito il testo completo delle regole via chat
+  (l'utente era da cellulare, non riusciva a copiare da terminale/repo)
+  per la pubblicazione manuale. Dopo la pubblicazione le zone sono
+  ricomparse correttamente sulla phone-app — bug chiuso, nessun codice
+  da cambiare (le regole nel repo erano gia' corrette, mancava solo il
+  deploy).
+
+  Con le zone finalmente visibili, l'utente ha potuto testare
+  `GeofenceScreen` per la prima volta e ha segnalato tre problemi UI,
+  tutti corretti nella stessa sessione:
+  1. Campo di ricerca indirizzo troppo alto (label fluttuante + riga
+     separata col pulsante "Cerca" sotto) — sostituito con placeholder
+     + lente di ingrandimento come icona dentro il campo stesso
+     (`trailingIcon` dell'`OutlinedTextField`), eliminando la riga
+     pulsante.
+  2. Righe della lista zone troppo alte, nessun indizio visivo che ce
+     ne fossero altre fuori schermo — padding verticale ridotto e
+     aggiunta una scrollbar verticale disegnata a mano con
+     `Modifier.drawWithContent` sopra la `LazyColumn` (Compose
+     Material3 in questa versione non offre uno scrollbar nativo per
+     Android, solo per desktop via `rememberScrollbarAdapter`; nessuna
+     libreria esterna aggiunta).
+  3. Switch "Allarme sonoro all'uscita" disallineato/tagliato a bordo
+     schermo nel pannello di creazione/modifica zona — stessa causa
+     radice gia' vista per il pulsante "Aggiorna posizione" schiacciato
+     in `MapScreen.kt` (v0.58.0): `Modifier.weight()` non disponibile
+     in questa versione di Compose, quindi una Column di larghezza non
+     vincolata (label+hint) nella stessa Row di un altro elemento a
+     larghezza fissa (lo Switch) puo' spingerlo fuori dai margini
+     quando il testo e' lungo. Stessa soluzione: due righe impilate
+     invece di una sola, applicata qui alla `ToggleRow` condivisa da
+     tutti i toggle di `GeofenceScreen` (notifiche, allarme, assegna a
+     bambino).

@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.59.0] - 2026-09-18
+
+### Fixed
+- phone-app: dopo la pubblicazione manuale delle regole Firestore
+  aggiornate (v0.6.0, confermata dall'utente — le zone ora sono
+  visibili), tre correzioni UI su `GeofenceScreen`:
+  - Campo ricerca indirizzo: rimossa la label fluttuante ("Cerca un
+    indirizzo") a favore di un placeholder e spostata la lente di
+    ingrandimento dentro il campo come icona (trailingIcon), eliminando
+    la riga separata col pulsante testuale "Cerca" sotto — card di
+    ricerca piu' bassa, un solo controllo invece di due.
+  - Righe della lista zone compattate (meno padding verticale) e
+    aggiunta una scrollbar verticale disegnata a mano (nessuna API
+    scrollbar nativa per Android in questa versione di Compose
+    Material3) per segnalare visivamente altre zone fuori schermo.
+  - Switch "Allarme sonoro all'uscita" (nel pannello di
+    creazione/modifica zona) risultava disallineato/tagliato a bordo
+    schermo: causa, la Column di label+hint non aveva un vincolo di
+    larghezza (niente `Modifier.weight()` disponibile in questa
+    versione di Compose) nella stessa Row dello switch, e un hint lungo
+    la spingeva fuori dai margini. Risolto con lo stesso pattern gia'
+    usato per il pulsante "Aggiorna posizione" schiacciato in
+    `MapScreen.kt` (v0.58.0): due righe impilate invece di una sola.
+
 ## [0.58.0] - 2026-09-18
 
 ### Fixed

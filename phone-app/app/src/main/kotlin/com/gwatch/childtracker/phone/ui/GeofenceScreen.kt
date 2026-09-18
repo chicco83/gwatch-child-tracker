@@ -69,6 +69,35 @@ package com.gwatch.childtracker.phone.ui
 //   una nuova zona parte con tutti i bambini gia' selezionati (stesso
 //   comportamento di oggi con un solo bambino), una zona in modifica
 //   riparte dalla sua selezione salvata.
+// v0.7.0 (2026-09-18): tre correzioni UI richieste dall'utente dopo il
+//   primo test reale con le zone finalmente visibili (fix regole
+//   Firestore, vedi CHANGELOG.md):
+//   1) AddressSearchBar: il campo di ricerca aveva la label fluttuante
+//      "Cerca un indirizzo" (che riserva spazio sopra al testo) PIU' una
+//      riga separata sotto con il pulsante testuale "Cerca" — due
+//      elementi che allungavano la card. Sostituita la label con un
+//      placeholder (piu' basso) e spostata la lente di ingrandimento
+//      DENTRO il campo come trailingIcon: eliminata la riga pulsante,
+//      un solo controllo invece di due.
+//   2) ZoneList: righe zona compattate (meno padding verticale) e
+//      aggiunta una vera scrollbar (drawWithContent su LazyListState,
+//      nessuna dipendenza esterna: Compose Material3 in questa versione
+//      non ha uno scrollbar built-in per Android, solo per desktop) per
+//      far capire visivamente che ci sono altre zone oltre quelle a
+//      schermo, invece di doverlo scoprire scorrendo alla cieca.
+//   3) ToggleRow (usata sia per i toggle notifica/allarme sia per il
+//      toggle "assegna a"): lo switch di "Allarme sonoro all'uscita"
+//      risultava disallineato/tagliato a schermo. Causa: label+hint
+//      stavano in una Column senza vincolo di larghezza (niente
+//      Modifier.weight() disponibile in questa versione di Compose,
+//      vedi nota storica altrove nel progetto) nella stessa Row dello
+//      Switch con SpaceBetween — con un hint lungo la Column cresceva
+//      oltre lo spazio disponibile, spingendo lo Switch fuori dai
+//      margini della card invece di andare a capo. Stessa soluzione
+//      gia' usata per il pulsante "Aggiorna posizione" schiacciato in
+//      MapScreen.kt/StatusCard: due righe impilate invece di una sola
+//      (label+switch sopra, hint sotto a piena larghezza, libero di
+//      andare a capo).
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,13 +107,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -104,8 +140,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
@@ -408,24 +450,30 @@ private fun AddressSearchBar(
         elevation = CardDefaults.cardElevation(2.dp),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    label = { Text(stringResource(R.string.geofence_search_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                if (searching) {
-                    CircularProgressIndicator(modifier = Modifier.padding(8.dp))
-                } else {
-                    TextButton(onClick = onSearch, enabled = query.isNotBlank()) {
-                        Text(stringResource(R.string.geofence_search_button))
+            // v0.7.0: placeholder invece di label (niente piu' spazio
+            // riservato sopra al testo per la label fluttuante) + lente
+            // di ingrandimento come trailingIcon dentro il campo stesso,
+            // al posto della riga separata col pulsante testuale "Cerca"
+            // che c'era prima sotto — un solo controllo, card piu' bassa.
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text(stringResource(R.string.geofence_search_hint)) },
+                singleLine = true,
+                trailingIcon = {
+                    if (searching) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = onSearch, enabled = query.isNotBlank()) {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = stringResource(R.string.geofence_search_button),
+                            )
+                        }
                     }
-                }
-            }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
             results.forEach { result ->
                 TextButton(onClick = { onResultClick(result) }, modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -537,6 +585,13 @@ private fun ChildToggleSection(
     }
 }
 
+// v0.7.0 (2026-09-18): vedi Storico versioni in cima al file, punto 3 —
+// prima label+hint stavano in una Column senza vincolo di larghezza
+// nella stessa Row dello Switch (niente Modifier.weight() disponibile),
+// per cui un hint lungo ("Allarme sonoro all'uscita") spingeva lo
+// Switch fuori dai margini della card. Ora due righe impilate: label +
+// switch sopra (corti, mai in conflitto), hint sotto a piena larghezza,
+// libero di andare a capo.
 @Composable
 private fun ToggleRow(
     label: String,
@@ -544,20 +599,53 @@ private fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     hint: String? = null,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
+    // v0.7.0: padding verticale ridotto (4dp -> 2dp), stessa richiesta di
+    // compattazione della lista zone qui sopra — questa Row e' riusata
+    // anche per ogni riga "assegna a" dentro ZoneList.
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(label)
-            if (hint != null) {
-                Text(text = hint, style = MaterialTheme.typography.bodySmall)
-            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        if (hint != null) {
+            Text(text = hint, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
+
+// v0.7.0 (2026-09-18): vedi Storico versioni in cima al file, punto 2 —
+// niente scrollbar built-in per Android in questa versione di Compose
+// Material3 (solo per desktop, rememberScrollbarAdapter non e'
+// disponibile qui), quindi disegnata a mano con drawWithContent sopra
+// la LazyColumn: una barretta verticale la cui altezza/posizione riflette
+// quanti elementi sono visibili rispetto al totale — cosi' si vede subito
+// se ci sono altre zone oltre quelle a schermo invece di scoprirlo
+// scorrendo alla cieca. Nessuna dipendenza esterna aggiunta.
+private fun Modifier.verticalScrollbar(state: LazyListState, color: Color, width: Dp = 4.dp): Modifier =
+    drawWithContent {
+        drawContent()
+        val layoutInfo = state.layoutInfo
+        val totalItems = layoutInfo.totalItemsCount
+        val visibleItems = layoutInfo.visibleItemsInfo
+        if (totalItems == 0 || visibleItems.isEmpty() || visibleItems.size >= totalItems) return@drawWithContent
+
+        val thumbHeightPx = size.height * (visibleItems.size.toFloat() / totalItems.toFloat())
+        val maxScrollableItems = (totalItems - visibleItems.size).coerceAtLeast(1)
+        val scrollProgress = state.firstVisibleItemIndex.toFloat() / maxScrollableItems
+        val thumbOffsetY = (size.height - thumbHeightPx) * scrollProgress
+        val widthPx = width.toPx()
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(size.width - widthPx, thumbOffsetY),
+            size = Size(widthPx, thumbHeightPx),
+            cornerRadius = CornerRadius(widthPx / 2f),
+        )
+    }
 
 @Composable
 private fun ZoneList(
@@ -570,14 +658,23 @@ private fun ZoneList(
     modifier: Modifier = Modifier,
 ) {
     if (geofences.isEmpty()) return
+    val listState = rememberLazyListState()
+    val scrollbarColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     Card(
         modifier = modifier.fillMaxWidth().heightIn(max = 320.dp).padding(12.dp),
         elevation = CardDefaults.cardElevation(4.dp),
     ) {
-        LazyColumn {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().verticalScrollbar(listState, scrollbarColor).padding(end = 8.dp),
+        ) {
             itemsIndexed(geofences) { index, zone ->
                 if (index > 0) Divider()
-                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                // v0.7.0: padding verticale ridotto (12dp -> 6dp) per
+                // compattare ogni riga zona, richiesto dall'utente dopo
+                // aver visto poche zone occupare gia' quasi tutta la
+                // card — piu' righe visibili senza scorrere.
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
