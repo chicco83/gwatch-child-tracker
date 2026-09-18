@@ -460,7 +460,14 @@ private fun StatusCard(
                                     battery > 25 -> Color(0xFFFFA000)
                                     else -> Color.Red
                                 },
-                            )
+                    )
+            TextButton(onClick = onRequestLocation, enabled = !requesting) {
+            Text(
+                stringResource(
+                    if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                ),
+                    )
+                }
                         }
                 }
             }

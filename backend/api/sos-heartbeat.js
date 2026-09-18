@@ -33,6 +33,7 @@ const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestor
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
+const { validateConfig } = require("./_lib/config.js");
 
 module.exports = wrapHandler(async (req, res) => {
   try {

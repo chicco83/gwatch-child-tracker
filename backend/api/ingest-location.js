@@ -26,6 +26,7 @@ const { wrapHandler, errorResponse, successResponse, logError } = require("./_li
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
+const { validateConfig } = require("./_lib/config.js");
 
 const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
 const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
