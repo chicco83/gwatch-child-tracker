@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.51.0
+**Versione contesto:** 0.52.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1369,3 +1369,20 @@ CHANGELOG.md  Storico versioni
   (v0.47.0). Con AGP 8+ questa generazione non è più automatica.
   Aggiunta la flag: nessun altro cambiamento di codice necessario,
   l'import/uso di `BuildConfig` in `MapScreen.kt` era già corretto.
+- 2026-09-18: **StatusCard confermata alta meta' schermo su build
+  aggiornata (v0.52.0)** — l'utente ha inviato uno screenshot con
+  "v0.3.0" gia' visibile in `TopAppBar` (fix v0.51.0), quindi l'ipotesi
+  precedente di build stale (v0.49.0/v0.50.0) e' smentita: il bug e'
+  reale. Causa trovata: `StatusCardRow` usa una `LazyRow` senza alcun
+  vincolo di altezza, mentre `EventsList` — nella stessa schermata,
+  poco sotto — usa gia' correttamente `heightIn(max = 160.dp)` per lo
+  stesso motivo. Una `LazyRow`/`LazyColumn` non vincolata in altezza si
+  espande a riempire tutto lo spazio verticale disponibile lasciato dal
+  `Box(Modifier.fillMaxSize())` genitore invece di adattarsi al
+  contenuto: la `Card` al suo interno riceve percio' vincoli "tight" e
+  viene stirata. Aggiunto `heightIn(max = 140.dp)` alla `LazyRow`,
+  stesso pattern gia' in uso in `EventsList`. La visualizzazione della
+  batteria (altro problema segnalato insieme in v0.49.0) risultava
+  invece gia' corretta nello stesso screenshot ("Batteria watch: 89%"
+  in verde) — nessun fix necessario, confermava la lettura del codice
+  gia' fatta in precedenza.

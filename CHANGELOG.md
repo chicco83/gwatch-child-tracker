@@ -7,6 +7,23 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-09-18
+
+### Fixed
+- phone-app: `StatusCard` (mappa, riga scorrevole per bambino) alta
+  circa metà schermo, confermato dall'utente con screenshot su build
+  aggiornata (v0.3.0 visibile in `TopAppBar`, quindi non era un
+  problema di build stale come inizialmente ipotizzato in v0.49.0).
+  Causa: la `LazyRow` di `StatusCardRow` non aveva nessun vincolo di
+  altezza (`EventsList`, nella stessa schermata, usa già correttamente
+  `heightIn(max = 160.dp)` per lo stesso motivo) — una
+  `LazyRow`/`LazyColumn` senza un `Modifier` che ne limiti l'altezza
+  si espande a riempire tutto lo spazio verticale disponibile lasciato
+  dal `Box` genitore, "stirando" la `Card` al suo interno. Aggiunto
+  `heightIn(max = 140.dp)`. La visualizzazione della batteria (altro
+  problema segnalato in v0.49.0) risultava invece già corretta nello
+  screenshot dell'utente — nessun fix necessario lì.
+
 ## [0.51.0] - 2026-09-18
 
 ### Fixed

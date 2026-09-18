@@ -53,8 +53,10 @@ android {
         // 2026-09-18: stesso problema segnalato sul watch-app — versionCode/
         // versionName fermi a 2/"0.2.0" da decine di commit, mai
         // incrementati dopo il primo bump. Bump ad ogni release d'ora in poi.
-        versionCode = 3
-        versionName = "0.3.0"
+        // v0.4.0 (2026-09-18): fix buildConfig=true + fix altezza
+        // StatusCard (vedi Storico versioni sopra e MapScreen.kt).
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

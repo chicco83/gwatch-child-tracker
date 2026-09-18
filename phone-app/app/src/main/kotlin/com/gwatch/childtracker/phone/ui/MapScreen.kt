@@ -71,6 +71,14 @@ package com.gwatch.childtracker.phone.ui
 //   per bambino. Aggiunta anche una voce "Impostazioni" nel menu
 //   hamburger, accanto a "Logout" (nuova SettingsScreen.kt: nickname
 //   proprio/dei bambini, "Aggiungi bambino").
+// v0.9.0 (2026-09-18): aggiunta la versione (BuildConfig.VERSION_NAME)
+//   nella TopAppBar, accanto al nome app (vedi Scaffold sotto) —
+//   richiesto dall'utente per verificare a schermo se la build
+//   installata sia davvero l'ultima compilata.
+// v0.10.0 (2026-09-18): la StatusCard (v0.8.0 sopra) risultava alta
+//   circa meta' schermo, segnalato dall'utente con screenshot — vedi
+//   commento sulla LazyRow in StatusCardRow per la causa
+//   (heightIn(max) mancante, a differenza di EventsList) e il fix.
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -402,7 +410,16 @@ private fun StatusCardRow(
 ) {
     if (children.isEmpty()) return
     val context = LocalContext.current
-    LazyRow(modifier = modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    // v0.10.0 (2026-09-18): segnalato dall'utente — la card diventava alta
+    // circa meta' schermo. Causa: a differenza di EventsList sotto (che
+    // usa gia' heightIn(max = 160.dp), vedi sotto), questa LazyRow non
+    // aveva nessun vincolo di altezza. Una LazyRow/LazyColumn senza un
+    // Modifier che ne limiti l'altezza si espande a riempire tutto lo
+    // spazio verticale disponibile lasciato dal Box genitore
+    // (Modifier.fillMaxSize()) invece di adattarsi al contenuto, e la
+    // Card al suo interno riceve percio' vincoli "tight" che la
+    // costringono a riempire quello spazio anziche' restare compatta.
+    LazyRow(modifier = modifier.fillMaxWidth().heightIn(max = 140.dp).padding(vertical = 4.dp)) {
         items(children) { child ->
             var requesting by remember(child.id) { mutableStateOf(false) }
             StatusCard(
