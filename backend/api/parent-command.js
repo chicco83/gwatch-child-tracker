@@ -1,6 +1,6 @@
 /**
  * POST /api/parent-command
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Endpoint unico per i comandi rapidi del genitore verso il watch:
  * messaggio di chat, richiesta posizione immediata, annulla SOS,
@@ -45,6 +45,20 @@
  *   messaggio — necessario perche' con due genitori nella stessa
  *   conversazione "sender: parent" da solo non basta piu' a dire chi
  *   ha scritto cosa.
+ * - 0.3.0 (2026-09-18): bug segnalato — "invio fallito" sul telefono
+ *   anche quando il messaggio arrivava comunque al watch (visibile in
+ *   Firestore). Causa: getMessaging().send() non era mai avvolto in un
+ *   try/catch in nessuno dei 4 handler — un token FCM del watch
+ *   diventato non valido (reinstallazione app, token ruotato lato
+ *   Google) mandava un'eccezione non gestita, Vercel rispondeva 500
+ *   alla phone-app anche se la scrittura su Firestore (il messaggio, lo
+ *   stato SOS, l'ack) era gia' andata a buon fine. Aggiunto
+ *   sendPushSafe(): la push resta "best effort" (loggata se fallisce,
+ *   mai un errore fatale per la richiesta) e se l'errore e'
+ *   "registration-token-not-registered" il token viene ripulito dal
+ *   documento device, cosi' i tentativi successivi non ripetono lo
+ *   stesso fallimento silenzioso finche' il watch non si registra di
+ *   nuovo (onNewToken/FcmService lato watch).
  */
 const crypto = require("crypto");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -57,6 +71,23 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 const MAX_TEXT_LENGTH = 500;
 const MAX_NICKNAME_LENGTH = 40;
 const MESSAGE_RETENTION_HOURS = 24;
+
+/**
+ * Invia una push al watch senza mai far fallire la richiesta del
+ * genitore per un problema lato FCM (vedi Storico versioni 0.3.0): un
+ * token non valido cancella se stesso dal device invece di ripetere lo
+ * stesso errore ad ogni chiamata successiva.
+ */
+async function sendPushSafe(deviceRef, watchToken, payload) {
+  try {
+    await getMessaging().send({ token: watchToken, android: { priority: "high" }, ...payload });
+  } catch (e) {
+    console.error(`sendPushSafe: invio fallito (childId=${deviceRef.id})`, e);
+    if (e.code === "messaging/registration-token-not-registered") {
+      await deviceRef.set({ fcmToken: FieldValue.delete() }, { merge: true });
+    }
+  }
+}
 
 async function handleCreateChild(db, body, res) {
   const { nickname } = body;
@@ -138,10 +169,8 @@ async function handleMessage(db, deviceRef, childId, parentUid, body, res) {
   if (watchToken) {
     // Solo "data": onMessageReceived() deve girare sempre sul watch,
     // anche in background (stesso motivo di send-message.js lato phone).
-    await getMessaging().send({
-      token: watchToken,
+    await sendPushSafe(deviceRef, watchToken, {
       data: { type: "chat", sender: "parent", senderName, text },
-      android: { priority: "high" },
     });
   }
   res.status(200).json({ ok: true });
@@ -161,11 +190,7 @@ async function handleRequestLocation(db, deviceRef, childId, res) {
     return;
   }
 
-  await getMessaging().send({
-    token: watchToken,
-    data: { type: "location_request" },
-    android: { priority: "high" },
-  });
+  await sendPushSafe(deviceRef, watchToken, { data: { type: "location_request" } });
   res.status(200).json({ ok: true });
 }
 
@@ -175,11 +200,7 @@ async function handleCancelSos(deviceRef, res) {
   const deviceSnap = await deviceRef.get();
   const watchToken = deviceSnap.data()?.fcmToken;
   if (watchToken) {
-    await getMessaging().send({
-      token: watchToken,
-      data: { type: "sos_cancel" },
-      android: { priority: "high" },
-    });
+    await sendPushSafe(deviceRef, watchToken, { data: { type: "sos_cancel" } });
   }
   res.status(200).json({ ok: true });
 }
@@ -207,11 +228,7 @@ async function handleAckEvent(deviceRef, body, res) {
     const deviceSnap = await deviceRef.get();
     const watchToken = deviceSnap.data()?.fcmToken;
     if (watchToken) {
-      await getMessaging().send({
-        token: watchToken,
-        data: { type: "location_seen" },
-        android: { priority: "high" },
-      });
+      await sendPushSafe(deviceRef, watchToken, { data: { type: "location_seen" } });
     }
   }
   res.status(200).json({ ok: true });
