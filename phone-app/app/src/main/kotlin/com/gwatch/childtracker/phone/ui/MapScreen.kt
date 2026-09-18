@@ -160,6 +160,11 @@ private const val PATH_WINDOW_HOURS = 24L
 // (marker/zone restano invece a colore fisso, non serve distinguerli).
 private val PATH_COLORS = listOf(0xFF4285F4.toInt(), 0xFFEA4335.toInt(), 0xFF34A853.toInt(), 0xFFFBBC05.toInt())
 
+// 2026-09-18: sotto questa soglia la velocita' non viene mostrata in
+// StatusCard — e' rumore GPS (un watch fermo non riporta mai esattamente
+// 0 km/h), non un movimento reale da segnalare.
+private const val MIN_DISPLAYED_SPEED_KMH = 2.0
+
 private data class ChildEvent(val childName: String, val event: DeviceEvent)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -519,6 +524,23 @@ private fun StatusCard(
                     }
                     if (state.charging == true) {
                         Text(text = " ⚡", style = MaterialTheme.typography.bodySmall)
+                    }
+                    // 2026-09-18: richiesto dall'utente ("mostra anche la
+                    // velocita' sulla mappa"). Location.getSpeed() e' in
+                    // m/s, convertita qui in km/h (unita' familiare) — la
+                    // conversione e' l'unica cosa fatta lato UI, il dato
+                    // grezzo resta in m/s ovunque altro (modello, backend,
+                    // watch). Mostrata solo sopra una soglia minima: sotto
+                    // e' rumore GPS (un watch fermo non ha velocita' zero
+                    // esatta), non un movimento reale da segnalare.
+                    state.speedMps?.let { speedMps ->
+                        val speedKmh = speedMps * 3.6
+                        if (speedKmh > MIN_DISPLAYED_SPEED_KMH) {
+                            Text(
+                                text = " · " + String.format(Locale.getDefault(), "%.0f km/h", speedKmh),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }

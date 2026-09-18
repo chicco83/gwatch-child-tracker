@@ -91,6 +91,9 @@ class BackendClient {
      * sosHeartbeat (ping ogni 30" durante un SOS attivo, vedi sotto):
      * temperatura/carica non cambiano in modo significativo in 30
      * secondi, non vale la cadenza piu' alta.
+     * v0.8.0 (2026-09-18): aggiunto speedMps (Location.getSpeed(),
+     * richiesto dall'utente per mostrare la velocita' sulla mappa) —
+     * gia' incluso gratis in ogni fix GPS, nessuna chiamata in piu'.
      */
     suspend fun triggerEvent(
         type: String,
@@ -102,6 +105,7 @@ class BackendClient {
         source: String? = null,
         batteryTemp: Double? = null,
         charging: Boolean? = null,
+        speedMps: Float? = null,
         timestampMillis: Long = System.currentTimeMillis(),
     ): Boolean {
         val body = JSONObject().apply {
@@ -114,6 +118,7 @@ class BackendClient {
             source?.let { put("source", it) }
             batteryTemp?.let { put("batteryTemp", it) }
             charging?.let { put("charging", it) }
+            speedMps?.let { put("speed", it.toDouble()) }
             put("timestamp", timestampMillis)
         }
         val request = Request.Builder()

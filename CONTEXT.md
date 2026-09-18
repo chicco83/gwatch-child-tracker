@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.55.0
+**Versione contesto:** 0.56.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1501,3 +1501,16 @@ CHANGELOG.md  Storico versioni
     pagato. Diventerebbe costoso solo se si volesse una velocita'
     "fluida"/quasi in tempo reale, che richiederebbe campionamento GPS
     molto piu' frequente.
+- 2026-09-18: **Velocita' mostrata sulla mappa (v0.56.0)**, richiesta
+  dall'utente dopo aver chiesto se il costo batteria di mostrarla
+  fosse alto (risposta data la sessione precedente: no, e' gia'
+  inclusa gratis in ogni fix GPS). Aggiunto `speedMps` a
+  `LocationPoint` (watch-app) e al body di `triggerEvent`
+  (`Location.getSpeed()`, popolato sia dal tracking periodico sia da
+  SOS/"Invia posizione"), nuovo campo "speed" in
+  `ingest-location.js`/`trigger-event.js` (stesso pattern di
+  battery/batteryTemp/charging), `DeviceState.speedMps` (phone-app).
+  Mostrata in `StatusCard` convertita in km/h (unica conversione
+  lato UI, il dato resta in m/s ovunque altro) e solo sopra 2 km/h,
+  per non mostrare rumore GPS come "velocita'" quando il watch e'
+  fermo.

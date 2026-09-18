@@ -60,8 +60,10 @@ android {
         // silenzioso/DND (vedi alarm/SosAlarmService.kt).
         // v0.6.0 (2026-09-18): mostra temperatura batteria/stato di
         // carica nella StatusCard (vedi MapScreen.kt/Models.kt).
-        versionCode = 6
-        versionName = "0.6.0"
+        // v0.7.0 (2026-09-18): mostra la velocita' (km/h) in StatusCard,
+        // vedi MapScreen.kt.
+        versionCode = 7
+        versionName = "0.7.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

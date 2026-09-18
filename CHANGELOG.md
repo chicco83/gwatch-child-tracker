@@ -7,6 +7,18 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-09-18
+
+### Added
+- Velocita' mostrata in `StatusCard` (phone-app), richiesta
+  dall'utente. `Location.getSpeed()` (m/s) e' gia' incluso gratis in
+  ogni fix GPS (nessun costo di batteria aggiuntivo al ritmo di
+  campionamento attuale) — propagato da `LocationPoint`/`BackendClient`
+  (watch-app) a `ingest-location.js`/`trigger-event.js` (nuovo campo
+  "speed") fino a `DeviceState` (phone-app), convertito in km/h solo
+  in UI. Mostrata solo sopra 2 km/h (sotto e' rumore GPS, non
+  movimento reale).
+
 ## [0.55.0] - 2026-09-18
 
 ### Added

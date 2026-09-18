@@ -14,6 +14,11 @@ data class LocationPoint(
     // batteria e lo stato di carica"), vedi location/BatteryInfo.kt.
     val batteryTemp: Double? = null,
     val charging: Boolean? = null,
+    // 2026-09-18: richiesto dall'utente ("mostra anche la velocita'
+    // sulla mappa") — Location.getSpeed() (m/s) e' gia' incluso gratis
+    // in ogni fix GPS (calcolato dal chip GPS stesso, es. via Doppler),
+    // nessun costo aggiuntivo al ritmo di campionamento attuale.
+    val speedMps: Float? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("lat", lat)
@@ -23,6 +28,7 @@ data class LocationPoint(
         activity?.let { put("activity", it) }
         batteryTemp?.let { put("batteryTemp", it) }
         charging?.let { put("charging", it) }
+        speedMps?.let { put("speed", it.toDouble()) }
         put("timestamp", timestampMillis)
     }
 
@@ -35,6 +41,7 @@ data class LocationPoint(
             activity = if (json.has("activity")) json.getString("activity") else null,
             batteryTemp = if (json.has("batteryTemp")) json.getDouble("batteryTemp") else null,
             charging = if (json.has("charging")) json.getBoolean("charging") else null,
+            speedMps = if (json.has("speed")) json.getDouble("speed").toFloat() else null,
             timestampMillis = json.getLong("timestamp"),
         )
     }

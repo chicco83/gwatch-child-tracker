@@ -19,6 +19,9 @@ data class DeviceState(
     // BatteryInfo.kt e backend/api/ingest-location.js/trigger-event.js).
     val batteryTemp: Double? = null,
     val charging: Boolean? = null,
+    // 2026-09-18: velocita' in m/s (Location.getSpeed() sul watch),
+    // richiesta dall'utente per mostrarla sulla mappa.
+    val speedMps: Double? = null,
 )
 
 data class LocationPoint(

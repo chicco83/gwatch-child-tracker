@@ -63,6 +63,7 @@ class LocationTrackingService : Service() {
                 activity = if (currentIntervalMillis == INTERVAL_MOVING_MS) "moving" else "still",
                 batteryTemp = batterySnapshot.temperatureC,
                 charging = batterySnapshot.isCharging,
+                speedMps = if (location.hasSpeed()) location.speed else null,
                 timestampMillis = location.time,
             )
             pendingStore.addPoint(point)
