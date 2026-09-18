@@ -62,8 +62,12 @@ android {
         // carica nella StatusCard (vedi MapScreen.kt/Models.kt).
         // v0.7.0 (2026-09-18): mostra la velocita' (km/h) in StatusCard,
         // vedi MapScreen.kt.
-        versionCode = 7
-        versionName = "0.7.0"
+        // v0.8.0 (2026-09-18): fix pulsante "Aggiorna posizione" schiacciato
+        // in StatusCard (vedi MapScreen.kt); titolo notifica chat ora
+        // "Messaggio da {nickname}" invece del generico "dal watch" (vedi
+        // FcmService.kt).
+        versionCode = 8
+        versionName = "0.8.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

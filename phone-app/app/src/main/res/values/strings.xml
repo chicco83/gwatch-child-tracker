@@ -57,6 +57,14 @@
     <!-- v0.25.1 (2026-09-10): titolo notifica per i messaggi in arrivo
          dal watch, costruita a mano da FcmService.kt (push data-only,
          niente piu' "notification" dal backend, vedi send-message.js) -->
+    <!-- v0.14.0 (2026-09-18): richiesto dall'utente — il titolo era
+         generico ("Messaggio dal watch"), non diceva DA QUALE bambino
+         (utile ora che il backend supporta N bambini, vedi
+         send-message.js v0.4.0 che gia' manda "senderName" nel payload
+         push). Parametrizzata col nickname, vecchia stringa fissa tenuta
+         come fallback per compatibilita' con eventuali payload senza
+         senderName (vedi FcmService.kt). -->
+    <string name="chat_notification_title_from">Messaggio da %1$s</string>
     <string name="chat_notification_title">Messaggio dal watch</string>
     <string name="chat_input_hint">Scrivi un messaggio</string>
     <string name="send">Invia</string>

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.57.0
+**Versione contesto:** 0.58.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1558,3 +1558,38 @@ CHANGELOG.md  Storico versioni
   senza Toast; se invece e' ancora in corso (es. RETRY per GPS
   assente, sopravvissuto a un riavvio), il comportamento v0.7.0 resta
   invariato.
+- 2026-09-18: **Fix pulsante "Aggiorna posizione" schiacciato +
+  notifica chat col nome del bambino (v0.58.0)**, dallo stesso giro di
+  feedback dell'utente su screenshot v0.7.0.
+
+  Pulsante schiacciato: la riga dettagli di `StatusCard` (nome, ultimo
+  visto, batteria, temperatura, carica, velocita') era cresciuta nel
+  tempo (v0.56.0/v0.57.0) fino a occupare quasi tutta la larghezza
+  disponibile nella stessa `Row` del pulsante "Aggiorna posizione",
+  che veniva compresso in una colonna strettissima. Non essendo
+  possibile usare `Modifier.weight()` in questa versione di Compose
+  (vincolo gia' noto e documentato in `SettingsScreen.kt`), la card e'
+  stata ristrutturata in due `Row` impilate in una `Column`: la prima
+  con solo nome + pulsante (entrambi corti, mai in conflitto per lo
+  spazio), la seconda con la sola riga dettagli, libera di andare a
+  capo su piu' righe se necessario invece di rubare spazio al
+  pulsante.
+
+  Notifica "messaggio da XX": richiesto dall'utente — il titolo era
+  il generico "Messaggio dal watch", poco utile ora che il sistema
+  supporta piu' bambini. Verificato che il backend
+  (`send-message.js`, gia' da v0.4.0) mandava gia' `senderName` nel
+  payload data della push; bastava quindi un cambiamento lato client,
+  `FcmService.kt`, per usarlo nel titolo (`"Messaggio da {nickname}"`),
+  con fallback sul vecchio testo fisso per robustezza payload.
+
+  Sul fronte "non ci sono i nuovi dati" (temperatura/carica/velocita'
+  assenti sulla card nonostante il codice li gestisca dalla v0.6.0/
+  v0.7.0): nessun bug trovato — le chiavi JSON `batteryTemp`/
+  `charging`/`speed` sono coerenti end-to-end (watch → backend →
+  phone-app). Ipotesi comunicata all'utente: probabile che sia stato
+  ricompilato/reinstallato solo il phone-app finora (confermato a
+  v0.7.0 dallo screenshot), mentre il watch-app (dove risiede il
+  codice che LEGGE ed INVIA questi valori, `BatteryInfo.kt` e le
+  estensioni di `LocationPoint`/`triggerEvent`) resta su un build piu'
+  vecchio — richiede un rebuild/reinstall separato sul watch fisico.

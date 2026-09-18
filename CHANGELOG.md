@@ -7,6 +7,37 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.58.0] - 2026-09-18
+
+### Fixed
+- phone-app: pulsante "Aggiorna posizione" nella StatusCard renderizzato
+  "schiacciato" (testo a capo lettera per lettera), segnalato
+  dall'utente su screenshot v0.7.0. Causa: nome bambino + dettagli
+  (ora piu' lunghi con temperatura/carica/velocita' aggiunti in
+  v0.56.0/v0.57.0) e pulsante condividevano la stessa `Row`, e
+  `Modifier.weight()` non e' utilizzabile in questa versione di
+  Compose (vincolo gia' documentato altrove nel progetto) per far
+  restringere proporzionalmente la colonna dei dettagli. Risolto
+  separando la card in due righe impilate: nome + pulsante in alto
+  (corti, non competono per lo spazio), dettagli su una riga propria
+  sotto, libera di andare a capo normalmente.
+- phone-app: notifica di un messaggio in arrivo dal watch mostrava
+  sempre il titolo generico "Messaggio dal watch", senza dire da quale
+  bambino (richiesto dall'utente, utile ora con supporto N bambini).
+  Il backend (`send-message.js` v0.4.0) gia' includeva `senderName`
+  nel payload push data-only; `FcmService.kt` ora lo usa per un titolo
+  "Messaggio da {nickname}", con fallback sul vecchio testo generico
+  se un payload piu' vecchio ne fosse privo.
+
+### Known limitations
+- Da confermare dall'utente su hardware reale: se il rebuild/reinstall
+  del solo phone-app (senza rebuild del watch-app, ancora fermo a
+  v0.8.0 con il codice che invia batteria/temperatura/carica/velocita'
+  gia' presente da v0.6.0/v0.7.0) sia la causa dei "nuovi dati assenti"
+  segnalati — nessun bug di nome-campo trovato (chiavi JSON
+  `batteryTemp`/`charging`/`speed` coerenti tra watch, backend e
+  phone-app).
+
 ## [0.57.0] - 2026-09-18
 
 ### Fixed

@@ -37,6 +37,12 @@ package com.gwatch.childtracker.phone.messaging
 //   SosAlarmService invece di affidarsi alla notifica passiva del
 //   fallback sotto (che rispetta il volume suoneria come qualunque
 //   altra notifica).
+// v0.6.0 (2026-09-18): richiesto dall'utente — la notifica di un
+//   messaggio in arrivo diceva solo "Messaggio dal watch", non da
+//   QUALE bambino (send-message.js v0.4.0 gia' manda "senderName" nel
+//   payload data). Titolo ora "Messaggio da {nickname}"; se un payload
+//   piu' vecchio/senza senderName arrivasse comunque, fallback sul
+//   vecchio testo generico invece di mostrare "null".
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -101,11 +107,17 @@ class FcmService : FirebaseMessagingService() {
     private fun handleChatMessage(data: Map<String, String>) {
         val text = data["text"] ?: return
         val sender = data["sender"] ?: "child"
+        val senderName = data["senderName"]
 
         IncomingMessageStore.append(
             ChatMessage(sender = sender, text = text, timestampMillis = System.currentTimeMillis()),
         )
-        postNotification(getString(R.string.chat_notification_title), text, openChat = true)
+        val title = if (senderName != null) {
+            getString(R.string.chat_notification_title_from, senderName)
+        } else {
+            getString(R.string.chat_notification_title)
+        }
+        postNotification(title, text, openChat = true)
     }
 
     private fun postNotification(title: String, text: String, openChat: Boolean = false) {

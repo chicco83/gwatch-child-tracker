@@ -490,66 +490,80 @@ private fun StatusCard(
     // Testo semplice invece di un'icona dedicata, coerente con l'uso di
     // emoji gia' in altri punti dell'app (🆘, 🔔) invece di importare
     // nuove risorse grafiche per un indicatore cosi' piccolo.
+    // v0.13.0 (2026-09-18): segnalato dall'utente — il pulsante
+    // "Aggiorna posizione" appariva "schiacciato" (il testo andava a
+    // capo lettera per lettera in una colonna stretta). Causa: nome +
+    // dettagli erano nella stessa Row del pulsante, e in questo
+    // progetto Modifier.weight() nei Row non e' utilizzabile (vedi nota
+    // storica in SettingsScreen.kt — incompatibilita' con la versione
+    // di Compose fissata qui), quindi non si poteva far restringere
+    // proporzionalmente la colonna dei dettagli per lasciare spazio al
+    // pulsante. Con l'aggiunta di temperatura/carica/velocita' la riga
+    // dettagli e' diventata piu' lunga, peggiorando la compressione.
+    // Risolto separando le due righe: nome + pulsante insieme in alto
+    // (corti, non competono mai per lo spazio), dettagli sotto su una
+    // riga propria a piena larghezza, libera di andare a capo
+    // normalmente (leggibile) invece di schiacciare il pulsante.
     Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 Text(text = childName, style = MaterialTheme.typography.titleSmall)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onRequestLocation, enabled = !requesting) {
                     Text(
-                        text = state.lastSeenMillis?.let { formatRelativeTime(it) }
-                            ?: stringResource(R.string.no_data_yet),
-                        style = MaterialTheme.typography.bodySmall,
+                        stringResource(
+                            if (requesting) R.string.map_requesting_location else R.string.map_request_location,
+                        ),
                     )
-                    state.battery?.let { battery ->
-                        Text(text = " · ${stringResource(R.string.battery_label)} ", style = MaterialTheme.typography.bodySmall)
-                        Text(
-                            text = stringResource(R.string.battery_format, battery),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = when {
-                                battery > 50 -> Color.Green
-                                battery > 25 -> Color(0xFFFFA000)
-                                else -> Color.Red
-                            },
-                        )
-                    }
-                    state.batteryTemp?.let { temp ->
-                        Text(
-                            text = " · " + String.format(Locale.getDefault(), "%.0f°C", temp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    if (state.charging == true) {
-                        Text(text = " ⚡", style = MaterialTheme.typography.bodySmall)
-                    }
-                    // 2026-09-18: richiesto dall'utente ("mostra anche la
-                    // velocita' sulla mappa"). Location.getSpeed() e' in
-                    // m/s, convertita qui in km/h (unita' familiare) — la
-                    // conversione e' l'unica cosa fatta lato UI, il dato
-                    // grezzo resta in m/s ovunque altro (modello, backend,
-                    // watch). Mostrata solo sopra una soglia minima: sotto
-                    // e' rumore GPS (un watch fermo non ha velocita' zero
-                    // esatta), non un movimento reale da segnalare.
-                    state.speedMps?.let { speedMps ->
-                        val speedKmh = speedMps * 3.6
-                        if (speedKmh > MIN_DISPLAYED_SPEED_KMH) {
-                            Text(
-                                text = " · " + String.format(Locale.getDefault(), "%.0f km/h", speedKmh),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
                 }
             }
-            TextButton(onClick = onRequestLocation, enabled = !requesting) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(
-                        if (requesting) R.string.map_requesting_location else R.string.map_request_location,
-                    ),
+                    text = state.lastSeenMillis?.let { formatRelativeTime(it) }
+                        ?: stringResource(R.string.no_data_yet),
+                    style = MaterialTheme.typography.bodySmall,
                 )
+                state.battery?.let { battery ->
+                    Text(text = " · ${stringResource(R.string.battery_label)} ", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(R.string.battery_format, battery),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when {
+                            battery > 50 -> Color.Green
+                            battery > 25 -> Color(0xFFFFA000)
+                            else -> Color.Red
+                        },
+                    )
+                }
+                state.batteryTemp?.let { temp ->
+                    Text(
+                        text = " · " + String.format(Locale.getDefault(), "%.0f°C", temp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (state.charging == true) {
+                    Text(text = " ⚡", style = MaterialTheme.typography.bodySmall)
+                }
+                // 2026-09-18: richiesto dall'utente ("mostra anche la
+                // velocita' sulla mappa"). Location.getSpeed() e' in
+                // m/s, convertita qui in km/h (unita' familiare) — la
+                // conversione e' l'unica cosa fatta lato UI, il dato
+                // grezzo resta in m/s ovunque altro (modello, backend,
+                // watch). Mostrata solo sopra una soglia minima: sotto
+                // e' rumore GPS (un watch fermo non ha velocita' zero
+                // esatta), non un movimento reale da segnalare.
+                state.speedMps?.let { speedMps ->
+                    val speedKmh = speedMps * 3.6
+                    if (speedKmh > MIN_DISPLAYED_SPEED_KMH) {
+                        Text(
+                            text = " · " + String.format(Locale.getDefault(), "%.0f km/h", speedKmh),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
         }
     }
