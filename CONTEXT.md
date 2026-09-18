@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.48.0
+**Versione contesto:** 0.49.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1237,3 +1237,34 @@ CHANGELOG.md  Storico versioni
   retroattivo alla riapertura — richiederebbe una notifica di sistema
   invece di un Toast legato all'Activity, fuori scope per questa
   iterazione.
+- 2026-09-18: **Zone geofence "scomparse" + status-card grande senza
+  batteria, segnalati dall'utente (v0.49.0)**. Indagine sulle zone:
+  confermato via `git show`/`grep` che `device-config.js` (letto dal
+  watch) marcava `devices/{childId}.geofencesMigrated=true` in modo
+  permanente al primo utilizzo — se in quel momento la vecchia
+  subcollection `devices/{id}/geofences` era vuota per un qualunque
+  motivo transitorio, la copia verso la nuova collezione radice
+  `geofences` non veniva mai più ritentata, e le zone restavano
+  invisibili alla query letta da `DeviceRepository.observeGeofences()`
+  sulla phone-app. Indizio a favore di questa ipotesi: gli eventi
+  "Entrato in casa" nello storico (visibili nello screenshot
+  dell'utente, oggi 18/09) provano che il backend risolve ancora un
+  nome zona valido per il watch — quindi la config arriva al watch,
+  ma probabilmente da un'altra fonte/stato residuo, non
+  necessariamente dalla nuova collezione radice letta dalla
+  phone-app. Rimosso il flag booleano: migrazione ora idempotente
+  per-documento, ritentata (a basso costo) ad ogni chiamata.
+  Sull'altro problema (status-card enorme, batteria non mostrata):
+  riletto `MapScreen.kt`/`StatusCard` a HEAD — il codice risulta
+  corretto (nessun `Modifier.weight()`, batteria mostrata se
+  `state.battery != null`, larghezza fissa 260dp per card). Elemento
+  chiave: lo screenshot dell'utente NON mostra il numero di versione
+  appena aggiunto sotto "Dov'è" (atteso "v0.47.0" o successivo, commit
+  a9e8223) — segno concreto che la build della phone-app attualmente
+  installata è precedente a quel commit, quindi probabilmente anche
+  al fix del 2026-09-18 della StatusCard stessa (commit 03a5e82).
+  Non ho potuto verificare direttamente lo stato di Firestore da
+  questa sessione (nessun accesso diretto). Prossimo passo per
+  l'utente: ricompilare/reinstallare pulita la phone-app (non solo il
+  watch) e verificare che "v0.3.0" (o superiore) compaia sotto
+  "Dov'è" prima di ricontrollare entrambi i problemi.

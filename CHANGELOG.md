@@ -7,6 +7,37 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-09-18
+
+### Fixed
+- **Zone geofence "scomparse" dalla phone-app**: `backend/api/device-config.js`
+  marcava `devices/{childId}.geofencesMigrated=true` in modo permanente
+  al primo utilizzo, anche se in quel momento la vecchia subcollection
+  risultava vuota per qualunque motivo transitorio — da lì in poi la
+  migrazione non veniva più ritentata e le zone restavano per sempre
+  nella vecchia posizione (`devices/{id}/geofences`), invisibili alla
+  query sulla nuova collezione radice `geofences` letta dalla
+  phone-app. Rimosso il flag: la migrazione ora è idempotente
+  per-documento e viene ritentata ad ogni chiamata (costo di una sola
+  lettura extra, tipicamente su una subcollection vuota dopo la prima
+  copia reale).
+
+### Known limitations
+- Non è stato possibile verificare da questa sessione se le zone
+  dell'utente si trovassero effettivamente ancora nella vecchia
+  posizione (nessun accesso diretto a Firestore da qui) — il fix
+  copre la causa più probabile, ma va confermato dal prossimo test
+  reale (aprire "Zone" sulla phone-app dopo che il watch ha rifatto
+  una chiamata a `/api/device-config`).
+- Segnalato anche uno "status card" (ultima posizione/batteria)
+  visualmente molto più grande del previsto e senza batteria, sulla
+  phone-app — il codice attuale (`MapScreen.kt`, `StatusCard`) risulta
+  corretto e già presente da diversi commit; lo screenshot fornito
+  dall'utente non mostra però il numero di versione appena aggiunto
+  sotto "Dov'è" (v0.47.0), segno che la build installata potrebbe
+  precedere queste correzioni. Da verificare dopo una ricompilazione/
+  reinstallazione pulita della phone-app.
+
 ## [0.48.0] - 2026-09-18
 
 ### Added

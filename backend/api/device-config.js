@@ -30,6 +30,20 @@
  *   .geofencesMigrated=true per non ripeterla — stesso pattern di
  *   auto-migrazione gia' usato in _lib/auth.js per il token legacy,
  *   nessun passaggio manuale richiesto.
+ * - 0.5.0 (2026-09-18): bug segnalato dall'utente — zone configurate
+ *   in precedenza "scomparse" dalla phone-app. Causa: il flag
+ *   geofencesMigrated=true era permanente anche se, alla PRIMA
+ *   chiamata utile, la subcollection legacy risultava vuota per
+ *   qualunque motivo transitorio (childId non ancora risolto,
+ *   ordine di deploy, corsa fra piu' richieste concorrenti) — una
+ *   volta marcato true, la copia non veniva piu' ritentata e le zone
+ *   restavano per sempre nella vecchia posizione, invisibili alla
+ *   query "geofences" letta dalla phone-app. Rimosso il flag: la
+ *   migrazione ora e' idempotente per-documento (merge per id, che sia
+ *   gia' presente o meno) e viene ritentata ad ogni chiamata — costo
+ *   di una sola lettura extra della subcollection legacy (tipicamente
+ *   vuota dopo la prima copia reale), nessun rischio di perdita dati
+ *   permanente.
  */
 const { getFirestore } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -39,11 +53,15 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 
 async function ensureGeofencesMigrated(db, deviceRef, childId) {
   const legacySnap = await deviceRef.collection("geofences").get();
+  if (legacySnap.empty) return;
   const batch = db.batch();
   legacySnap.docs.forEach((d) => {
-    batch.set(db.collection("geofences").doc(d.id), { ...d.data(), childIds: [childId] });
+    batch.set(
+      db.collection("geofences").doc(d.id),
+      { ...d.data(), childIds: [childId] },
+      { merge: true },
+    );
   });
-  batch.set(deviceRef, { geofencesMigrated: true }, { merge: true });
   await batch.commit();
 }
 
@@ -69,10 +87,7 @@ module.exports = wrapHandler(async (req, res) => {
   }
 
   const deviceRef = db.collection("devices").doc(childId);
-  const deviceSnap = await deviceRef.get();
-  if (!deviceSnap.data()?.geofencesMigrated) {
-    await ensureGeofencesMigrated(db, deviceRef, childId);
-  }
+  await ensureGeofencesMigrated(db, deviceRef, childId);
 
   const snap = await db.collection("geofences").where("childIds", "array-contains", childId).get();
   const geofences = snap.docs
