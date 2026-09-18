@@ -28,13 +28,14 @@
  *   stesso default di prima quando non specificato.
  */
 const { getFirestore } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { checkHaToken } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const DEFAULT_CHILD_ID = "figlio";
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "GET") {
     res.status(405).send("Method Not Allowed");
     return;

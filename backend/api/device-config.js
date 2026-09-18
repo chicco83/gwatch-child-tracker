@@ -32,6 +32,7 @@
  *   nessun passaggio manuale richiesto.
  */
 const { getFirestore } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
@@ -46,7 +47,7 @@ async function ensureGeofencesMigrated(db, deviceRef, childId) {
   await batch.commit();
 }
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "GET") {
     res.status(405).send("Method Not Allowed");
     return;

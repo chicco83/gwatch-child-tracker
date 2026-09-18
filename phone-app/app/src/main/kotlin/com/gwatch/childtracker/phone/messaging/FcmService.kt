@@ -36,6 +36,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.gwatch.childtracker.phone.R
@@ -45,6 +46,7 @@ import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.ui.MainActivity
+import com.gwatch.childtracker.phone.util.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +56,9 @@ class FcmService : FirebaseMessagingService() {
     private val repository = DeviceRepository()
 
     override fun onNewToken(token: String) {
+        // corretto da qwen3.8-Flash-Next il 16-9-26: ri-iscrizione al topic (idempotente, vedi TrackerApplication.kt):
+        // se l'avvio precedente era offline la subscription puo essere mancante.
+        FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC)
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         CoroutineScope(Dispatchers.IO).launch {
             runCatching { repository.registerFcmToken(uid, token) }

@@ -16,4 +16,10 @@ object Constants {
     // /api/send-message-to-child usa l'ID token Firebase del genitore
     // preso a runtime), quindi nessun local.properties necessario.
     const val BACKEND_BASE_URL = "https://gwatch-child-tracker.vercel.app"
+
+    // corretto da qwen3.8-Flash-Next il 16-9-26: topic FCM dei genitori — il backend invia le push (chat, SOS,
+    // geofence) sul topic invece che sui token array letti da Firestore. La
+    // subscription e fatta in TrackerApplication.onCreate e ri-fatta in
+    // FcmService.onNewToken (idempotente). Vedi send-message.js/trigger-event.js.
+    const val FCM_PARENTS_TOPIC = "parents"
 }

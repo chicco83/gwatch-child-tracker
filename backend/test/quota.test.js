@@ -1,0 +1,42 @@
+// Test per _lib/quota.js — scritto da qwen3.8-Flash-Next il 16-9-26.
+// Richiede node_modules (npm install): quota.js importa firebase-admin a top-level.
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+
+const { checkAndConsumeQuota, MAX_BACKEND_CALLS_PER_DAY } = require("../api/_lib/quota.js");
+
+function fakeDb(existingCount) {
+  const sets = [];
+  return {
+    sets,
+    collection: () => ({ doc: () => ({ collection: () => ({ doc: () => ({}) }) }) }),
+    runTransaction: async (fn) =>
+      fn({
+        get: async () => ({ exists: existingCount !== undefined, data: () => ({ count: existingCount }) }),
+        set: (ref, data, opts) => sets.push(data),
+      }),
+  };
+}
+
+test("prima chiamata del giorno (doc assente): concessa e incrementata", async () => {
+  const db = fakeDb(undefined);
+  assert.equal(await checkAndConsumeQuota(db, "figlio"), true);
+  assert.equal(db.sets.length, 1);
+});
+
+test("ultima chiamata disponibile (count == MAX-1): concessa", async () => {
+  const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY - 1);
+  assert.equal(await checkAndConsumeQuota(db, "figlio"), true);
+  assert.equal(db.sets.length, 1);
+});
+
+test("limite raggiunto (count == MAX): rifiutata SENZA scrivere", async () => {
+  const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY);
+  assert.equal(await checkAndConsumeQuota(db, "figlio"), false);
+  assert.equal(db.sets.length, 0);
+});
+
+test("limite superato (count > MAX): rifiutata", async () => {
+  const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY + 100);
+  assert.equal(await checkAndConsumeQuota(db, "figlio"), false);
+});

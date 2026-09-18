@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.9.0
+ * Versione: 0.10.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -91,14 +91,26 @@
  *   esistere piu' se il watch aveva gia' sincronizzato dopo la
  *   migrazione. Nessun impatto se la zona non viene trovata: restano i
  *   default prudenti gia' in uso (notifica sempre, nessun allarme).
+ * - 0.10.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — due ritocchi:
+ *   (1) gli eventi scrivono ora "expiresAt" (retention 12 mesi, come locations),
+ *   puliti dal cron in cleanup.js: era l'ultimo gruppo di collezioni senza limite;
+ *   (2) le push ai genitori partono sul topic FCM "parents" invece di leggere
+ *   l'intera collezione parents e iterare gli array fcmTokens a ogni evento:
+ *   -1 lettura Firestore per notifica, token obsoleti smaltiti da FCM stesso.
+ *   L'iscrizione al topic avviene lato phone-app (TrackerApplication.kt).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
+// corretto da qwen3.8-Flash-Next il 16-9-26: retention eventi (stesso valore di
+// HISTORY_RETENTION_HOURS in ingest-location.js) e topic FCM dei genitori.
+const EVENT_RETENTION_HOURS = 24 * 365;
+const PARENTS_TOPIC = "parents";
 
 function buildNotification(type, childName, zoneName, source) {
   if (type === "sos") {
@@ -127,17 +139,12 @@ function buildNotification(type, childName, zoneName, source) {
   };
 }
 
-async function fetchParentFcmTokens(db) {
-  const parentSnap = await db.collection("parents").get();
-  const tokens = [];
-  parentSnap.forEach((p) => {
-    const t = p.data().fcmTokens;
-    if (Array.isArray(t)) tokens.push(...t);
-  });
-  return tokens;
-}
+// corretto da qwen3.8-Flash-Next il 16-9-26: rimossa fetchParentFcmTokens (leggeva
+// l'intera collezione parents a ogni evento). L'invio avviene sul topic "parents":
+// gli array fcmTokens su parents/{uid} restano scritti dalla phone-app (inutilizzati
+// per l'invio, utili al debug; eventuali rimozione in Fase 2).
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;
@@ -224,6 +231,8 @@ module.exports = async (req, res) => {
     source: type === "location_request" ? (source ?? "child") : null,
     timestamp: ts,
     acknowledged: false,
+    // corretto da qwen3.8-Flash-Next il 16-9-26: letto da cleanup.js/purgeExpired
+    expiresAt: Timestamp.fromMillis(ts.toMillis() + EVENT_RETENTION_HOURS * 3_600_000),
   });
   batch.set(deviceRef, deviceUpdate, { merge: true });
   await batch.commit();
@@ -241,12 +250,13 @@ module.exports = async (req, res) => {
   const shouldAlarm = type === "geofence_exit" && alarmOnExit;
 
   if (shouldNotify || shouldAlarm) {
-    const tokens = await fetchParentFcmTokens(db);
-    if (tokens.length > 0) {
+    // corretto da qwen3.8-Flash-Next il 16-9-26: invio via topic, nessun array di
+    // token da leggere/controllare (il blocco semplice mantiene le graffe bilanciate)
+    {
       if (shouldNotify) {
         const { title, body } = buildNotification(type, childName, zoneName, source);
-        await getMessaging().sendEachForMulticast({
-          tokens,
+        await getMessaging().send({
+          topic: PARENTS_TOPIC,
           notification: { title, body },
           data: { type, lat: String(lat), lon: String(lon), childId },
           android: { priority: "high" },
@@ -257,8 +267,8 @@ module.exports = async (req, res) => {
         // ExitAlarmService anche ad app in background/uccisa, non solo
         // mostrare una notifica passiva quando l'utente la tocca (vedi
         // storico versioni sopra).
-        await getMessaging().sendEachForMulticast({
-          tokens,
+        await getMessaging().send({
+          topic: PARENTS_TOPIC,
           data: { type: "exit_alarm", zoneName, childId },
           android: { priority: "high" },
         });

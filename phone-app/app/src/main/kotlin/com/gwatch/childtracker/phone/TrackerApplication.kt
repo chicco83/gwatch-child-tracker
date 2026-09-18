@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import java.io.File
+import com.gwatch.childtracker.phone.util.Constants
+import com.google.firebase.messaging.FirebaseMessaging
 import org.osmdroid.config.Configuration
 
 class TrackerApplication : Application() {
@@ -38,6 +40,13 @@ class TrackerApplication : Application() {
             osmdroidTileCache = File(osmdroidBasePath, "tiles")
         }
     }
+
+        // corretto da qwen3.8-Flash-Next il 16-9-26: iscrizione al topic FCM dei genitori (vedi Constants.kt).
+        // L'iscrizione e idempotente: ripetuta ad ogni avvio dell'app, cosi' sopravvive
+        // anche a reset dati/cancellazione del token. runCatching perche un eventuale
+        // fallimento (es. offline al primo avvio) non deve mai bloccare l'avvio; in quel
+        // caso la ri-iscrizione di FcmService.onNewToken copre il buco.
+        runCatching { FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC) }
 
     companion object {
         const val CHANNEL_ID = "alerts"

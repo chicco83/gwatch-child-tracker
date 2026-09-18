@@ -13,12 +13,13 @@
  * risponde 429 invece di eseguire l'operazione.
  */
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const config = require("./config.js");
 
 // Anche nello scenario peggiore (bug che chiama il backend ogni ~20
 // secondi no-stop per 24h, molto oltre il sampling adattivo previsto)
 // restiamo su una piccola frazione delle quote gratuite reali.
-const MAX_BACKEND_CALLS_PER_DAY = 4000;
-const QUOTA_DOC_RETENTION_DAYS = 7;
+const MAX_BACKEND_CALLS_PER_DAY = config.MAX_BACKEND_CALLS_PER_DAY;
+const QUOTA_DOC_RETENTION_DAYS = config.RETENTION_HOURS / 24;
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)

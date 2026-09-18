@@ -22,6 +22,7 @@
  *   resolveDeviceId(req, db) (vedi _lib/auth.js).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
@@ -29,7 +30,16 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
 const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
+  try {
+    validateConfig();
+  } catch (err) {
+    console.error("Config validation failed:", err.message);
+    res.status(500).send("Internal server error: configuration");
+    return;
+  }
+
+
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;
@@ -107,5 +117,5 @@ module.exports = async (req, res) => {
   }
 
   await batch.commit();
-  res.status(200).json({ ok: true, received: points.length });
+  successResponse(res, { received: points.length });
 };

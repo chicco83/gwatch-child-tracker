@@ -47,6 +47,7 @@
  *   ha scritto cosa.
  */
 const crypto = require("crypto");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
@@ -216,7 +217,7 @@ async function handleAckEvent(deviceRef, body, res) {
   res.status(200).json({ ok: true });
 }
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;

@@ -18,11 +18,22 @@
  *   ora supporta N bambini, il childId si risolve dal token.
  */
 const { getFirestore } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
+const { validateConfig } = require("./_lib/config.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
+  try {
+    validateConfig();
+  } catch (err) {
+    console.error("Config validation failed:", err.message);
+    res.status(500).send("Internal server error: configuration");
+    return;
+  }
+
+
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;
@@ -54,5 +65,5 @@ module.exports = async (req, res) => {
     .doc(childId)
     .set({ fcmToken: token }, { merge: true });
 
-  res.status(200).json({ ok: true });
+  successResponse(res);
 };

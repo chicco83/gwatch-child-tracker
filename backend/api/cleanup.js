@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.3.0
+ * Versione: 0.4.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -23,9 +23,17 @@
  *   send-message.js/send-message-to-child.js, che scrivono
  *   "expiresAt" allo stesso modo di ingest-location.js). Stesso
  *   meccanismo, nessun cron/endpoint separato necessario.
+ * - 0.4.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — due ritocchi
+ *   di sicurezza/manutenzione: (1) confronto costant-time del CRON_SECRET (vedi
+ *   _lib/auth.js/timingSafeEquals), prima un semplice !==; (2) torna la pulizia
+ *   del gruppo "events" (retention 12 mesi, scrive expiresAt in trigger-event.js):
+ *   era rimasta indietro dopo il riordino multi-bambino.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
+// corretto da qwen3.8-Flash-Next il 16-9-26: confronto costant-time del CRON_SECRET
+const { timingSafeEquals } = require("./_lib/auth");
 
 const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_RUN = 10; // tetto di sicurezza: max 5.000 delete/esecuzione
@@ -51,10 +59,10 @@ async function purgeExpired(db, collectionGroupName) {
   return totalDeleted;
 }
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
+  // corretto da qwen3.8-Flash-Next il 16-9-26: timingSafeEquals al posto di !==
   const authHeader = req.headers["authorization"] || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
+  if (!process.env.CRON_SECRET || !timingSafeEquals(authHeader, `Bearer ${process.env.CRON_SECRET}`)) {
     res.status(401).send("Unauthorized");
     return;
   }
@@ -62,11 +70,13 @@ module.exports = async (req, res) => {
   getAdminApp();
   const db = getFirestore();
 
-  const [locationsDeleted, quotaDeleted, messagesDeleted] = await Promise.all([
+  // corretto da qwen3.8-Flash-Next il 16-9-26: aggiunto "events" (vedi trigger-event.js)
+  const [locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted] = await Promise.all([
     purgeExpired(db, "locations"),
     purgeExpired(db, "quota"),
     purgeExpired(db, "messages"),
+    purgeExpired(db, "events"),
   ]);
 
-  res.status(200).json({ ok: true, locationsDeleted, quotaDeleted, messagesDeleted });
+  res.status(200).json({ ok: true, locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted });
 };

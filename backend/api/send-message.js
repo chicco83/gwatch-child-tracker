@@ -1,6 +1,6 @@
 /**
  * POST /api/send-message
- * Versione: 0.4.0
+ * Versione: 0.5.0
  *
  * Messaggio di chat inviato dal watch verso il genitore. Scrive il
  * messaggio e invia subito la push FCM a tutti i genitori nella stessa
@@ -35,8 +35,15 @@
  *   perche' con piu' bambini "sender: child" da solo non basta piu' a
  *   dire di chi si tratta. childId incluso anche nel payload della
  *   push, cosi' la phone-app puo' aprire la conversazione giusta.
+ * - 0.5.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — le push ai
+ *   genitori partono sul topic FCM "parents" invece di leggere l'intera
+ *   collezione parents e iterare gli array fcmTokens a ogni messaggio (stesso
+ *   intervento gia fatto in trigger-event.js v0.10.0): -1 lettura Firestore per
+ *   invio, token obsoleti smaltiti da FCM stesso. L'iscrizione al topic e
+ *   lato phone-app (TrackerApplication.kt + FcmService.onNewToken).
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
+const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
@@ -44,8 +51,10 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const MAX_TEXT_LENGTH = 500;
 const MESSAGE_RETENTION_HOURS = 24;
+// corretto da qwen3.8-Flash-Next il 16-9-26: topic FCM dei genitori (vedi Storico versioni)
+const PARENTS_TOPIC = "parents";
 
-module.exports = async (req, res) => {
+module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;
@@ -92,24 +101,16 @@ module.exports = async (req, res) => {
     expiresAt,
   });
 
-  const parentSnap = await db.collection("parents").get();
-  const tokens = [];
-  parentSnap.forEach((p) => {
-    const t = p.data().fcmTokens;
-    if (Array.isArray(t)) tokens.push(...t);
+  // corretto da qwen3.8-Flash-Next il 16-9-26: invio sul topic FCM "parents"
+  // (iscrizione lato phone-app). Niente piu lettura della collezione parents a
+  // ogni messaggio; gli array fcmTokens restano scritti per debug ma non sono
+  // usati per l'invio. Solo "data" (vedi storico versioni v0.3.0 sopra): cosi'
+  // onMessageReceived() gira sempre lato phone-app anche ad app in background.
+  await getMessaging().send({
+    topic: PARENTS_TOPIC,
+    data: { type: "chat", sender: "child", senderName, text, childId },
+    android: { priority: "high" },
   });
-
-  if (tokens.length > 0) {
-    // Solo "data" (vedi storico versioni v0.3.0 sopra): niente
-    // "notification", cosi' onMessageReceived() gira sempre lato
-    // phone-app anche ad app in background, invece di essere gestito
-    // (e la chat mai aggiornata) dal tray di sistema.
-    await getMessaging().sendEachForMulticast({
-      tokens,
-      data: { type: "chat", sender: "child", senderName, text, childId },
-      android: { priority: "high" },
-    });
-  }
 
   res.status(200).json({ ok: true });
 };
