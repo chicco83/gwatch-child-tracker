@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.59.0
+**Versione contesto:** 0.60.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1634,3 +1634,25 @@ CHANGELOG.md  Storico versioni
      invece di una sola, applicata qui alla `ToggleRow` condivisa da
      tutti i toggle di `GeofenceScreen` (notifiche, allarme, assegna a
      bambino).
+- 2026-09-18: **StatusCard riformattata a una riga per informazione,
+  valori in grassetto; rimossa soglia minima velocita' (v0.60.0)**.
+  Richiesto dall'utente un formato fisso: "Ultima posizione: xx minuti
+  fa" / "Batteria: xx%" / "Temperatura batteria: xx°C" / "Velocita': xx
+  km/h", ciascuno su riga propria con solo il valore in grassetto
+  (nuovo composable `InfoLine`, etichetta + valore come due `Text`
+  separati nella stessa `Row`, `fontWeight = FontWeight.Bold` solo sul
+  secondo). `formatRelativeTime()` (util/TimeFormat.kt) e' stata
+  spogliata del prefisso "Ultima posizione ricevuta" che aveva da
+  prima — sarebbe stato duplicato con la nuova etichetta di riga — ora
+  ritorna solo la parte relativa.
+
+  L'utente ha segnalato che la velocita' "per ora non compare": la
+  soglia minima di 2 km/h sotto cui la riga spariva del tutto
+  (introdotta in v0.56.0 per filtrare il "rumore" GPS di un watch
+  fermo) e' stata rimossa — con un formato a righe fisse non ha piu'
+  senso nascondere il dato quando disponibile. Comunicato pero'
+  all'utente che se la riga resta assente anche dopo questo fix, la
+  causa piu' probabile e' che `Location.hasSpeed()` lato watch sia
+  ancora `false` (nessun fix GPS con velocita' valida — serve un
+  minimo di movimento reale, non e' un bug ma un limite fisiologico
+  del GPS Android), non un problema di soglia UI.

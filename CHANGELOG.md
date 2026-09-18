@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-09-18
+
+### Changed
+- phone-app: StatusCard (mappa) — i dettagli del bambino (ultima
+  posizione, batteria, temperatura batteria, velocita') erano tutti su
+  un'unica riga separati da "·", richiesto dall'utente un formato piu'
+  leggibile: ora un'informazione per riga, etichetta normale + valore
+  in grassetto ("Ultima posizione: **5 min fa**", "Batteria: **89%**",
+  ecc.). `formatRelativeTime()` non include piu' il prefisso "Ultima
+  posizione ricevuta" (ora fornito dall'etichetta della riga), ritorna
+  solo la parte relativa ("5 min fa", "adesso", "2 h fa", ...).
+
+### Fixed
+- phone-app: rimossa la soglia minima di 2 km/h sotto cui la riga
+  "Velocita'" spariva del tutto — con il nuovo formato a righe fisse
+  non ha piu' senso nascondere il dato quando disponibile, anche se
+  vicino allo zero.
+
+### Known limitations
+- La velocita' resta assente quando il watch non ha ancora inviato un
+  fix GPS con `Location.hasSpeed()==true` (tipicamente serve un minimo
+  di movimento reale, non solo un fix stazionario) — comportamento
+  atteso lato Android, non un bug applicativo.
+
 ## [0.59.0] - 2026-09-18
 
 ### Fixed

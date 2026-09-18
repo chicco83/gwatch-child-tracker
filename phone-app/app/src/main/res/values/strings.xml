@@ -8,6 +8,12 @@
          non tutta la stringa "Batteria watch: X%" come prima -->
     <string name="battery_label">Batteria:</string>
     <string name="battery_format">%d%%</string>
+    <!-- v0.14.0 (2026-09-18): StatusCard ora un'informazione per riga
+         (etichetta + valore in grassetto, vedi InfoLine in MapScreen.kt)
+         invece di tutto su un'unica riga separato da "·" -->
+    <string name="status_last_seen_label">Ultima posizione:</string>
+    <string name="status_battery_temp_label">Temperatura batteria:</string>
+    <string name="status_speed_label">Velocità:</string>
     <string name="last_known_position">Ultima posizione nota</string>
     <string name="geofences_title">Zone</string>
     <!-- v0.7.0 (2026-09-11): rinominato "Esci" -> "Logout", ora dentro

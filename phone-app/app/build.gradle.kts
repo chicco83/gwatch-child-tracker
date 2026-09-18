@@ -72,8 +72,12 @@ android {
         // scrollbar per far capire che ce ne sono altre, fix switch
         // "Allarme sonoro all'uscita" disallineato/tagliato (vedi
         // GeofenceScreen.kt).
-        versionCode = 9
-        versionName = "0.9.0"
+        // v0.10.0 (2026-09-18): StatusCard — un'informazione per riga
+        // (ultima posizione/batteria/temperatura/velocita'), valore in
+        // grassetto, tolta la soglia minima che nascondeva la velocita'
+        // quando bassa (vedi MapScreen.kt/TimeFormat.kt).
+        versionCode = 10
+        versionName = "0.10.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

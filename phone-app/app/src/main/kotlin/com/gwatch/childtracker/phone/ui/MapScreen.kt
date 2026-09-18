@@ -130,6 +130,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gwatch.childtracker.phone.R
@@ -160,10 +161,11 @@ private const val PATH_WINDOW_HOURS = 24L
 // (marker/zone restano invece a colore fisso, non serve distinguerli).
 private val PATH_COLORS = listOf(0xFF4285F4.toInt(), 0xFFEA4335.toInt(), 0xFF34A853.toInt(), 0xFFFBBC05.toInt())
 
-// 2026-09-18: sotto questa soglia la velocita' non viene mostrata in
-// StatusCard — e' rumore GPS (un watch fermo non riporta mai esattamente
-// 0 km/h), non un movimento reale da segnalare.
-private const val MIN_DISPLAYED_SPEED_KMH = 2.0
+// 2026-09-18 (v0.10.0): rimossa la soglia minima sotto cui la velocita'
+// non veniva mostrata (era 2.0 km/h, per filtrare il "rumore" GPS di un
+// watch fermo) — richiesto dall'utente un formato fisso a 4 righe in
+// StatusCard sempre presenti quando il dato arriva, niente piu' righe
+// che appaiono/spariscono in base alla velocita' istantanea.
 
 private data class ChildEvent(val childName: String, val event: DeviceEvent)
 
@@ -504,6 +506,16 @@ private fun StatusCard(
     // (corti, non competono mai per lo spazio), dettagli sotto su una
     // riga propria a piena larghezza, libera di andare a capo
     // normalmente (leggibile) invece di schiacciare il pulsante.
+    // v0.14.0 (2026-09-18): richiesto dall'utente — i dettagli erano
+    // tutti su un'unica riga separati da "·", difficili da leggere al
+    // volo. Ora una riga per informazione (ultima posizione / batteria /
+    // temperatura / velocita'), etichetta normale + valore in grassetto
+    // (vedi InfoLine sotto). Rimossa anche la soglia minima di velocita'
+    // (MIN_DISPLAYED_SPEED_KMH, 2 km/h) che nascondeva del tutto la riga
+    // "Velocita'" quando il bambino si muoveva piano: con un formato
+    // fisso a righe separate non ha piu' senso far apparire/sparire
+    // righe, meglio mostrare il dato reale (anche 0 km/h) quando
+    // disponibile.
     Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(
@@ -520,18 +532,18 @@ private fun StatusCard(
                     )
                 }
             }
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = state.lastSeenMillis?.let { formatRelativeTime(it) }
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                InfoLine(
+                    label = stringResource(R.string.status_last_seen_label),
+                    value = state.lastSeenMillis?.let { formatRelativeTime(it) }
                         ?: stringResource(R.string.no_data_yet),
-                    style = MaterialTheme.typography.bodySmall,
                 )
                 state.battery?.let { battery ->
-                    Text(text = " · ${stringResource(R.string.battery_label)} ", style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        text = stringResource(R.string.battery_format, battery),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when {
+                    InfoLine(
+                        label = stringResource(R.string.battery_label),
+                        value = stringResource(R.string.battery_format, battery) +
+                            if (state.charging == true) " ⚡" else "",
+                        valueColor = when {
                             battery > 50 -> Color.Green
                             battery > 25 -> Color(0xFFFFA000)
                             else -> Color.Red
@@ -539,33 +551,47 @@ private fun StatusCard(
                     )
                 }
                 state.batteryTemp?.let { temp ->
-                    Text(
-                        text = " · " + String.format(Locale.getDefault(), "%.0f°C", temp),
-                        style = MaterialTheme.typography.bodySmall,
+                    InfoLine(
+                        label = stringResource(R.string.status_battery_temp_label),
+                        value = String.format(Locale.getDefault(), "%.0f°C", temp),
                     )
                 }
-                if (state.charging == true) {
-                    Text(text = " ⚡", style = MaterialTheme.typography.bodySmall)
-                }
-                // 2026-09-18: richiesto dall'utente ("mostra anche la
-                // velocita' sulla mappa"). Location.getSpeed() e' in
-                // m/s, convertita qui in km/h (unita' familiare) — la
-                // conversione e' l'unica cosa fatta lato UI, il dato
-                // grezzo resta in m/s ovunque altro (modello, backend,
-                // watch). Mostrata solo sopra una soglia minima: sotto
-                // e' rumore GPS (un watch fermo non ha velocita' zero
-                // esatta), non un movimento reale da segnalare.
+                // Location.getSpeed() e' in m/s, convertita qui in km/h
+                // (unita' familiare) — la conversione e' l'unica cosa
+                // fatta lato UI, il dato grezzo resta in m/s ovunque
+                // altro (modello, backend, watch). Assente (null) finche'
+                // il watch non manda un fix GPS con velocita' valida
+                // (Location.hasSpeed()==true, tipicamente richiede un
+                // minimo di movimento reale, non solo un fix stazionario).
                 state.speedMps?.let { speedMps ->
-                    val speedKmh = speedMps * 3.6
-                    if (speedKmh > MIN_DISPLAYED_SPEED_KMH) {
-                        Text(
-                            text = " · " + String.format(Locale.getDefault(), "%.0f km/h", speedKmh),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
+                    InfoLine(
+                        label = stringResource(R.string.status_speed_label),
+                        value = String.format(Locale.getDefault(), "%.0f km/h", speedMps * 3.6),
+                    )
                 }
             }
         }
+    }
+}
+
+/**
+ * Una riga "etichetta: valore" per i dettagli di StatusCard — etichetta
+ * in stile normale, valore in grassetto (v0.14.0, richiesto dall'utente
+ * per distinguere a colpo d'occhio il dato dall'etichetta). valueColor
+ * di default Color.Unspecified fa usare il colore di testo standard del
+ * tema (stesso comportamento del parametro "color" di Text quando non
+ * specificato), usato per il colore verde/arancio/rosso della batteria.
+ */
+@Composable
+private fun InfoLine(label: String, value: String, valueColor: Color = Color.Unspecified) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+        Text(text = "$label ", style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = valueColor,
+        )
     }
 }
 
