@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.45.0
+**Versione contesto:** 0.46.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1160,3 +1160,27 @@ CHANGELOG.md  Storico versioni
   aver verificato Impostazioni watch → Posizione (ON) e i permessi
   della app (posizione concessa). Il log dirà esattamente quale dei
   due casi si sta verificando.
+- 2026-09-18: **`versionCode`/`versionName` fermi a `2`/"0.2.0" su
+  entrambe le app (v0.46.0)** — segnalato dall'utente durante la
+  diagnosi in corso ("la versione della app è sempre ferma a 0.2").
+  Verificato via `git log -p` sui due `build.gradle.kts`: un solo bump
+  storico (0.1.0→0.2.0), mai più aggiornato nonostante decine di
+  commit successivi (multi-bambino, chat, geofence, SDK 35...).
+  Verificato anche che il codice del percorso SOS/Invia-posizione
+  (`LocationRequestWorker.kt`, `SosWorker.kt`, `MainActivity.kt`,
+  `AndroidManifest.xml`) non è stato toccato da nessun commit del
+  lavoro multi-bambino — la regressione riportata dall'utente ("prima
+  del multiwatch l'orologio inviava tutto") va quindi cercata altrove:
+  candidati principali il bump compileSdk/targetSdk 35 (commit
+  dd57b35, comportamento permessi/foreground service cambiato da
+  Android) o, meno probabile, le modifiche di auth backend (gli altri
+  endpoint che usano la stessa autenticazione rispondono 200 nei log
+  Vercel). Portati entrambi i versionCode/versionName a `3`/"0.3.0" —
+  utile di per sé anche a prescindere dalla diagnosi in corso, per
+  poter sempre verificare da Impostazioni app quale build è davvero
+  installata. Convenzione stabilita: bump ad ogni release d'ora in
+  poi. Utente ha confermato separatamente che il permesso
+  ACCESS_FINE_LOCATION risulta concesso sul watch (controllato a
+  mano nelle impostazioni) — non ancora confermato via Logcat, cui
+  l'utente non sapeva accedere; fornite istruzioni per farlo dal tab
+  "Logcat" di Android Studio invece che da riga di comando adb.

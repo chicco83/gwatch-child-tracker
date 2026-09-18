@@ -41,8 +41,11 @@ android {
         applicationId = "com.gwatch.childtracker.phone"
         minSdk = 26
         targetSdk = 35 // corretto da qwen3.8-Flash-Next il 16-9-26
-        versionCode = 2
-        versionName = "0.2.0"
+        // 2026-09-18: stesso problema segnalato sul watch-app — versionCode/
+        // versionName fermi a 2/"0.2.0" da decine di commit, mai
+        // incrementati dopo il primo bump. Bump ad ogni release d'ora in poi.
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

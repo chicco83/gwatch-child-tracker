@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-09-18
+
+### Fixed
+- **`versionCode`/`versionName` di entrambe le app fermi a `2`/"0.2.0"**
+  da decine di commit, mai incrementati dopo il primo bump — segnalato
+  dall'utente durante la diagnosi corrente: senza un numero che cambia,
+  da Impostazioni watch/telefono era impossibile verificare se l'APK
+  appena compilato fosse davvero quello installato (rilevante ora,
+  perché una build vecchia non reinstallata per errore avrebbe lo
+  stesso identico comportamento "invio silenzioso" del bug in corso di
+  diagnosi). Portati a `3`/"0.3.0" su entrambe (`watch-app`,
+  `phone-app`); da qui in avanti vanno incrementati ad ogni release.
+
+### Added
+- Istruzioni per l'utente su come leggere il Logcat da Android Studio
+  (tab "Logcat", filtro sui tag `LocationRequestWorker`/`SosWorker`) —
+  richiesto perché la procedura via `adb` da terminale non era chiara.
+
 ## [0.45.0] - 2026-09-18
 
 ### Added

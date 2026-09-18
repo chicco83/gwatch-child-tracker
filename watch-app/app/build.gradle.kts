@@ -48,8 +48,16 @@ android {
         applicationId = "com.gwatch.childtracker"
         minSdk = 30 // Wear OS 3 (Galaxy Watch4 e successivi)
         targetSdk = 35 // corretto da qwen3.8-Flash-Next il 16-9-26
-        versionCode = 2
-        versionName = "0.2.0"
+        // 2026-09-18: versionCode/versionName erano fermi a 2/"0.2.0" da
+        // decine di commit — mai piu' incrementati dopo il primo bump.
+        // Utente non riusciva a verificare da Impostazioni watch se
+        // l'app appena compilata fosse davvero quella installata (utile
+        // ora che stiamo diagnosticando un bug "invio silenzioso": senza
+        // un numero che cambia, un vecchio APK non reinstallato per
+        // errore sarebbe indistinguibile da uno aggiornato). Bump ad
+        // ogni release d'ora in poi.
+        versionCode = 3
+        versionName = "0.3.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
