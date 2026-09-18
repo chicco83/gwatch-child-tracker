@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.BatteryManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -38,13 +39,24 @@ class LocationRequestWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    // v0.7.0 (2026-09-18): bug segnalato sul primo test hardware reale —
+    // ne' "Invia posizione" ne' SOS arrivavano mai al backend (confermato
+    // dai log Vercel: zero chiamate a /api/trigger-event, mentre
+    // register-watch-token/device-config/send-message funzionavano),
+    // quindi il blocco era qui, prima della chiamata di rete: permesso
+    // mancante o fix GPS mai arrivato. Prima nessuno dei due casi
+    // lasciava traccia in Logcat (Result.failure()/retry() silenziosi).
+    // Aggiunto Log.w su entrambi.
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         val hasPermission = ContextCompat.checkSelfPermission(
             appContext,
             Manifest.permission.ACCESS_FINE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) return Result.failure()
+        if (!hasPermission) {
+            Log.w(TAG, "doWork: permesso ACCESS_FINE_LOCATION non concesso, richiesta abbandonata")
+            return Result.failure()
+        }
 
         val source = inputData.getString(KEY_SOURCE) ?: SOURCE_CHILD
 
@@ -58,8 +70,13 @@ class LocationRequestWorker(
                 )
                 .await()
         } catch (e: Exception) {
+            Log.w(TAG, "doWork: fix GPS fallito", e)
             null
-        } ?: return Result.retry()
+        }
+        if (location == null) {
+            Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
+            return Result.retry()
+        }
 
         val battery = currentBatteryPercent()
 
@@ -82,6 +99,7 @@ class LocationRequestWorker(
     }
 
     companion object {
+        private const val TAG = "LocationRequestWorker"
         const val WORK_NAME = "location-request"
         const val KEY_SOURCE = "source"
         const val SOURCE_CHILD = "child"

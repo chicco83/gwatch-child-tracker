@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.BatteryManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -27,13 +28,21 @@ class SosWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    // v0.5.0 (2026-09-18): stesso bug/fix di LocationRequestWorker.kt —
+    // vedi lo storico versioni li' per il contesto completo (segnalato
+    // dal primo test hardware reale, confermato dai log Vercel: zero
+    // chiamate a /api/trigger-event). Aggiunto Log.w sui due casi che
+    // bloccano l'invio prima ancora della chiamata di rete.
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         val hasPermission = ContextCompat.checkSelfPermission(
             appContext,
             Manifest.permission.ACCESS_FINE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) return Result.failure()
+        if (!hasPermission) {
+            Log.w(TAG, "doWork: permesso ACCESS_FINE_LOCATION non concesso, SOS abbandonato")
+            return Result.failure()
+        }
 
         val location = try {
             LocationServices.getFusedLocationProviderClient(appContext)
@@ -45,8 +54,13 @@ class SosWorker(
                 )
                 .await()
         } catch (e: Exception) {
+            Log.w(TAG, "doWork: fix GPS fallito", e)
             null
-        } ?: return Result.retry()
+        }
+        if (location == null) {
+            Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
+            return Result.retry()
+        }
 
         val battery = currentBatteryPercent()
 
@@ -68,6 +82,7 @@ class SosWorker(
     }
 
     companion object {
+        private const val TAG = "SosWorker"
         const val WORK_NAME = "sos"
     }
 }

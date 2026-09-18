@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-09-18
+
+### Added
+- **Diagnosi via log Vercel**: confermato che deploy/backend funzionano
+  correttamente (`register-watch-token`, `device-config`,
+  `send-message` tutti 200), ma **zero chiamate a `/api/trigger-event`**
+  nonostante il test di "Invia posizione" e SOS sul watch — il blocco è
+  quindi prima della rete, nel prendere il fix GPS. Aggiunto `Log.w` in
+  `LocationRequestWorker.kt`/`SosWorker.kt` sui due casi che tornavano
+  silenziosi (permesso `ACCESS_FINE_LOCATION` mancante →
+  `Result.failure()`; fix GPS null/eccezione → `Result.retry()`), così
+  il prossimo test mostra in Logcat la causa esatta invece di un nulla
+  di fatto.
+
+### Known limitations
+- Diagnosi di "watch non invia posizione/SOS" ancora aperta — prossimo
+  passo: Logcat sul watch (tag `LocationRequestWorker`/`SosWorker`)
+  durante un nuovo test, per vedere se il motivo è permesso posizione
+  non concesso o GPS che non arriva mai a un fix (es. al chiuso).
+
 ## [0.44.0] - 2026-09-18
 
 ### Added

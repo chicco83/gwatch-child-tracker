@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.44.0
+**Versione contesto:** 0.45.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1141,3 +1141,22 @@ CHANGELOG.md  Storico versioni
   dopo aver aperto l'app watch e premuto "Invia posizione" — il codice
   HTTP (o l'assenza totale di risposta, sintomo di (b)) restringe
   immediatamente il campo.
+- 2026-09-18: **Diagnosi "watch non invia posizione/SOS" ristretta
+  (v0.45.0)**, grazie ai log runtime di Vercel controllati direttamente
+  dall'utente (dashboard → tab Logs): `register-watch-token`,
+  `device-config`, `send-message` tutti 200 — backend/auth/token del
+  device confermati sani, deploy confermati "Ready" su tutte le
+  release. **Zero chiamate a `/api/trigger-event`** nonostante due
+  test espliciti (Invia posizione + SOS): il blocco è quindi PRIMA
+  della chiamata di rete, dentro `LocationRequestWorker`/`SosWorker`
+  — o il permesso `ACCESS_FINE_LOCATION` non è concesso, o il fix GPS
+  non arriva mai (indoor, GPS a freddo, location di sistema disattivata
+  sul watch). Nessuno dei due casi lasciava traccia in Logcat prima
+  d'ora (`Result.failure()`/`Result.retry()` silenziosi, stesso
+  pattern del buco già trovato in BackendClient.kt). Aggiunto `Log.w`
+  su entrambi i casi in entrambi i worker. **Prossimo passo
+  dell'utente**: Logcat (tag `LocationRequestWorker` o `SosWorker`)
+  durante un nuovo test, idealmente all'aperto con cielo libero, dopo
+  aver verificato Impostazioni watch → Posizione (ON) e i permessi
+  della app (posizione concessa). Il log dirà esattamente quale dei
+  due casi si sta verificando.
