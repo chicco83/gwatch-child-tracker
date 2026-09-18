@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.43.0
+**Versione contesto:** 0.44.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1110,3 +1110,34 @@ CHANGELOG.md  Storico versioni
   Promemoria per il futuro: mai usare un asterisco letterale dopo uno
   slash in un commento Kotlin (es. path Firestore con wildcard tipo
   "devices/*") — scrivere "devices/{childId}" o descriverlo a parole.
+- 2026-09-18: **Watch non raggiungibile / invio posizione senza
+  conferma (v0.44.0)**. Segnalati insieme: "Aggiorna posizione" dalla
+  phone-app risponde "watch non raggiungibile" (backend: 404, nessun
+  fcmToken salvato su devices/{childId}); il pulsante "Invia posizione"
+  sul watch non mostra mai né successo né fallimento. Analisi del
+  codice: nessun bug trovato in `LocationRequestWorker`/`SosWorker` —
+  `Result.retry()` su un fallimento di rete o di fix GPS e' voluto
+  (mai perdere un tentativo, ritenta in background, per questo il
+  Toast "fallito" non compare mai, solo "successo" o un fallimento
+  permanente come permesso mancante). Trovato pero' un buco reale:
+  `watch-app/.../network/BackendClient.kt` non loggava MAI un esito
+  negativo, a differenza del client identico lato phone-app — reso
+  quindi impossibile diagnosticare da Logcat se il problema fosse rete
+  assente, un 401 (token sbagliato), o altro. Aggiunto logging
+  (`Log.w`, tag "BackendClient") coerente con la phone-app.
+  **Diagnosi non chiusa** (serve accesso al device reale, non
+  disponibile in questa sessione): le due ipotesi piu' probabili sono
+  (a) il token del device compilato in `local.properties` non
+  corrisponde a quello salvato su Firestore per quel bambino (401 su
+  ogni chiamata — coerente col fatto che ANCHE la registrazione del
+  token FCM, che passa dallo stesso header X-Device-Token, non risulta
+  mai andata a buon fine), oppure (b) il piano dati della eSIM del
+  watch non include traffico dati generico verso host arbitrari
+  (comune sui piani eSIM per smartwatch bambini, spesso limitati a
+  voce/SMS/localizzazione via backend del produttore) — il watch
+  potrebbe risultare "in rete" (chiamate/SMS) senza avere accesso
+  HTTPS libero verso Vercel. Prossimo passo per l'utente: Logcat via
+  ADB WiFi (vedi watch-app/README.md) filtrato su tag "BackendClient"
+  dopo aver aperto l'app watch e premuto "Invia posizione" — il codice
+  HTTP (o l'assenza totale di risposta, sintomo di (b)) restringe
+  immediatamente il campo.

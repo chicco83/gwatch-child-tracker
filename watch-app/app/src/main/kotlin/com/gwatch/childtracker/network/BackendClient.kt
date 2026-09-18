@@ -6,7 +6,17 @@ package com.gwatch.childtracker.network
 // Esito a 3 stati (non solo bool) perche' un 409 ("SOS non piu'
 // attivo") e' un segnale distinto da un errore di rete: il primo dice
 // al service di fermarsi, il secondo di ritentare al prossimo giro.
+// v0.5.0 (2026-09-18): bug segnalato sul primo test hardware reale
+// ("richiesta posizione: watch non raggiungibile" + invio posizione
+// dal watch senza mai conferma) — a differenza del BackendClient.kt
+// della phone-app, questo non loggava mai nulla su un esito negativo:
+// impossibile distinguere da Logcat un vero problema di rete (watch
+// senza dati, es. eSIM solo voce/SMS senza piano dati) da un 401 (token
+// del device sbagliato in local.properties/BuildConfig) da un altro
+// errore del backend. Aggiunto Log.w in executeForBody, stesso stile
+// del client phone-app.
 
+import android.util.Log
 import com.gwatch.childtracker.config.BackendConfig
 import com.gwatch.childtracker.network.model.ChatMessage
 import com.gwatch.childtracker.network.model.GeofenceZone
@@ -223,17 +233,25 @@ class BackendClient {
             cont.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
+                    Log.w(TAG, "${request.url.encodedPath}: chiamata fallita (rete)", e)
                     if (cont.isActive) cont.resume(null)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     response.use {
+                        if (!it.isSuccessful) {
+                            Log.w(TAG, "${request.url.encodedPath}: HTTP ${it.code} — ${it.body?.string()}")
+                        }
                         val result = if (it.isSuccessful) it.body?.string() ?: "" else null
                         if (cont.isActive) cont.resume(result)
                     }
                 }
             })
         }
+
+    companion object {
+        private const val TAG = "BackendClient"
+    }
 }
 
 enum class SosHeartbeatResult { ACCEPTED, STOP, FAILED }

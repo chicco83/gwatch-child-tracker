@@ -7,6 +7,34 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-09-18
+
+### Added
+- **`watch-app/.../network/BackendClient.kt`**: aggiunto logging
+  (`Log.w`, tag "BackendClient") su ogni chiamata al backend non
+  andata a buon fine — codice HTTP + corpo risposta su un errore del
+  server, l'eccezione su un errore di rete. Prima non loggava nulla,
+  a differenza dell'equivalente lato phone-app: da Logcat era
+  impossibile distinguere "il watch non ha connettività dati" da "il
+  token del device è sbagliato" (401) da un errore lato server.
+  Segnalato durante il primo test su hardware reale: "richiesta
+  posizione: watch non raggiungibile" (dalla phone-app) e "invio
+  posizione dal watch senza mai conferma".
+
+### Known limitations
+- **Diagnosi ancora aperta** dei due sintomi sopra — vedi CONTEXT.md,
+  log decisioni: il codice si comporta come documentato (nessun bug
+  trovato in `LocationRequestWorker`/`SosWorker`: un fallimento di rete
+  o di fix GPS ritorna `Result.retry()` di proposito, in silenzio, per
+  non dare mai per persa una richiesta — motivo per cui l'invio non
+  mostra mai "fallito", resta in ritentativo). Il sospetto più
+  probabile è a monte del codice: token del device (`local.properties`)
+  non corrispondente a quello salvato su Firestore per quel bambino,
+  o un piano dati eSIM che non include traffico dati generico (molte
+  eSIM per smartwatch bambini forniscono solo voce/SMS/localizzazione
+  via backend del produttore, non internet libero) — vedi CONTEXT.md
+  per i passi di verifica.
+
 ## [0.43.0] - 2026-09-18
 
 ### Fixed
