@@ -19,6 +19,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- v0.9.0 (2026-09-18): DND automatico per zona (vedi dnd/DndController.kt).
+         Permesso "normale" nel manifest, ma l'accesso vero e proprio
+         (isNotificationPolicyAccessGranted) va concesso a mano
+         dall'utente in Impostazioni > Accesso speciale > Non disturbare
+         — nessuna richiesta a runtime possibile, solo un intent verso
+         quella schermata di sistema. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
     <application
         android:name=".TrackerApplication"
         android:allowBackup="false"

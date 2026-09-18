@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.60.0
+**Versione contesto:** 0.61.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1656,3 +1656,51 @@ CHANGELOG.md  Storico versioni
   ancora `false` (nessun fix GPS con velocita' valida — serve un
   minimo di movimento reale, non e' un bug ma un limite fisiologico
   del GPS Android), non un problema di soglia UI.
+- 2026-09-18: **DND automatico per zona (v0.61.0)**, richiesto
+  dall'utente: "aggiungi alle zone un flag per attivarlo e disattivarlo
+  all'ingresso e uscita dalla stessa, cosi' quando arriva a scuola va
+  in dnd in automatico". Decisione di design principale: **un solo
+  flag** (`dndOnZone`) invece di due toggle indipendenti "attiva
+  all'ingresso"/"disattiva all'uscita" — con due flag separati sarebbe
+  possibile configurare solo "attiva all'ingresso" senza il simmetrico
+  "disattiva all'uscita", lasciando il DND acceso per sempre dopo che
+  il bambino lascia la zona (bug di configurazione silenzioso, non
+  ovvio da notare). Un solo toggle rende impossibile quello stato:
+  ingresso -> DND on, uscita -> DND off, sempre insieme.
+
+  Dove risolvere l'azione (watch vs backend): il cambio DND e'
+  un'impostazione di SISTEMA LOCALE del watch
+  (`NotificationManager.setInterruptionFilter`), quindi deve avvenire
+  sul watch. Ma la CONOSCENZA di quali zone hanno `dndOnZone` attivo
+  vive in Firestore (scritta dalla phone-app). Anziche' sincronizzare
+  questo flag al watch tramite `/api/device-config` (che il watch
+  legge per registrare le geofence sulla Geofencing API di Android, e
+  che quindi il watch consulterebbe comunque doversi ricordare
+  localmente quale zona ha il flag), si e' scelto di riusare la
+  chiamata che il watch fa GIA' ad ogni transizione geofence
+  (`POST /api/trigger-event`, usata per notificare ingresso/uscita al
+  genitore): il backend, che deve comunque leggere il documento della
+  zona per nome/notifyOnEnter/notifyOnExit/alarmOnExit, legge anche
+  `dndOnZone` e restituisce nella STESSA risposta HTTP un campo `dnd`
+  (`true`/`false`/assente) — zero chiamate di rete aggiuntive, zero
+  stato da sincronizzare/persistere sul watch. `GeofenceEventWorker.kt`
+  applica subito il cambio se `dnd` non e' null.
+
+  Permesso di sistema: `ACCESS_NOTIFICATION_POLICY` non e' concedibile
+  via codice (a differenza dei permessi runtime standard) — va
+  autorizzato una tantum dall'utente in Impostazioni > Accesso
+  speciale > Non disturbare, toccando fisicamente il watch. Se manca,
+  `DndController.setDnd()` non fallisce in silenzio (il genitore
+  vedrebbe una zona configurata che pero' non fa mai nulla, senza
+  sapere perche'): mostra una notifica con un tasto diretto a quella
+  schermata di sistema.
+
+  Scelta del filtro: `INTERRUPTION_FILTER_PRIORITY` (lo stesso del
+  "Non disturbare" standard di Android, silenzia le notifiche normali)
+  invece di `INTERRUPTION_FILTER_NONE` (silenzio totale, blocca anche
+  le sveglie) — coerente con l'obiettivo "niente distrazioni a
+  scuola", senza gli effetti collaterali piu' aggressivi del silenzio
+  totale. Nessun canale dell'app e' stato marcato `bypassDnd(true)`:
+  di default anche le notifiche dell'app stessa (chat, sos_cancel,
+  ecc.) vengono silenziate mentre il DND e' attivo — comportamento
+  atteso e comunicato all'utente, non un bug.

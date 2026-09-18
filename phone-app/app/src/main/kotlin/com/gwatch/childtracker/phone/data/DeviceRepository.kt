@@ -142,6 +142,7 @@ class DeviceRepository {
                         notifyOnExit = d.getBoolean("notifyOnExit") ?: true,
                         alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
                         childIds = (d.get("childIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                        dndOnZone = d.getBoolean("dndOnZone") ?: false,
                     )
                 },
             )
@@ -246,6 +247,7 @@ class DeviceRepository {
                 "notifyOnExit" to zone.notifyOnExit,
                 "alarmOnExit" to zone.alarmOnExit,
                 "childIds" to zone.childIds,
+                "dndOnZone" to zone.dndOnZone,
             ),
             SetOptions.merge(),
         ).await()

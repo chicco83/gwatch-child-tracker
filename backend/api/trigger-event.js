@@ -117,6 +117,23 @@
  *   un SOS attivo): non cambiano in modo significativo in 30 secondi.
  * - 0.13.0 (2026-09-18): aggiunto "speed" (m/s, richiesto dall'utente
  *   per mostrarla sulla mappa), stesso pattern.
+ * - 0.14.0 (2026-09-18): DND automatico per zona, richiesto dall'utente
+ *   ("quando arriva a scuola va in dnd in automatico"). Nuovo campo
+ *   opzionale sulla zona, "dndOnZone" (GeofenceScreen.kt), letto insieme
+ *   agli altri toggle per-zona gia' esistenti. Se true: un
+ *   "geofence_enter" risponde con { dnd: true } (il watch deve
+ *   ATTIVARE il "Non disturbare" di sistema), un "geofence_exit"
+ *   risponde con { dnd: false } (il watch deve DISATTIVARLO) — un solo
+ *   flag per entrambe le direzioni, cosi' uscendo da scuola il DND si
+ *   toglie sempre da solo, niente stato "acceso per sempre" se il
+ *   genitore dimentica un secondo toggle separato. Il campo e' assente
+ *   (non "false") per zone con dndOnZone!=true o per tipi diversi da
+ *   geofence_enter/exit: il watch (GeofenceEventWorker.kt) non tocca il
+ *   DND in quel caso, invece di doverlo interpretare come "disattivalo".
+ *   Il cambio effettivo avviene interamente lato watch (e' un'impostazione
+ *   di sistema locale, NotificationManager.setInterruptionFilter — non
+ *   ha senso passare dal telefono/push, il watch riceve gia' l'esito
+ *   della propria chiamata trigger-event).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -202,6 +219,7 @@ module.exports = wrapHandler(async (req, res) => {
   let notifyOnEnter = true;
   let notifyOnExit = true;
   let alarmOnExit = false;
+  let dndOnZone = false;
   if (type === "geofence_enter" || type === "geofence_exit") {
     const zoneSnap = zoneId ? await db.collection("geofences").doc(zoneId).get() : null;
     const zone = zoneSnap?.exists ? zoneSnap.data() : null;
@@ -210,6 +228,7 @@ module.exports = wrapHandler(async (req, res) => {
       notifyOnEnter = zone.notifyOnEnter !== false;
       notifyOnExit = zone.notifyOnExit !== false;
       alarmOnExit = zone.alarmOnExit === true;
+      dndOnZone = zone.dndOnZone === true;
     }
   }
 
@@ -311,5 +330,15 @@ module.exports = wrapHandler(async (req, res) => {
     }
   }
 
-  res.status(200).json({ ok: true });
+  // v0.14.0: vedi Storico versioni sopra — dndAction e' undefined (il
+  // client JSON.stringify lo omette dalla risposta) quando la zona non
+  // ha dndOnZone attivo o il tipo non e' una transizione geofence,
+  // cosi' il watch sa distinguere "nessuna azione DND richiesta" da
+  // "disattiva il DND" (false esplicito).
+  const dndAction =
+    dndOnZone && (type === "geofence_enter" || type === "geofence_exit")
+      ? type === "geofence_enter"
+      : undefined;
+
+  res.status(200).json({ ok: true, dnd: dndAction });
 });

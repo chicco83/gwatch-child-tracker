@@ -73,7 +73,11 @@ class SosWorker(
         // stato di carica, prima solo la percentuale duplicata qui.
         val batterySnapshot = BatteryInfo.read(appContext)
 
-        val ok = BackendClient().triggerEvent(
+        // v0.9.0 (2026-09-18): triggerEvent() ritorna ora TriggerEventResult
+        // invece di Boolean (vedi BackendClient.kt, DND automatico per
+        // zona) — qui interessa solo "ok", "dnd" e' sempre null per un
+        // sos (non e' una transizione geofence).
+        val result = BackendClient().triggerEvent(
             type = "sos",
             lat = location.latitude,
             lon = location.longitude,
@@ -83,7 +87,7 @@ class SosWorker(
             charging = batterySnapshot.isCharging,
             speedMps = if (location.hasSpeed()) location.speed else null,
         )
-        return if (ok) Result.success() else Result.retry()
+        return if (result.ok) Result.success() else Result.retry()
     }
 
     companion object {

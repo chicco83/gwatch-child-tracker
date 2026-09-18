@@ -98,6 +98,19 @@ package com.gwatch.childtracker.phone.ui
 //      MapScreen.kt/StatusCard: due righe impilate invece di una sola
 //      (label+switch sopra, hint sotto a piena larghezza, libero di
 //      andare a capo).
+// v0.8.0 (2026-09-18): DND automatico per zona, richiesto dall'utente
+//   ("quando arriva a scuola va in dnd in automatico"). Nuovo toggle
+//   "dndOnZone" nel pannello di creazione/modifica — un solo flag per
+//   entrambe le direzioni: il watch attiva il "Non disturbare" di
+//   sistema all'ingresso e lo disattiva all'uscita (vedi
+//   backend/api/trigger-event.js v0.14.0, che risolve il campo e lo
+//   restituisce al watch nella risposta della stessa chiamata gia'
+//   fatta per notificare la transizione, e watch-app/.../dnd/
+//   DndController.kt, che applica il cambio). Nessun cambiamento
+//   nell'endpoint /api/device-config: la decisione se attivare/
+//   disattivare il DND si risolve interamente al momento della
+//   transizione (trigger-event), non serve al watch conoscere in
+//   anticipo quali zone hanno il flag per registrare le geofence.
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -187,6 +200,10 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     var notifyOnEnter by remember { mutableStateOf(true) }
     var notifyOnExit by remember { mutableStateOf(true) }
     var alarmOnExit by remember { mutableStateOf(false) }
+    // v0.8.0 (2026-09-18): DND automatico per zona, richiesto
+    // dall'utente ("quando arriva a scuola va in dnd in automatico") —
+    // vedi Storico versioni in cima al file.
+    var dndOnZone by remember { mutableStateOf(false) }
     // A chi si applica la zona in creazione/modifica (v0.6.0) — di
     // default tutti i bambini conosciuti per una zona nuova (stesso
     // comportamento di oggi con un solo bambino), oppure la selezione
@@ -212,6 +229,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
         notifyOnEnter = true
         notifyOnExit = true
         alarmOnExit = false
+        dndOnZone = false
         selectedChildIds = emptySet()
         editingZone = null
     }
@@ -366,6 +384,8 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     onNotifyOnExitChange = { notifyOnExit = it },
                     alarmOnExit = alarmOnExit,
                     onAlarmOnExitChange = { alarmOnExit = it },
+                    dndOnZone = dndOnZone,
+                    onDndOnZoneChange = { dndOnZone = it },
                     children = children,
                     selectedChildIds = selectedChildIds,
                     onChildToggle = { childId, checked ->
@@ -385,6 +405,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                                 notifyOnExit = notifyOnExit,
                                 alarmOnExit = alarmOnExit,
                                 childIds = selectedChildIds.toList(),
+                                dndOnZone = dndOnZone,
                             )
                             viewModel.saveGeofence(zone) { resetForm() }
                         }
@@ -420,6 +441,7 @@ fun GeofenceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                         notifyOnEnter = zone.notifyOnEnter
                         notifyOnExit = zone.notifyOnExit
                         alarmOnExit = zone.alarmOnExit
+                        dndOnZone = zone.dndOnZone
                         editingZone = zone
                     },
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -506,6 +528,8 @@ private fun NewZoneToolbar(
     onNotifyOnExitChange: (Boolean) -> Unit,
     alarmOnExit: Boolean,
     onAlarmOnExitChange: (Boolean) -> Unit,
+    dndOnZone: Boolean,
+    onDndOnZoneChange: (Boolean) -> Unit,
     children: List<ChildInfo>,
     selectedChildIds: Set<String>,
     onChildToggle: (String, Boolean) -> Unit,
@@ -539,6 +563,16 @@ private fun NewZoneToolbar(
                 hint = stringResource(R.string.geofence_alarm_on_exit_hint),
                 checked = alarmOnExit,
                 onCheckedChange = onAlarmOnExitChange,
+            )
+            // v0.8.0 (2026-09-18): DND automatico per zona, richiesto
+            // dall'utente — un solo toggle per entrambe le direzioni
+            // (vedi Storico versioni in cima al file e
+            // backend/api/trigger-event.js v0.14.0).
+            ToggleRow(
+                label = stringResource(R.string.geofence_dnd_on_zone),
+                hint = stringResource(R.string.geofence_dnd_on_zone_hint),
+                checked = dndOnZone,
+                onCheckedChange = onDndOnZoneChange,
             )
 
             ChildToggleSection(

@@ -68,8 +68,13 @@ android {
         // v0.8.0 (2026-09-18): fix banner "SOS inviato"/"posizione
         // inviata" che ricompariva ad ogni avvio dell'app senza un
         // invio nuovo davvero (vedi MainActivity.kt, observeWorkOutcomes).
-        versionCode = 8
-        versionName = "0.8.0"
+        // v0.9.0 (2026-09-18): DND automatico per zona, richiesto
+        // dall'utente — nuovo dnd/DndController.kt, GeofenceEventWorker
+        // applica il cambio letto dalla risposta di trigger-event.js,
+        // nuovo permesso ACCESS_NOTIFICATION_POLICY (concesso a mano
+        // dall'utente, non a runtime).
+        versionCode = 9
+        versionName = "0.9.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

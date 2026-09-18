@@ -38,6 +38,11 @@
     <string name="geofence_notify_exit">Notifica all\'uscita</string>
     <string name="geofence_alarm_on_exit">Allarme sonoro all\'uscita</string>
     <string name="geofence_alarm_on_exit_hint">Suona ripetutamente sul telefono finché non lo fermi, oltre alla notifica</string>
+    <!-- v0.9.0 (2026-09-18): DND automatico per zona — un solo toggle
+         per entrambe le direzioni (vedi backend/api/trigger-event.js
+         v0.14.0 e watch-app/.../dnd/DndController.kt) -->
+    <string name="geofence_dnd_on_zone">Non disturbare (watch) in questa zona</string>
+    <string name="geofence_dnd_on_zone_hint">Attiva il Non disturbare sul watch all\'ingresso, lo disattiva all\'uscita. Richiede un permesso da concedere una volta sul watch.</string>
     <string name="exit_alarm_title">🔔 Allarme uscita zona</string>
     <string name="exit_alarm_body">Uscito da \"%1$s\"</string>
     <string name="exit_alarm_stop">Ferma allarme</string>

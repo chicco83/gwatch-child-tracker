@@ -63,6 +63,11 @@
     <string name="location_seen_title">Posizione visualizzata</string>
     <string name="location_seen_text">Il genitore ha visto la tua posizione.</string>
 
+    <!-- v0.9.0 (2026-09-18): DND automatico per zona (vedi dnd/DndController.kt) —
+         notifica mostrata quando il permesso di sistema manca -->
+    <string name="dnd_permission_needed_title">Permesso "Non disturbare" mancante</string>
+    <string name="dnd_permission_needed_text">Per attivare/disattivare il Non disturbare automaticamente in una zona, tocca qui e concedi l\'accesso.</string>
+
     <!-- v0.5.0 (ChatScreen, 2026-09-10): bolle stile WhatsApp — nome
          mittente sopra i messaggi ricevuti -->
     <string name="chat_sender_parent">Genitore</string>

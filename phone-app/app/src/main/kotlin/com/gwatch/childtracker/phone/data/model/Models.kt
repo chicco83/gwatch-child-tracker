@@ -54,6 +54,14 @@ data class GeofenceZone(
     // collezione radice condivisa (backend/firestore.rules), non piu'
     // annidate sotto un singolo device.
     val childIds: List<String> = emptyList(),
+    // v0.9.0 (2026-09-18): DND automatico per zona, richiesto
+    // dall'utente ("quando arriva a scuola va in dnd in automatico").
+    // Un solo flag per entrambe le direzioni: true -> il watch attiva
+    // il "Non disturbare" di sistema all'ingresso e lo disattiva
+    // all'uscita (vedi backend/api/trigger-event.js v0.14.0 e
+    // watch-app/.../dnd/DndController.kt). Default false, opt-in
+    // esplicito come alarmOnExit.
+    val dndOnZone: Boolean = false,
 )
 
 // v0.6.0 (2026-09-11): elenco bambini registrati (query live su

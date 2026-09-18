@@ -94,6 +94,15 @@ class BackendClient {
      * v0.8.0 (2026-09-18): aggiunto speedMps (Location.getSpeed(),
      * richiesto dall'utente per mostrare la velocita' sulla mappa) —
      * gia' incluso gratis in ogni fix GPS, nessuna chiamata in piu'.
+     * v0.9.0 (2026-09-18): DND automatico per zona, richiesto
+     * dall'utente. Il tipo di ritorno cambia da Boolean a
+     * TriggerEventResult: oltre a "ok" (comportamento invariato per i
+     * chiamanti che non lo usano, vedi SosWorker.kt/LocationRequestWorker.kt),
+     * espone "dnd" — null se il backend non chiede nessun cambio DND
+     * (tipo diverso da geofence_enter/exit, o zona senza dndOnZone),
+     * true/false se il watch deve attivare/disattivare il "Non
+     * disturbare" di sistema (vedi trigger-event.js v0.14.0 e
+     * geofence/GeofenceEventWorker.kt, che applica il cambio).
      */
     suspend fun triggerEvent(
         type: String,
@@ -107,7 +116,7 @@ class BackendClient {
         charging: Boolean? = null,
         speedMps: Float? = null,
         timestampMillis: Long = System.currentTimeMillis(),
-    ): Boolean {
+    ): TriggerEventResult {
         val body = JSONObject().apply {
             put("type", type)
             put("lat", lat)
@@ -127,7 +136,14 @@ class BackendClient {
             .post(body.toString().toRequestBody(jsonMediaType))
             .build()
 
-        return executeForSuccess(request)
+        val responseBody = executeForBody(request) ?: return TriggerEventResult(ok = false, dnd = null)
+        val dnd = try {
+            val json = JSONObject(responseBody)
+            if (json.has("dnd") && !json.isNull("dnd")) json.getBoolean("dnd") else null
+        } catch (e: Exception) {
+            null
+        }
+        return TriggerEventResult(ok = true, dnd = dnd)
     }
 
     /** Geofence attive configurate dal genitore. Lista vuota se la chiamata fallisce. */
@@ -271,3 +287,6 @@ class BackendClient {
 }
 
 enum class SosHeartbeatResult { ACCEPTED, STOP, FAILED }
+
+/** Esito di triggerEvent() — vedi Storico versioni sopra (v0.9.0). */
+data class TriggerEventResult(val ok: Boolean, val dnd: Boolean?)

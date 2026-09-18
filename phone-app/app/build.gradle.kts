@@ -76,8 +76,12 @@ android {
         // (ultima posizione/batteria/temperatura/velocita'), valore in
         // grassetto, tolta la soglia minima che nascondeva la velocita'
         // quando bassa (vedi MapScreen.kt/TimeFormat.kt).
-        versionCode = 10
-        versionName = "0.10.0"
+        // v0.11.0 (2026-09-18): GeofenceScreen — nuovo toggle "Non
+        // disturbare (watch) in questa zona" (DND automatico
+        // ingresso/uscita, vedi backend/api/trigger-event.js v0.14.0 e
+        // watch-app dnd/DndController.kt).
+        versionCode = 11
+        versionName = "0.11.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

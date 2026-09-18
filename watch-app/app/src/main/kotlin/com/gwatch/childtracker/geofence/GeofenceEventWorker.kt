@@ -8,10 +8,17 @@ package com.gwatch.childtracker.geofence
 // risolve il nome vero leggendo la zona da Firestore con questo id
 // (serve comunque per leggere i nuovi toggle notifyOnEnter/
 // notifyOnExit/alarmOnExit, vedi CONTEXT.md).
+// v0.3.0 (2026-09-18): DND automatico per zona, richiesto dall'utente —
+// triggerEvent() ora ritorna anche "dnd" (null/true/false, vedi
+// BackendClient.kt/trigger-event.js v0.14.0). Se non null, applica
+// subito il cambio con DndController: e' la stessa identica chiamata
+// gia' fatta per notificare l'evento, nessuna richiesta di rete in
+// piu'.
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.gwatch.childtracker.dnd.DndController
 import com.gwatch.childtracker.network.BackendClient
 
 /** Invia una transizione geofence (ingresso/uscita zona) a POST /api/trigger-event. */
@@ -26,7 +33,7 @@ class GeofenceEventWorker(
         val lat = inputData.getDouble(KEY_LAT, 0.0)
         val lon = inputData.getDouble(KEY_LON, 0.0)
 
-        val ok = BackendClient().triggerEvent(
+        val result = BackendClient().triggerEvent(
             type = type,
             lat = lat,
             lon = lon,
@@ -34,7 +41,9 @@ class GeofenceEventWorker(
             battery = null,
             zoneId = zoneId,
         )
-        return if (ok) Result.success() else Result.retry()
+        if (!result.ok) return Result.retry()
+        result.dnd?.let { DndController.setDnd(applicationContext, it) }
+        return Result.success()
     }
 
     companion object {

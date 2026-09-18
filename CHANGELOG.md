@@ -7,6 +7,35 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-09-18
+
+### Added
+- DND (Non disturbare) automatico per zona, richiesto dall'utente
+  ("quando arriva a scuola va in dnd in automatico"). Nuovo toggle
+  per-zona "Non disturbare (watch) in questa zona" in `GeofenceScreen`
+  (phone-app): quando attivo, il watch attiva il "Non disturbare" di
+  sistema entrando nella zona e lo disattiva uscendo — un solo flag per
+  entrambe le direzioni, cosi' non resta mai "acceso per sempre" se ci
+  si dimentica di disattivarlo a mano.
+  - `backend/api/trigger-event.js` risolve il nuovo campo zona
+    `dndOnZone` (stessa lettura gia' fatta per notifyOnEnter/
+    notifyOnExit/alarmOnExit) e lo restituisce nella risposta come
+    `dnd: true|false` (assente se nessuna azione richiesta) — nessuna
+    chiamata di rete aggiuntiva, riusa la risposta della stessa
+    trigger-event gia' mandata dal watch per notificare la transizione.
+  - watch-app: nuovo `dnd/DndController.kt`, applica il cambio con
+    `NotificationManager.setInterruptionFilter()`. Richiede il permesso
+    speciale `ACCESS_NOTIFICATION_POLICY`, che Android non permette di
+    concedere via codice — se manca, mostra una notifica con un tasto
+    diretto alla schermata di sistema per concederlo, invece di fallire
+    in silenzio.
+  - `BackendClient.triggerEvent()` (watch) ora ritorna
+    `TriggerEventResult(ok, dnd)` invece di un semplice `Boolean`.
+
+### Changed
+- phone-app build.gradle.kts v0.10.0 -> v0.11.0, watch-app
+  build.gradle.kts v0.8.0 -> v0.9.0.
+
 ## [0.60.0] - 2026-09-18
 
 ### Changed
