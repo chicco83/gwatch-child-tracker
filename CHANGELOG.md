@@ -7,6 +7,40 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-09-18
+
+### Fixed
+- watch-app: banner "SOS inviato"/"posizione inviata" che ricompariva
+  ad ogni avvio dell'app anche senza un invio davvero nuovo, segnalato
+  dall'utente ("in realta' non arriva sul cellulare"). Causa:
+  `observeWorkOutcomes()` (v0.7.0) osserva `getWorkInfosForUniqueWorkLiveData`,
+  che emette subito, alla sottoscrizione, lo stato piu' recente gia'
+  presente nel database di WorkManager — anche se concluso ore/giorni
+  prima (un vecchio SOS di test). Il dedup (`lastNotified*WorkId`) era
+  in memoria, azzerato ad ogni riavvio dell'app, quindi quella prima
+  emissione "vecchia" superava sempre il controllo e ri-mostrava il
+  Toast come se fosse un esito nuovo. Aggiunto un controllo di
+  baseline: la primissima emissione dopo l'apertura dell'app, se gia'
+  in uno stato finale, viene registrata come "gia' vista" senza Toast;
+  se invece e' ancora in corso, il comportamento v0.7.0 resta invariato
+  (si vede comunque l'esito quando arriva).
+
+### Known limitations
+- Zone geofence ancora segnalate assenti sulla phone-app nonostante il
+  fix di migrazione (v0.49.0) e il fix di sincronizzazione (v0.54.0).
+  Nuova ipotesi, non ancora confermabile da questa sessione (nessun
+  accesso a Firestore/Firebase Console): gli eventi "Entrato in casa"
+  confermano che la zona esiste gia' correttamente lato backend
+  (letta via Admin SDK, che bypassa le regole) — se le regole
+  Firestore pubblicate sul progetto reale sono ancora quelle
+  precedenti al supporto multi-bambino (senza il match a livello
+  radice `geofences/{zoneId}` aggiunto in v0.6.0/backend/firestore.rules),
+  il client della phone-app verrebbe bloccato in silenzio nella
+  lettura, mostrando una lista vuota nonostante i dati esistano.
+  Verifica richiesta all'utente: ripubblicare `backend/firestore.rules`
+  sul progetto Firebase (Console → Firestore → Regole, o
+  `firebase deploy --only firestore:rules`).
+
 ## [0.56.0] - 2026-09-18
 
 ### Added

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.56.0
+**Versione contesto:** 0.57.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1514,3 +1514,47 @@ CHANGELOG.md  Storico versioni
   lato UI, il dato resta in m/s ovunque altro) e solo sopra 2 km/h,
   per non mostrare rumore GPS come "velocita'" quando il watch e'
   fermo.
+- 2026-09-18: **Zone ancora assenti (nuova ipotesi) + fix banner SOS
+  fantasma ad ogni avvio (v0.57.0)**, entrambi dallo stesso screenshot
+  dell'utente.
+
+  Zone: lo screenshot mostra un evento "Entrato in casa" nello storico
+  — prova che la zona "casa" esiste GIA' correttamente nella
+  collezione radice `geofences` letta dal backend (Admin SDK, bypassa
+  le regole Firestore): se non ci fosse, `trigger-event.js` userebbe
+  il default `zoneName = "zona"`, non il nome vero. Il fix di
+  migrazione (v0.49.0) e quello di sincronizzazione (v0.54.0) stanno
+  quindi funzionando lato server. Ma la phone-app legge la stessa
+  collezione con il Firestore CLIENT SDK, soggetto alle regole di
+  sicurezza (`backend/firestore.rules`) — regole che nel repository
+  sono corrette (`match /geofences/{zoneId} { allow read, write: if
+  isParent(); }`, aggiunto in v0.6.0/commit 2f21641) ma la cui
+  pubblicazione sul progetto Firebase reale e' un passo MANUALE (era
+  gia' elencato come tale nel piano originale della fase 2/4), mai
+  automatizzabile da questa sessione (nessun accesso a Firebase
+  Console/CLI). Se le regole live sono ancora quelle precedenti al
+  supporto multi-bambino, il client verrebbe bloccato in silenzio
+  (snapshot con errore -> lista vuota) nonostante i dati esistano —
+  spiega perfettamente il pattern osservato (dati OK lato
+  watch/backend, invisibili lato phone-app). Comunicato chiaramente
+  all'utente come prossimo passo di verifica: ripubblicare
+  `backend/firestore.rules` (Console Firebase → Firestore → Regole, o
+  `firebase deploy --only firestore:rules`).
+
+  Banner SOS fantasma: "all'avvio dell'app sul watch compare il
+  banner SOS inviato ma in realta' non arriva sul cellulare" —
+  causa trovata in `observeWorkOutcomes()` (MainActivity.kt watch,
+  v0.7.0): `getWorkInfosForUniqueWorkLiveData` emette SUBITO, alla
+  sottoscrizione in `onCreate`, lo stato piu' recente gia' presente
+  nel database di WorkManager, anche se concluso ore/giorni prima (un
+  SOS di test passato). Il dedup `lastNotifiedSosWorkId` era una
+  variabile in memoria, azzerata ad ogni riavvio dell'app: quella
+  prima emissione "vecchia" superava sempre il controllo e
+  ri-mostrava il Toast come fosse un esito nuovo — nessun SOS reale
+  veniva rimandato, coerente con "non arriva sul cellulare". Aggiunto
+  un controllo di baseline per lavoro (`sosBaselineChecked`/
+  `locationBaselineChecked`): la primissima emissione dopo l'apertura
+  dell'app, se gia' in stato finale, si registra come "gia' vista"
+  senza Toast; se invece e' ancora in corso (es. RETRY per GPS
+  assente, sopravvissuto a un riavvio), il comportamento v0.7.0 resta
+  invariato.

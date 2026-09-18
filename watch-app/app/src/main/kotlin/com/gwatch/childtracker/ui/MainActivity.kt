@@ -354,13 +354,41 @@ class MainActivity : ComponentActivity() {
     // aver gia' visto l'esito di quel preciso lavoro; un nuovo lavoro
     // (nuova pressione, nuovo id via ExistingWorkPolicy.REPLACE) supera
     // sempre il controllo e notifica di nuovo.
+    // v0.8.0 (2026-09-18): bug segnalato dall'utente — "ad ogni avvio
+    // dell'app sul watch compare il banner 'SOS inviato', ma in realta'
+    // non arriva sul cellulare (nessun nuovo SOS davvero inviato)".
+    // Causa: lastNotified* sono variabili in memoria, azzerate ad ogni
+    // nuova istanza di MainActivity (ogni riavvio dell'app/processo).
+    // getWorkInfosForUniqueWorkLiveData emette SUBITO, alla sottoscrizione,
+    // lo stato PIU' RECENTE gia' presente nel database di WorkManager —
+    // anche se quel lavoro e' concluso da ore/giorni (un vecchio SOS di
+    // test). Con lastNotified* resettato a null, quel primo stato
+    // "vecchio" superava sempre il controllo id!=lastNotified e
+    // rimostrava il Toast come se fosse un esito nuovo. Aggiunto un
+    // "baseline" per lavoro: la primissima emissione dopo l'apertura
+    // dell'app, SE gia' in uno stato finale, viene registrata come "gia'
+    // vista" senza Toast (e' solo lo stato che WorkManager ricordava da
+    // prima, non un esito nuovo) — se invece e' ancora in corso (es. un
+    // SOS in RETRY per GPS assente, sopravvissuto a un riavvio
+    // dell'app), non viene marcata: si continua ad aspettare il suo
+    // esito reale come gia' previsto, nessuna regressione sul comportamento
+    // v0.7.0 voluto ("riaprendo l'app si vede comunque l'esito").
     private var lastNotifiedSosWorkId: java.util.UUID? = null
     private var lastNotifiedLocationWorkId: java.util.UUID? = null
+    private var sosBaselineChecked = false
+    private var locationBaselineChecked = false
 
     private fun observeWorkOutcomes() {
         val workManager = WorkManager.getInstance(this)
         workManager.getWorkInfosForUniqueWorkLiveData(SosWorker.WORK_NAME).observe(this) { infos ->
             val info = infos.firstOrNull() ?: return@observe
+            if (!sosBaselineChecked) {
+                sosBaselineChecked = true
+                if (info.state.isFinished()) {
+                    lastNotifiedSosWorkId = info.id
+                    return@observe
+                }
+            }
             if (info.id == lastNotifiedSosWorkId) return@observe
             when (info.state) {
                 WorkInfo.State.SUCCEEDED -> {
@@ -376,6 +404,13 @@ class MainActivity : ComponentActivity() {
         }
         workManager.getWorkInfosForUniqueWorkLiveData(LocationRequestWorker.WORK_NAME).observe(this) { infos ->
             val info = infos.firstOrNull() ?: return@observe
+            if (!locationBaselineChecked) {
+                locationBaselineChecked = true
+                if (info.state.isFinished()) {
+                    lastNotifiedLocationWorkId = info.id
+                    return@observe
+                }
+            }
             if (info.id == lastNotifiedLocationWorkId) return@observe
             when (info.state) {
                 WorkInfo.State.SUCCEEDED -> {
@@ -390,6 +425,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun WorkInfo.State.isFinished(): Boolean =
+        this == WorkInfo.State.SUCCEEDED || this == WorkInfo.State.FAILED || this == WorkInfo.State.CANCELLED
 
     companion object {
         const val EXTRA_OPEN_CHAT = "open_chat"

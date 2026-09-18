@@ -65,8 +65,11 @@ android {
         // v0.7.0 (2026-09-18): aggiunta velocita' (Location.getSpeed())
         // ai payload posizione, richiesta dall'utente per mostrarla
         // sulla mappa della phone-app.
-        versionCode = 7
-        versionName = "0.7.0"
+        // v0.8.0 (2026-09-18): fix banner "SOS inviato"/"posizione
+        // inviata" che ricompariva ad ogni avvio dell'app senza un
+        // invio nuovo davvero (vedi MainActivity.kt, observeWorkOutcomes).
+        versionCode = 8
+        versionName = "0.8.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
