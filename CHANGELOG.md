@@ -7,6 +7,18 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-09-18
+
+### Fixed
+- phone-app: errore di compilazione `Unresolved reference: BuildConfig`
+  in `MapScreen.kt` (numero di versione mostrato accanto a "Dov'è",
+  v0.47.0). Causa: `phone-app/app/build.gradle.kts` non aveva
+  `buildFeatures.buildConfig = true` — con AGP 8+ la generazione della
+  classe `BuildConfig` non è più implicita e va abilitata
+  esplicitamente (il watch-app ce l'aveva già, per `DEVICE_TOKEN`/
+  `BACKEND_BASE_URL`). Aggiunta la flag: la build ora genera
+  `BuildConfig.VERSION_NAME` come atteso.
+
 ## [0.49.0] - 2026-09-18
 
 ### Fixed

@@ -15,6 +15,15 @@ import java.util.Properties
 //   "androidx.compose.material:material-icons-core" (vedi dependencies
 //   sotto) — serve l'icona hamburger (Icons.Filled.Menu) nel nuovo menu
 //   di MapScreen.kt, non inclusa di default in material3.
+// v0.9.0 (2026-09-18): bug di build segnalato dall'utente — "Unresolved
+//   reference: BuildConfig" in MapScreen.kt, dove si mostra il numero di
+//   versione (BuildConfig.VERSION_NAME) accanto al nome app. Causa: con
+//   AGP 8+ la generazione della classe BuildConfig NON e' piu' implicita,
+//   va abilitata esplicitamente con buildFeatures.buildConfig = true
+//   (vedi buildFeatures sotto) — nel watch-app era gia' presente perche'
+//   serviva da prima per DEVICE_TOKEN/BACKEND_BASE_URL, qui invece non
+//   era mai stato necessario finche' non si e' iniziato a leggere
+//   BuildConfig.VERSION_NAME.
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -84,6 +93,10 @@ android {
 
     buildFeatures {
         compose = true
+        // v0.9.0: vedi Storico versioni sopra — richiesto da AGP 8+ per
+        // generare la classe BuildConfig (usata in MapScreen.kt per
+        // BuildConfig.VERSION_NAME).
+        buildConfig = true
     }
 
     // Stessa versione compiler di watch-app: coerente con Kotlin 1.9.24

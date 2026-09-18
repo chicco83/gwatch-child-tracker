@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.50.0
+**Versione contesto:** 0.51.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1358,3 +1358,14 @@ CHANGELOG.md  Storico versioni
   watch-app, passo manuale utente per attivarla) nella sezione
   "Complicazione watch" sotto "Backlog Fase 3". Da riprendere solo
   dopo aver chiuso i bug GPS/notifiche attualmente in diagnosi.
+- 2026-09-18: **Build phone-app fallita, `Unresolved reference:
+  BuildConfig` in `MapScreen.kt` (v0.51.0)**, segnalato dall'utente
+  con screenshot di Android Studio. Causa: `buildFeatures.buildConfig`
+  non era impostato a `true` in `phone-app/app/build.gradle.kts` — a
+  differenza del watch-app (dove serviva già da prima per
+  `DEVICE_TOKEN`/`BACKEND_BASE_URL`), sul phone-app non era mai stato
+  necessario finché non si è iniziato a leggere
+  `BuildConfig.VERSION_NAME` per mostrare il numero di versione
+  (v0.47.0). Con AGP 8+ questa generazione non è più automatica.
+  Aggiunta la flag: nessun altro cambiamento di codice necessario,
+  l'import/uso di `BuildConfig` in `MapScreen.kt` era già corretto.
