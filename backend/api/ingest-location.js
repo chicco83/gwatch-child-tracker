@@ -20,6 +20,10 @@
  * - 0.3.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
  *   ora supporta N bambini, il childId si risolve dal token via
  *   resolveDeviceId(req, db) (vedi _lib/auth.js).
+ * - 0.4.0 (2026-09-18): aggiunti "batteryTemp"/"charging" ai punti
+ *   (richiesti dall'utente — vedi watch-app/.../location/BatteryInfo.kt),
+ *   salvati sia sullo storico locations sia sull'ultimo stato del
+ *   device, stesso pattern gia' in uso per "battery"/"activity".
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -90,6 +94,8 @@ module.exports = wrapHandler(async (req, res) => {
       accuracy: p.accuracy ?? null,
       battery: p.battery ?? null,
       activity: p.activity ?? null,
+      batteryTemp: p.batteryTemp ?? null,
+      charging: p.charging ?? null,
       timestamp: ts,
       expiresAt, // usato dalla TTL policy Firestore per la pulizia automatica
     });
@@ -110,6 +116,8 @@ module.exports = wrapHandler(async (req, res) => {
         },
         battery: last.battery ?? null,
         activity: last.activity ?? null,
+        batteryTemp: last.batteryTemp ?? null,
+        charging: last.charging ?? null,
         lastSeen: last.timestamp,
         updatedAt: FieldValue.serverTimestamp(),
       },

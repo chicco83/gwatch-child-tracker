@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.54.0
+**Versione contesto:** 0.55.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1455,3 +1455,49 @@ CHANGELOG.md  Storico versioni
   permesso speciale), segnale LTE via `TelephonyManager` (richiede
   `READ_PHONE_STATE`); da valutare in una fase successiva se
   richiesto esplicitamente.
+- 2026-09-18: **Temperatura batteria + stato di carica (v0.55.0)**,
+  richiesti dall'utente. Nuovo `BatteryInfo.kt` (watch-app, package
+  `location`) legge percentuale/temperatura/carica in un solo punto
+  tramite l'intento sticky `ACTION_BATTERY_CHANGED` (nessun permesso
+  ne' sensore aggiuntivo, il sistema tiene gia' in cache l'ultimo
+  intento di questo tipo) — sostituisce 4 copie duplicate di
+  `currentBatteryPercent()` (solo percentuale) in
+  `LocationTrackingService`, `LocationRequestWorker`, `SosWorker`,
+  `SosLocationService`. Propagato fino alla phone-app: `LocationPoint`
+  (watch+backend), `ingest-location.js`, `trigger-event.js` (SOS/
+  "Invia posizione" — non `sos-heartbeat.js`, il ping ogni 30" durante
+  un SOS attivo, dove temperatura/carica non cambiano abbastanza da
+  giustificare la cadenza), `Models.kt`/`DeviceRepository.kt`/
+  `StatusCard` (phone-app) sulla stessa riga compatta di v0.54.0.
+
+  **Domande dell'utente su rilevamento cadute Wear OS e velocita'**
+  (risposte in chat, nessuna implementazione — nessuna decisione
+  presa, solo valutazione tecnica):
+  - Il "rilevamento cadute" nel menu di sistema del Galaxy Watch4 e'
+    una funzione proprietaria Samsung, non esposta da nessuna API
+    pubblica Android/Wear OS: la nostra app non puo' ne' leggerne il
+    trigger ne' condizionarla (es. "non scattare se la velocita' e'
+    da bici"). Se attivata, chiama il flusso SOS/contatti *di
+    Samsung*, indipendente dal nostro sistema (la posizione NON
+    arriverebbe alla phone-app via il nostro backend). Verosimilmente
+    gira su un coprocessore a basso consumo (come il contapassi), quindi
+    impatto batteria atteso modesto, ma non verificabile da qui — solo
+    Samsung ha questi numeri. Se Samsung espone gia' una tolleranza
+    "durante attivita' sportiva" per ridurre i falsi positivi in
+    bici, e' nelle sue impostazioni native, non nostre.
+    Costruire un rilevamento cadute NOSTRO (accelerometro +
+    euristica caduta libera/impatto, integrato con il nostro SOS)
+    sarebbe fattibile in linea di principio, gate-abile con
+    l'ActivityRecognition gia' in uso (ON_BICYCLE) per sopprimere falsi
+    positivi in bici, ma e' un lavoro consistente (taratura soglie,
+    rischio concreto di falsi positivi/negativi, consumo batteria
+    continuo per il campionamento accelerometro) — da valutare solo se
+    la funzione di sistema si rivela insufficiente (es. serve che
+    l'allarme arrivi *al genitore tramite la nostra app*).
+  - Mostrare la velocita' (gia' presente gratis in ogni fix GPS,
+    `Location.getSpeed()`) non ha di per se' nessun costo aggiuntivo
+    di batteria al ritmo di campionamento attuale (10 min da fermi,
+    1 min in movimento) — il costo vero e' quello del GPS stesso, gia'
+    pagato. Diventerebbe costoso solo se si volesse una velocita'
+    "fluida"/quasi in tempo reale, che richiederebbe campionamento GPS
+    molto piu' frequente.

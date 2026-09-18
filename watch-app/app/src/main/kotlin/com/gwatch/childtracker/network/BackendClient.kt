@@ -84,6 +84,13 @@ class BackendClient {
      * del genitore, cosi' la notifica non dice sempre "il bambino ha
      * inviato la posizione" anche quando l'aveva chiesta il genitore
      * stesso.
+     * v0.7.0 (2026-09-18): aggiunti batteryTemp/charging (vedi
+     * location/BatteryInfo.kt) — SOS e "Invia posizione" sono chiamate
+     * esplicite dell'utente, ha senso mandare lo stato batteria piu'
+     * fresco possibile insieme al resto. Non aggiunto invece a
+     * sosHeartbeat (ping ogni 30" durante un SOS attivo, vedi sotto):
+     * temperatura/carica non cambiano in modo significativo in 30
+     * secondi, non vale la cadenza piu' alta.
      */
     suspend fun triggerEvent(
         type: String,
@@ -93,6 +100,8 @@ class BackendClient {
         battery: Int?,
         zoneId: String? = null,
         source: String? = null,
+        batteryTemp: Double? = null,
+        charging: Boolean? = null,
         timestampMillis: Long = System.currentTimeMillis(),
     ): Boolean {
         val body = JSONObject().apply {
@@ -103,6 +112,8 @@ class BackendClient {
             battery?.let { put("battery", it) }
             zoneId?.let { put("zoneId", it) }
             source?.let { put("source", it) }
+            batteryTemp?.let { put("batteryTemp", it) }
+            charging?.let { put("charging", it) }
             put("timestamp", timestampMillis)
         }
         val request = Request.Builder()

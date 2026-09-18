@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.BatteryManager
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -106,7 +105,12 @@ class SosLocationService : Service() {
                     lat = location.latitude,
                     lon = location.longitude,
                     accuracy = if (location.hasAccuracy()) location.accuracy else null,
-                    battery = currentBatteryPercent(),
+                    // 2026-09-18: BatteryInfo.kt centralizza quello che
+                    // prima era duplicato qui (solo percentuale). Non
+                    // aggiunti temperatura/carica al ping ogni 30" — vedi
+                    // BackendClient.triggerEvent per il motivo (non
+                    // cambiano in modo significativo in 30 secondi).
+                    battery = BatteryInfo.read(this@SosLocationService).percent,
                 )
                 if (result == SosHeartbeatResult.STOP) break
             }
@@ -115,12 +119,6 @@ class SosLocationService : Service() {
         }
 
         stopSelf()
-    }
-
-    private fun currentBatteryPercent(): Int? {
-        val bm = getSystemService(BATTERY_SERVICE) as? BatteryManager ?: return null
-        val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return if (level in 0..100) level else null
     }
 
     // Canale "messages" (visibile/sonoro, IMPORTANCE_HIGH) e non

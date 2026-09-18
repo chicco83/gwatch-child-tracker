@@ -10,6 +10,10 @@ data class LocationPoint(
     val battery: Int?,
     val activity: String?,
     val timestampMillis: Long,
+    // 2026-09-18: richiesto dall'utente ("aggiungi anche la temperatura
+    // batteria e lo stato di carica"), vedi location/BatteryInfo.kt.
+    val batteryTemp: Double? = null,
+    val charging: Boolean? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("lat", lat)
@@ -17,6 +21,8 @@ data class LocationPoint(
         accuracy?.let { put("accuracy", it.toDouble()) }
         battery?.let { put("battery", it) }
         activity?.let { put("activity", it) }
+        batteryTemp?.let { put("batteryTemp", it) }
+        charging?.let { put("charging", it) }
         put("timestamp", timestampMillis)
     }
 
@@ -27,6 +33,8 @@ data class LocationPoint(
             accuracy = if (json.has("accuracy")) json.getDouble("accuracy").toFloat() else null,
             battery = if (json.has("battery")) json.getInt("battery") else null,
             activity = if (json.has("activity")) json.getString("activity") else null,
+            batteryTemp = if (json.has("batteryTemp")) json.getDouble("batteryTemp") else null,
+            charging = if (json.has("charging")) json.getBoolean("charging") else null,
             timestampMillis = json.getLong("timestamp"),
         )
     }

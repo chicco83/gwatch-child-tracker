@@ -3,7 +3,6 @@ package com.gwatch.childtracker.location
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -50,12 +49,20 @@ class LocationTrackingService : Service() {
             // periodico automatico), nessun polling aggiuntivo. Vedi
             // GpsAvailability.kt per il contesto completo.
             GpsAvailability.markAvailable()
+            // 2026-09-18: BatteryInfo centralizza qui quello che prima
+            // era solo currentBatteryPercent() duplicato in 4 file (vedi
+            // BatteryInfo.kt) — aggiunge temperatura/stato di carica
+            // richiesti dall'utente, stesso costo (nessuno: legge solo lo
+            // stato gia' mantenuto dal sistema, nessun sensore avviato).
+            val batterySnapshot = BatteryInfo.read(this@LocationTrackingService)
             val point = LocationPoint(
                 lat = location.latitude,
                 lon = location.longitude,
                 accuracy = if (location.hasAccuracy()) location.accuracy else null,
-                battery = currentBatteryPercent(),
+                battery = batterySnapshot.percent,
                 activity = if (currentIntervalMillis == INTERVAL_MOVING_MS) "moving" else "still",
+                batteryTemp = batterySnapshot.temperatureC,
+                charging = batterySnapshot.isCharging,
                 timestampMillis = location.time,
             )
             pendingStore.addPoint(point)
@@ -135,12 +142,6 @@ class LocationTrackingService : Service() {
 
         ActivityRecognition.getClient(this)
             .requestActivityTransitionUpdates(request, pendingIntent)
-    }
-
-    private fun currentBatteryPercent(): Int? {
-        val bm = getSystemService(BATTERY_SERVICE) as? BatteryManager ?: return null
-        val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return if (level in 0..100) level else null
     }
 
     private fun enqueueImmediateUpload() {

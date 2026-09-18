@@ -15,6 +15,10 @@ data class DeviceState(
     // disattivazione sulla mappa (vedi MapScreen.kt/trigger-event.js,
     // che lo marca true al primo evento "sos" di un episodio).
     val sosActive: Boolean = false,
+    // 2026-09-18: richiesti dall'utente (vedi watch-app/.../location/
+    // BatteryInfo.kt e backend/api/ingest-location.js/trigger-event.js).
+    val batteryTemp: Double? = null,
+    val charging: Boolean? = null,
 )
 
 data class LocationPoint(

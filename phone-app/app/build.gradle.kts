@@ -58,8 +58,10 @@ android {
         // v0.5.0 (2026-09-18): StatusCard a tutta larghezza/riga singola,
         // colore solo sul valore batteria; allarme SOS che bypassa il
         // silenzioso/DND (vedi alarm/SosAlarmService.kt).
-        versionCode = 5
-        versionName = "0.5.0"
+        // v0.6.0 (2026-09-18): mostra temperatura batteria/stato di
+        // carica nella StatusCard (vedi MapScreen.kt/Models.kt).
+        versionCode = 6
+        versionName = "0.6.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.55.0] - 2026-09-18
+
+### Added
+- watch-app: nuovo `BatteryInfo.kt`, che centralizza lettura di
+  percentuale batteria, **temperatura** e **stato di carica** (via
+  intento sticky `ACTION_BATTERY_CHANGED`, nessun permesso/costo
+  aggiuntivo) al posto di 4 copie duplicate di
+  `currentBatteryPercent()` (solo percentuale) sparse in
+  `LocationTrackingService`, `LocationRequestWorker`, `SosWorker`,
+  `SosLocationService`. Richiesto dall'utente.
+- backend: `ingest-location.js` e `trigger-event.js` accettano ora
+  `batteryTemp`/`charging` nel body, salvati su `devices/{childId}`
+  insieme al resto dello stato (non aggiunti a `sos-heartbeat.js`: non
+  cambiano in modo significativo nei 30" fra un ping SOS e l'altro).
+- phone-app: `StatusCard` mostra ora temperatura batteria (es. "31°C")
+  e un'icona ⚡ quando il watch e' in carica, sulla stessa riga
+  compatta introdotta in v0.54.0.
+
 ## [0.54.0] - 2026-09-18
 
 ### Added

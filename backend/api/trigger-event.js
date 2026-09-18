@@ -15,7 +15,7 @@
  * Body: { type: "sos" | "geofence_enter" | "geofence_exit" |
  *         "location_request", lat, lon, accuracy?, battery?,
  *         zoneId?, source? ("child" | "parent", solo per
- *         "location_request"), timestamp? }
+ *         "location_request"), batteryTemp?, charging?, timestamp? }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-09): versione iniziale.
@@ -109,6 +109,11 @@
  *   dell'allarme di uscita zona, che e' opt-in per-zona
  *   (alarmOnExit), l'SOS e' sempre un allarme sonoro: e' la funzione di
  *   sicurezza piu' critica dell'app.
+ * - 0.12.0 (2026-09-18): aggiunti "batteryTemp"/"charging" al body
+ *   (richiesti dall'utente — vedi watch-app/.../location/
+ *   BatteryInfo.kt), scritti su devices/{childId} insieme al resto
+ *   dello stato. Non aggiunti a sos-heartbeat.js (ping ogni 30" durante
+ *   un SOS attivo): non cambiano in modo significativo in 30 secondi.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -170,7 +175,7 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, timestamp } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, timestamp } = req.body || {};
   if (!VALID_TYPES.has(type) || typeof lat !== "number" || typeof lon !== "number") {
     res.status(400).send("Bad Request: 'type'/'lat'/'lon' mancanti o non validi");
     return;
@@ -218,6 +223,8 @@ module.exports = wrapHandler(async (req, res) => {
   const deviceUpdate = {
     lastLocation: { lat, lon, accuracy: accuracy ?? null },
     battery: battery ?? null,
+    batteryTemp: batteryTemp ?? null,
+    charging: charging ?? null,
     lastSeen: ts,
     updatedAt: FieldValue.serverTimestamp(),
   };

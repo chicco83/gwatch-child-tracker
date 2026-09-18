@@ -59,8 +59,11 @@ android {
         // v0.5.0 (2026-09-18): GeofenceSyncWorker one-shot ora usa
         // ExistingWorkPolicy.REPLACE invece di KEEP (vedi MainActivity.kt)
         // — riapre l'app forza sempre una sync fresca delle zone.
-        versionCode = 5
-        versionName = "0.5.0"
+        // v0.6.0 (2026-09-18): BatteryInfo.kt (temperatura batteria +
+        // stato di carica, centralizzato al posto di 4 copie duplicate
+        // di currentBatteryPercent()).
+        versionCode = 6
+        versionName = "0.6.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

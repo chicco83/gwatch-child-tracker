@@ -480,6 +480,11 @@ private fun StatusCard(
     // Contestualmente, card a riga singola invece che a due righe
     // impilate (vedi Storico versioni sopra su StatusCardRow): meno
     // alta, coerente con "abbassala" richiesto dall'utente.
+    // v0.12.0 (2026-09-18): aggiunti temperatura batteria e stato di
+    // carica, richiesti dall'utente (vedi BatteryInfo.kt lato watch).
+    // Testo semplice invece di un'icona dedicata, coerente con l'uso di
+    // emoji gia' in altri punti dell'app (🆘, 🔔) invece di importare
+    // nuove risorse grafiche per un indicatore cosi' piccolo.
     Card(modifier = modifier, elevation = CardDefaults.cardElevation(2.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -505,6 +510,15 @@ private fun StatusCard(
                                 else -> Color.Red
                             },
                         )
+                    }
+                    state.batteryTemp?.let { temp ->
+                        Text(
+                            text = " · " + String.format(Locale.getDefault(), "%.0f°C", temp),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (state.charging == true) {
+                        Text(text = " ⚡", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

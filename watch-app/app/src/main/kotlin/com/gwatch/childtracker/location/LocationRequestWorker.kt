@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.BatteryManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
@@ -86,24 +85,21 @@ class LocationRequestWorker(
         }
         GpsAvailability.markAvailable()
 
-        val battery = currentBatteryPercent()
+        // 2026-09-18: BatteryInfo.kt centralizza percentuale+temperatura+
+        // stato di carica, prima solo la percentuale duplicata qui.
+        val batterySnapshot = BatteryInfo.read(appContext)
 
         val ok = BackendClient().triggerEvent(
             type = "location_request",
             lat = location.latitude,
             lon = location.longitude,
             accuracy = if (location.hasAccuracy()) location.accuracy else null,
-            battery = battery,
+            battery = batterySnapshot.percent,
             source = source,
+            batteryTemp = batterySnapshot.temperatureC,
+            charging = batterySnapshot.isCharging,
         )
         return if (ok) Result.success() else Result.retry()
-    }
-
-    private fun currentBatteryPercent(): Int? {
-        val bm = appContext.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-            ?: return null
-        val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return if (level in 0..100) level else null
     }
 
     companion object {
