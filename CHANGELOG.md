@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-09-18
+
+### Fixed
+- **Bug segnalato dall'utente al primo test su hardware reale**: la
+  phone-app mostrava "Invio fallito" mandando un messaggio al watch,
+  anche quando il messaggio arrivava comunque (visibile in Firestore/
+  sul watch). Causa: `parent-command.js` chiamava
+  `getMessaging().send()` senza try/catch in tutti e 4 gli handler
+  (message/request_location/cancel_sos/ack_event) — un token FCM del
+  watch non più valido (tipico dopo una reinstallazione dell'app o una
+  rotazione del token lato Google) mandava un'eccezione non gestita,
+  Vercel rispondeva 500 alla phone-app anche se la scrittura su
+  Firestore era già andata a buon fine. Aggiunta `sendPushSafe()`: la
+  push resta "best effort" (loggata se fallisce, mai un errore fatale
+  per la richiesta del genitore) e se l'errore è
+  "registration-token-not-registered" il token viene ripulito dal
+  documento device, così i tentativi successivi non ripetono lo stesso
+  fallimento silenzioso finché il watch non si ri-registra da solo.
+
 ## [0.40.0] - 2026-09-11
 
 ### Added (Fase 4/4 — supporto a N bambini: chat con destinatario, completa il piano)

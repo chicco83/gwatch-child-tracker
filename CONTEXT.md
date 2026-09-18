@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.40.0
-**Ultimo aggiornamento:** 2026-09-11
+**Versione contesto:** 0.41.0
+**Ultimo aggiornamento:** 2026-09-18
 
 ---
 
@@ -1048,3 +1048,17 @@ CHANGELOG.md  Storico versioni
   implementato lato codice; resta da fare solo la parte manuale
   dell'utente (pubblicare `firestore.rules` aggiornate se non già
   fatto per la fase 2, poi build/test in Android Studio).
+- 2026-09-18: **Primo test reale (v0.41.0)** — l'utente ha attivato la
+  eSIM sul Watch4 e dato il device al figlio, primo invio chat da
+  telefono con "Invio fallito" pur essendo il piano N-bambini già
+  completo lato codice. Causa trovata leggendo `parent-command.js`: i 4
+  handler (message/request_location/cancel_sos/ack_event) chiamavano
+  `getMessaging().send()` senza try/catch — un token FCM del watch non
+  più valido faceva rispondere 500 al genitore anche se la scrittura su
+  Firestore (il messaggio, lo stato SOS, l'ack) era già andata a buon
+  fine: bug pre-esistente al piano N-bambini, solo mai emerso prima
+  perché mai testato su hardware reale con un token FCM realmente in
+  gioco. Corretto con `sendPushSafe()`: la push è ora "best effort"
+  (mai fatale per la richiesta), con auto-pulizia del token se
+  Firebase segnala che non è più registrato. Nessuna migrazione dati
+  richiesta.
