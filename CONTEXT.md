@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.52.0
+**Versione contesto:** 0.53.0
 **Ultimo aggiornamento:** 2026-09-18
 
 ---
@@ -1386,3 +1386,33 @@ CHANGELOG.md  Storico versioni
   invece gia' corretta nello stesso screenshot ("Batteria watch: 89%"
   in verde) — nessun fix necessario, confermava la lettura del codice
   gia' fatta in precedenza.
+- 2026-09-18: **Chiarimento nickname/accoppiamento watch + causa
+  probabile "zone ancora assenti" dopo il fix v0.52.0**. Il nickname
+  (Impostazioni telefono) è solo un'etichetta su un `childId` già
+  esistente — l'accoppiamento vero con un watch fisico avviene tramite
+  il **token** salvato in `local.properties`/`BuildConfig.DEVICE_TOKEN`
+  di quella specifica build watch (vedi `_lib/auth.js`,
+  `resolveDeviceId`): per il bambino già esistente ("figlio", ora
+  rinominato "andrea") l'accoppiamento è quello fatto manualmente ben
+  prima dell'introduzione dei nickname, nessuna azione richiesta; per
+  un nuovo bambino, "Aggiungi bambino" genera un nuovo token mostrato
+  una sola volta, da incollare in `local.properties` del build per
+  quel watch (vedi `SettingsScreen.kt`).
+  Sulle zone ancora assenti: il fix della migrazione
+  (`device-config.js`, v0.49.0/commit a6cb924) scatta solo quando il
+  **watch** chiama `GET /api/device-config`
+  (`GeofenceSyncWorker.doWork()`), non quando la phone-app legge la
+  collezione `geofences` (lettura diretta Firestore, indipendente).
+  `MainActivity.onCreate` accoda quel lavoro one-shot con
+  `ExistingWorkPolicy.KEEP` (vedi riga ~259): se un lavoro con lo
+  stesso nome univoco esiste già nel database di WorkManager (anche se
+  completato molto tempo fa, prima del fix), riaprire semplicemente
+  l'app **non** forza una nuova chiamata — serve o il prossimo giro
+  periodico (ogni 6h) o un riavvio del watch, dove `BootReceiver` usa
+  invece `ExistingWorkPolicy.REPLACE` (riga 32) e quindi forza sempre
+  una chiamata fresca. Suggerito all'utente di riavviare di nuovo il
+  watch (ora che il fix backend è live) per forzare subito la
+  migrazione, invece di aspettare fino a 6 ore. Nessun codice cambiato
+  per questo — comportamento di WorkManager voluto (evitare sync
+  ridondanti ad ogni apertura app), non un bug; annotato qui solo come
+  nota diagnostica per non ripetere l'indagine in futuro.
