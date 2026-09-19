@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.6.0
+ * Versione: 0.7.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -31,6 +31,14 @@
  *   richiesta posizione + messaggio automatico al watch al 2% (vedi
  *   nuovo _lib/batteryAlerts.js, chiamato qui dopo il commit del batch
  *   con la batteria dell'ultimo punto ricevuto).
+ * - 0.7.0 (2026-09-19): aggiunto "batteryHoursRemaining" ai punti
+ *   (richiesto dall'utente — autonomia residua in ore, chiesta dal
+ *   watch al proprio sistema operativo, vedi watch-app/.../location/
+ *   BatteryInfo.kt), salvato sull'ultimo stato del device insieme al
+ *   resto della batteria. Non salvato sullo storico locations (a
+ *   differenza di battery/batteryTemp/ecc.): non serve nessuna
+ *   estrapolazione lato client, il dato e' gia' la stima diretta del
+ *   sistema operativo del watch ad ogni campione.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -108,6 +116,9 @@ module.exports = wrapHandler(async (req, res) => {
       timestamp: ts,
       expiresAt, // usato dalla TTL policy Firestore per la pulizia automatica
     });
+    // batteryHoursRemaining non va nello storico locations qui sopra
+    // (vedi Storico versioni 0.7.0): e' gia' una stima diretta del
+    // sistema operativo del watch, non un dato da riguardare nel tempo.
 
     if (!last || ts.toMillis() > last.timestamp.toMillis()) {
       last = { ...p, timestamp: ts };
@@ -128,6 +139,7 @@ module.exports = wrapHandler(async (req, res) => {
         batteryTemp: last.batteryTemp ?? null,
         charging: last.charging ?? null,
         speed: last.speed ?? null,
+        batteryHoursRemaining: last.batteryHoursRemaining ?? null,
         lastSeen: last.timestamp,
         updatedAt: FieldValue.serverTimestamp(),
       },

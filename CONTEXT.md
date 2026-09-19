@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.62.0
+**Versione contesto:** 0.63.0
 **Ultimo aggiornamento:** 2026-09-19
 
 ---
@@ -1753,13 +1753,46 @@ CHANGELOG.md  Storico versioni
   (watch) gestisce gia' `chat` e `location_request` per gli stessi
   motivi.
 
-  **Non implementato in questo giro (solo analizzato su richiesta
-  esplicita)**: stima dell'autonomia residua in ore sotto la
-  percentuale batteria nella `StatusCard` della phone-app. Serve una
-  velocita' di scarica (%/ora) calcolata da almeno due campioni
-  recenti di `battery`/`lastSeen` — nessuno storico dedicato oggi,
-  andrebbe letto da `devices/{childId}/locations` (gia' scritto ad ogni
-  update, gia' contiene `battery`+`timestamp`) filtrando gli ultimi N
-  minuti. Stima grezza e rumorosa (dipende da uso schermo/GPS/LTE nel
-  frattempo, non lineare), utile solo come ordine di grandezza
-  ("circa Xh"), non promessa come precisa.
+  **Aggiornamento 2026-09-19 (vedi voce successiva)**: l'autonomia
+  residua in ore, qui sopra solo analizzata, e' stata poi implementata
+  chiedendola al sistema operativo del watch invece che stimandola da
+  uno storico — vedi "Autonomia residua batteria (ore)" sotto.
+
+- **2026-09-19 — Autonomia residua batteria (ore), chiesta al sistema
+  operativo del watch invece che stimata da uno storico.** L'utente ha
+  chiesto esplicitamente di valutare se il dato si potesse ottenere
+  dal sistema operativo invece di ricostruirlo lato app — si puo':
+  Android espone via `BatteryManager` due proprieta' hardware,
+  `BATTERY_PROPERTY_CHARGE_COUNTER` (capacita' residua, µAh) e
+  `BATTERY_PROPERTY_CURRENT_NOW` (corrente istantanea, µA, negativa in
+  scarica). `ore = capacita' residua / corrente di scarica`
+  (µAh / µA = h) e' lo stesso dato grezzo che il sistema usa per le
+  proprie stime di batteria in Impostazioni — niente storico da
+  accumulare (a differenza dell'approccio "velocita' di scarica da due
+  campioni recenti" analizzato in precedenza, scartato: piu' complesso
+  E meno accurato di chiedere direttamente al sistema), niente
+  chiamata di rete aggiuntiva, il valore e' gia' pronto ad ogni
+  lettura e riflette l'uso reale (schermo/GPS/LTE) invece di
+  un'estrapolazione lineare.
+
+  Rischio noto e gestito: non tutti i kernel/dispositivi espongono
+  queste proprieta' in modo affidabile (`getIntProperty` ritorna
+  `Int.MIN_VALUE` se non supportata; bug noti su alcuni kernel che
+  riportano `CURRENT_NOW` nell'unita' sbagliata, es. nanoampere invece
+  di microampere). `BatteryInfo.readHoursRemaining()` (watch-app)
+  applica percio' un controllo di plausibilita' (0.1h–100h): un
+  risultato fuori scala diventa `null` (nessuna stima mostrata)
+  invece di un numero chiaramente sbagliato in app. Calcolato solo
+  quando il watch non e' in carica (in carica avrebbe senso semmai un
+  "tempo alla carica completa", non richiesto).
+
+  Percorso dato: `BatteryInfo.kt` (watch, nuovo campo
+  `hoursRemaining` su `BatterySnapshot`) -> `LocationPoint`/
+  `BackendClient.triggerEvent()` (stesso pattern di batteryTemp/
+  charging/speed) -> `devices/{childId}.batteryHoursRemaining`
+  (scritto da `ingest-location.js`/`trigger-event.js`, non salvato
+  nello storico `locations`: e' gia' una stima diretta, non serve
+  riguardarla nel tempo) -> `StatusCard` (phone-app), nuova riga
+  "Autonomia residua: ~Xh Ymin" sotto la percentuale batteria, visibile
+  solo quando il valore e' disponibile (assente in carica o su
+  hardware che non lo espone in modo affidabile).

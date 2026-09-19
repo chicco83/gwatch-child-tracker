@@ -14,6 +14,10 @@
     <string name="status_last_seen_label">Ultima posizione:</string>
     <string name="status_battery_temp_label">Temperatura batteria:</string>
     <string name="status_speed_label">Velocità:</string>
+    <!-- v0.15.0 (2026-09-19): autonomia residua, richiesta dall'utente —
+         chiesta dal watch al proprio sistema operativo, vedi
+         watch-app/.../location/BatteryInfo.kt -->
+    <string name="status_battery_hours_label">Autonomia residua:</string>
     <string name="last_known_position">Ultima posizione nota</string>
     <string name="geofences_title">Zone</string>
     <!-- v0.7.0 (2026-09-11): rinominato "Esci" -> "Logout", ora dentro

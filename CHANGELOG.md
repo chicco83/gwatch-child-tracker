@@ -7,6 +7,29 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-09-19
+
+### Added
+- Autonomia residua della batteria dello smartwatch, mostrata in ore/minuti
+  sotto la percentuale batteria nella `StatusCard` della phone-app,
+  richiesta dall'utente. Chiesta direttamente al sistema operativo del
+  watch (`BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER` /
+  `BATTERY_PROPERTY_CURRENT_NOW`, `capacità residua / corrente di
+  scarica = ore`), non stimata da uno storico lato app: stesso dato
+  grezzo che usa Android per le proprie stime di batteria, disponibile
+  subito senza accumulare campioni.
+  - `watch-app`: nuovo `BatteryInfo.readHoursRemaining()`, con un
+    controllo di plausibilità (0.1h–100h) per scartare letture assurde
+    su kernel/dispositivi che espongono il dato in modo inaffidabile —
+    in quel caso nessuna stima invece di un numero sbagliato. Valore
+    assente mentre il watch è in carica. Propagato in
+    `LocationPoint`/`triggerEvent()` come per gli altri campi batteria.
+  - `backend`: nuovo campo `batteryHoursRemaining` su
+    `devices/{childId}`, scritto da `ingest-location.js`/
+    `trigger-event.js` come per `batteryTemp`/`charging`/`speed`.
+  - `phone-app`: nuova riga "Autonomia residua: ~Xh Ymin" in
+    `StatusCard`, visibile solo quando il dato è disponibile.
+
 ## [0.62.0] - 2026-09-19
 
 ### Added

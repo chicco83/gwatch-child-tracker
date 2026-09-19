@@ -141,6 +141,7 @@ import com.gwatch.childtracker.phone.util.formatRelativeTime
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -550,6 +551,18 @@ private fun StatusCard(
                         },
                     )
                 }
+                // v0.15.0 (2026-09-19): autonomia residua, richiesta
+                // dall'utente. Assente (null) mentre in carica o se il
+                // watch non riesce a chiederla in modo affidabile al
+                // proprio sistema operativo (vedi BatteryInfo.kt lato
+                // watch) — nessun fallback qui, non abbiamo uno storico
+                // lato phone-app per stimarla noi.
+                state.batteryHoursRemaining?.let { hours ->
+                    InfoLine(
+                        label = stringResource(R.string.status_battery_hours_label),
+                        value = formatHoursRemaining(hours),
+                    )
+                }
                 state.batteryTemp?.let { temp ->
                     InfoLine(
                         label = stringResource(R.string.status_battery_temp_label),
@@ -582,6 +595,23 @@ private fun StatusCard(
  * tema (stesso comportamento del parametro "color" di Text quando non
  * specificato), usato per il colore verde/arancio/rosso della batteria.
  */
+/**
+ * "~Xh Ymin" (o solo "~Ymin" sotto l'ora) per l'autonomia residua
+ * stimata dal watch (vedi state.batteryHoursRemaining) — arrotondata
+ * al minuto, con "~" davanti perche' e' comunque una stima del sistema
+ * operativo del watch, non un valore esatto.
+ */
+private fun formatHoursRemaining(hours: Double): String {
+    val totalMinutes = (hours * 60).roundToInt().coerceAtLeast(0)
+    val h = totalMinutes / 60
+    val m = totalMinutes % 60
+    return when {
+        h > 0 && m > 0 -> "~${h}h ${m}min"
+        h > 0 -> "~${h}h"
+        else -> "~${m}min"
+    }
+}
+
 @Composable
 private fun InfoLine(label: String, value: String, valueColor: Color = Color.Unspecified) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {

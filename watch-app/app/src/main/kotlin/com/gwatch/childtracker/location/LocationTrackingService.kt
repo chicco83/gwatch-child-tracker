@@ -64,6 +64,7 @@ class LocationTrackingService : Service() {
                 batteryTemp = batterySnapshot.temperatureC,
                 charging = batterySnapshot.isCharging,
                 speedMps = if (location.hasSpeed()) location.speed else null,
+                batteryHoursRemaining = batterySnapshot.hoursRemaining,
                 timestampMillis = location.time,
             )
             pendingStore.addPoint(point)

@@ -19,6 +19,11 @@ data class LocationPoint(
     // in ogni fix GPS (calcolato dal chip GPS stesso, es. via Doppler),
     // nessun costo aggiuntivo al ritmo di campionamento attuale.
     val speedMps: Float? = null,
+    // 2026-09-19: autonomia residua stimata in ore, richiesta
+    // dall'utente — chiesta al sistema operativo (vedi
+    // location/BatteryInfo.kt/readHoursRemaining), null mentre in
+    // carica o se il dispositivo non espone il dato in modo affidabile.
+    val batteryHoursRemaining: Double? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("lat", lat)
@@ -29,6 +34,7 @@ data class LocationPoint(
         batteryTemp?.let { put("batteryTemp", it) }
         charging?.let { put("charging", it) }
         speedMps?.let { put("speed", it.toDouble()) }
+        batteryHoursRemaining?.let { put("batteryHoursRemaining", it) }
         put("timestamp", timestampMillis)
     }
 
@@ -42,6 +48,7 @@ data class LocationPoint(
             batteryTemp = if (json.has("batteryTemp")) json.getDouble("batteryTemp") else null,
             charging = if (json.has("charging")) json.getBoolean("charging") else null,
             speedMps = if (json.has("speed")) json.getDouble("speed").toFloat() else null,
+            batteryHoursRemaining = if (json.has("batteryHoursRemaining")) json.getDouble("batteryHoursRemaining") else null,
             timestampMillis = json.getLong("timestamp"),
         )
     }

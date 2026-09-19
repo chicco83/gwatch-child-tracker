@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.15.0
+ * Versione: 0.16.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -140,6 +140,11 @@
  *   nuovo _lib/batteryAlerts.js). Riusa deviceSnapBefore, gia' letto
  *   sopra prima della scrittura del batch, invece di una seconda
  *   lettura Firestore.
+ * - 0.16.0 (2026-09-19): aggiunto "batteryHoursRemaining" al body
+ *   (richiesto dall'utente — autonomia residua in ore, chiesta dal
+ *   watch al proprio sistema operativo, vedi watch-app/.../location/
+ *   BatteryInfo.kt), salvato su devices/{childId} insieme al resto
+ *   dello stato batteria, stesso pattern di batteryTemp/charging/speed.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -202,7 +207,7 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, timestamp } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp } = req.body || {};
   if (!VALID_TYPES.has(type) || typeof lat !== "number" || typeof lon !== "number") {
     res.status(400).send("Bad Request: 'type'/'lat'/'lon' mancanti o non validi");
     return;
@@ -255,6 +260,7 @@ module.exports = wrapHandler(async (req, res) => {
     batteryTemp: batteryTemp ?? null,
     charging: charging ?? null,
     speed: speed ?? null,
+    batteryHoursRemaining: batteryHoursRemaining ?? null,
     lastSeen: ts,
     updatedAt: FieldValue.serverTimestamp(),
   };

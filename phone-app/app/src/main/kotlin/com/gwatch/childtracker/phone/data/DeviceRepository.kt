@@ -80,6 +80,7 @@ class DeviceRepository {
                     batteryTemp = (snap.get("batteryTemp") as? Number)?.toDouble(),
                     charging = snap.getBoolean("charging"),
                     speedMps = (snap.get("speed") as? Number)?.toDouble(),
+                    batteryHoursRemaining = (snap.get("batteryHoursRemaining") as? Number)?.toDouble(),
                 ),
             )
         }

@@ -73,8 +73,14 @@ android {
         // applica il cambio letto dalla risposta di trigger-event.js,
         // nuovo permesso ACCESS_NOTIFICATION_POLICY (concesso a mano
         // dall'utente, non a runtime).
-        versionCode = 9
-        versionName = "0.9.0"
+        // v0.10.0 (2026-09-19): autonomia residua batteria in ore,
+        // richiesta dall'utente — chiesta al sistema operativo invece
+        // che stimata da uno storico (vedi location/BatteryInfo.kt,
+        // readHoursRemaining/BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER
+        // + CURRENT_NOW), inviata al backend su ogni punto posizione/
+        // evento insieme al resto dello stato batteria.
+        versionCode = 10
+        versionName = "0.10.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

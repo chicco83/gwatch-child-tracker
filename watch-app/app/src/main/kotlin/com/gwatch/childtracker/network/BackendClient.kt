@@ -103,6 +103,8 @@ class BackendClient {
      * true/false se il watch deve attivare/disattivare il "Non
      * disturbare" di sistema (vedi trigger-event.js v0.14.0 e
      * geofence/GeofenceEventWorker.kt, che applica il cambio).
+     * v0.10.0 (2026-09-19): aggiunto batteryHoursRemaining (vedi
+     * location/BatteryInfo.kt), stesso pattern di batteryTemp/charging.
      */
     suspend fun triggerEvent(
         type: String,
@@ -115,6 +117,7 @@ class BackendClient {
         batteryTemp: Double? = null,
         charging: Boolean? = null,
         speedMps: Float? = null,
+        batteryHoursRemaining: Double? = null,
         timestampMillis: Long = System.currentTimeMillis(),
     ): TriggerEventResult {
         val body = JSONObject().apply {
@@ -128,6 +131,7 @@ class BackendClient {
             batteryTemp?.let { put("batteryTemp", it) }
             charging?.let { put("charging", it) }
             speedMps?.let { put("speed", it.toDouble()) }
+            batteryHoursRemaining?.let { put("batteryHoursRemaining", it) }
             put("timestamp", timestampMillis)
         }
         val request = Request.Builder()

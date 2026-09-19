@@ -80,8 +80,12 @@ android {
         // disturbare (watch) in questa zona" (DND automatico
         // ingresso/uscita, vedi backend/api/trigger-event.js v0.14.0 e
         // watch-app dnd/DndController.kt).
-        versionCode = 11
-        versionName = "0.11.0"
+        // v0.12.0 (2026-09-19): StatusCard — nuova riga "Autonomia
+        // residua" sotto la percentuale batteria, richiesta dall'utente
+        // (vedi MapScreen.kt/DeviceState.batteryHoursRemaining, stimata
+        // dal sistema operativo del watch, non dalla phone-app).
+        versionCode = 12
+        versionName = "0.12.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

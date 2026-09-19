@@ -22,6 +22,11 @@ data class DeviceState(
     // 2026-09-18: velocita' in m/s (Location.getSpeed() sul watch),
     // richiesta dall'utente per mostrarla sulla mappa.
     val speedMps: Double? = null,
+    // 2026-09-19: autonomia residua stimata in ore, richiesta
+    // dall'utente — chiesta dal watch al proprio sistema operativo
+    // (vedi watch-app/.../location/BatteryInfo.kt), null mentre in
+    // carica o se il dispositivo non espone il dato in modo affidabile.
+    val batteryHoursRemaining: Double? = null,
 )
 
 data class LocationPoint(

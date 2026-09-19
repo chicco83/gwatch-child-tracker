@@ -86,6 +86,7 @@ class SosWorker(
             batteryTemp = batterySnapshot.temperatureC,
             charging = batterySnapshot.isCharging,
             speedMps = if (location.hasSpeed()) location.speed else null,
+            batteryHoursRemaining = batterySnapshot.hoursRemaining,
         )
         return if (result.ok) Result.success() else Result.retry()
     }
