@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.10.0
+ * Versione: 0.15.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -134,6 +134,12 @@
  *   di sistema locale, NotificationManager.setInterruptionFilter — non
  *   ha senso passare dal telefono/push, il watch riceve gia' l'esito
  *   della propria chiamata trigger-event).
+ * - 0.15.0 (2026-09-19): richiesto dall'utente — notifiche automatiche
+ *   al genitore quando la batteria del watch scende al 10%/5%, con
+ *   richiesta posizione + messaggio automatico al watch al 2% (vedi
+ *   nuovo _lib/batteryAlerts.js). Riusa deviceSnapBefore, gia' letto
+ *   sopra prima della scrittura del batch, invece di una seconda
+ *   lettura Firestore.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -141,6 +147,7 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
+const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
 // corretto da qwen3.8-Flash-Next il 16-9-26: retention eventi (stesso valore di
@@ -277,6 +284,10 @@ module.exports = wrapHandler(async (req, res) => {
   });
   batch.set(deviceRef, deviceUpdate, { merge: true });
   await batch.commit();
+
+  if (typeof battery === "number") {
+    await checkBatteryAlerts(db, deviceRef, childId, battery, charging ?? null, deviceSnapBefore.data());
+  }
 
   // Niente notifica per un "sos" quando l'episodio e' gia' attivo
   // (arriva qui solo se il bambino ripreme il pulsante durante un SOS

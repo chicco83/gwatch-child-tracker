@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.61.0
-**Ultimo aggiornamento:** 2026-09-18
+**Versione contesto:** 0.62.0
+**Ultimo aggiornamento:** 2026-09-19
 
 ---
 
@@ -1704,3 +1704,62 @@ CHANGELOG.md  Storico versioni
   di default anche le notifiche dell'app stessa (chat, sos_cancel,
   ecc.) vengono silenziate mentre il DND e' attivo — comportamento
   atteso e comunicato all'utente, non un bug.
+
+- **2026-09-19 — Notifiche automatiche batteria scarica watch (10%/5%/2%).**
+  Richiesto dall'utente: notifica al genitore quando la batteria del
+  watch scende al 10% e di nuovo al 5%; al 2% anche richiesta forzata
+  della posizione e invio automatico al watch di un messaggio in chat
+  con testo fisso "non hai più batteria, aspettami dove sei.".
+
+  Vincolo architetturale di partenza: Vercel Hobby permette al massimo
+  12 Serverless Function per deployment (vedi header di
+  `parent-command.js`), gia' a 10 file in `backend/api/`. Niente nuovo
+  endpoint: la logica vive in un nuovo helper condiviso,
+  `_lib/batteryAlerts.js` (sotto `_lib/`, escluso dal conteggio per la
+  convenzione Vercel dei file con underscore), richiamato dai due soli
+  endpoint che gia' scrivono lo stato batteria su
+  `devices/{childId}` — `ingest-location.js` (tracking periodico) e
+  `trigger-event.js` (SOS/geofence/location_request) — subito dopo il
+  loro `batch.commit()` gia' esistente, senza aggiungere scritture
+  Firestore extra al percorso principale.
+
+  Dedup per "episodio": nuovo campo `devices/{childId}.batteryAlertLevel`
+  (null | 10 | 5 | 2) tiene la soglia piu' severa gia' notificata, per
+  non rimandare la stessa notifica ad ogni singolo campione mentre la
+  batteria resta bassa. Reset (isteresi) solo quando il watch torna in
+  carica o la batteria risale sopra il 15% — una soglia di reset più
+  alta della più bassa soglia di allarme (10%) evita che un valore che
+  oscilla proprio li' intorno (10%/11%/10%) riapra un "nuovo episodio"
+  ad ogni giro.
+
+  Notifica 10%/5%: push FCM `notification`+`data` (`type: battery_low`)
+  sul topic `parents`, stesso schema gia' in uso per SOS/geofence in
+  `trigger-event.js` — non serve nessun codice nuovo lato phone-app: il
+  fallback generico gia' presente in `FcmService.kt`
+  (`message.notification` senza un `type` riconosciuto ->
+  `postNotification()`) la mostra automaticamente, sia in foreground sia
+  (via tray di sistema) in background.
+
+  Azioni al 2%: riusano meccanismi gia' esistenti invece di
+  inventarne di nuovi — `location_request` e' lo stesso data-only gia'
+  mandato dal pulsante "Aggiorna posizione" (`handleRequestLocation` in
+  `parent-command.js`); il messaggio automatico scrive su
+  `devices/{childId}/messages` con lo stesso schema di
+  `handleMessage()` (`sender/senderId/senderName/text`, mittente
+  "gWatch"/`senderId: "system"` per non impersonare un genitore vero) e
+  manda la stessa push data-only `type: chat` — compare quindi nella
+  chat del watch come un messaggio normale, non solo come notifica di
+  sistema passeggera. Nessun codice nuovo lato watch-app: `FcmService.kt`
+  (watch) gestisce gia' `chat` e `location_request` per gli stessi
+  motivi.
+
+  **Non implementato in questo giro (solo analizzato su richiesta
+  esplicita)**: stima dell'autonomia residua in ore sotto la
+  percentuale batteria nella `StatusCard` della phone-app. Serve una
+  velocita' di scarica (%/ora) calcolata da almeno due campioni
+  recenti di `battery`/`lastSeen` — nessuno storico dedicato oggi,
+  andrebbe letto da `devices/{childId}/locations` (gia' scritto ad ogni
+  update, gia' contiene `battery`+`timestamp`) filtrando gli ultimi N
+  minuti. Stima grezza e rumorosa (dipende da uso schermo/GPS/LTE nel
+  frattempo, non lineare), utile solo come ordine di grandezza
+  ("circa Xh"), non promessa come precisa.

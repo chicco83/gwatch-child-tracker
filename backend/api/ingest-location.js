@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.3.0
+ * Versione: 0.6.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -26,6 +26,11 @@
  *   device, stesso pattern gia' in uso per "battery"/"activity".
  * - 0.5.0 (2026-09-18): aggiunto "speed" (m/s, Location.getSpeed() —
  *   richiesto dall'utente per mostrarla sulla mappa), stesso pattern.
+ * - 0.6.0 (2026-09-19): richiesto dall'utente — notifiche automatiche
+ *   al genitore quando la batteria del watch scende al 10%/5%, con
+ *   richiesta posizione + messaggio automatico al watch al 2% (vedi
+ *   nuovo _lib/batteryAlerts.js, chiamato qui dopo il commit del batch
+ *   con la batteria dell'ultimo punto ricevuto).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -33,6 +38,7 @@ const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 const { validateConfig } = require("./_lib/config.js");
+const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
 
 const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
 const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
@@ -130,5 +136,10 @@ module.exports = wrapHandler(async (req, res) => {
   }
 
   await batch.commit();
+
+  if (last) {
+    await checkBatteryAlerts(db, deviceRef, childId, last.battery ?? null, last.charging ?? null);
+  }
+
   successResponse(res, { received: points.length });
 });

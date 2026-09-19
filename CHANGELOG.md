@@ -7,6 +7,34 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-09-19
+
+### Added
+- Notifiche automatiche al genitore quando la batteria dello smartwatch
+  scende al 10% e al 5%, richiesto dall'utente. Al 2% viene inoltre
+  forzata una richiesta di posizione al watch e inviato automaticamente
+  un messaggio in chat al watch con testo fisso "non hai più batteria,
+  aspettami dove sei.".
+  - Nuovo `backend/api/_lib/batteryAlerts.js` (helper condiviso, non un
+    endpoint a se': Vercel Hobby permette max 12 Serverless Function,
+    gia' a 10 in `backend/api/`), richiamato da `ingest-location.js` e
+    `trigger-event.js` dopo la loro scrittura dello stato batteria.
+  - Nuovo campo `devices/{childId}.batteryAlertLevel` per non
+    rinotificare la stessa soglia ad ogni campione mentre la batteria
+    resta bassa; si resetta quando il watch torna in carica o supera il
+    15% di batteria.
+  - Nessun codice nuovo lato phone-app/watch-app: riusa il fallback
+    notifica generico gia' in `FcmService.kt` (phone) e la gestione gia'
+    esistente di `chat`/`location_request` in `FcmService.kt` (watch).
+
+### Known limitations
+- Autonomia residua in ore sotto la percentuale batteria nella
+  `StatusCard` (phone-app): analizzata su richiesta dell'utente, non
+  ancora implementata. Richiede calcolare una velocita' di scarica
+  (%/ora) dallo storico `devices/{childId}/locations` (gia' contiene
+  `battery`+`timestamp` per punto) — stima solo indicativa, non
+  precisa (dipende da uso schermo/GPS/LTE nel frattempo).
+
 ## [0.61.0] - 2026-09-18
 
 ### Added
