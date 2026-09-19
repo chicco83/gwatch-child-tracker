@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.63.0
+**Versione contesto:** 0.64.0
 **Ultimo aggiornamento:** 2026-09-19
 
 ---
@@ -1796,3 +1796,43 @@ CHANGELOG.md  Storico versioni
   "Autonomia residua: ~Xh Ymin" sotto la percentuale batteria, visibile
   solo quando il valore e' disponibile (assente in carica o su
   hardware che non lo espone in modo affidabile).
+
+- **2026-09-19 — Fix: cron di pulizia backend falliva ogni notte (HTTP
+  500).** Segnalato dall'utente (screenshot GitHub Actions,
+  `cleanup-cron.yml` job "cleanup" in errore da almeno una notte).
+  Diagnosi: rilanciato manualmente il workflow (`workflow_dispatch`)
+  sull'ultimo commit del branch per escludere che fosse un residuo del
+  commit "rogue" del Gradle wrapper della notte precedente — falliva
+  identico anche li', quindi non c'entrava. I log del job mostrano solo
+  `HTTP 500 {"ok":false,"error":"Internal server error"}`: il messaggio
+  generico di `wrapHandler` (`_lib/errors.js`), che inghiotte
+  volutamente il dettaglio dell'errore per non esporlo al chiamante —
+  nessun accesso ai log reali della funzione Vercel da questa sessione,
+  quindi causa root-cause andata cercata per esclusione nel codice.
+
+  `node --check` su tutti i file di `backend/api/` non ha trovato
+  errori di sintassi (esclusa quella classe di problema, gia' vista in
+  passato con un push diretto della IA locale). Trovato invece: la
+  v0.4.0 di `cleanup.js` (16/9) ha aggiunto `purgeExpired(db, "events")`
+  — una query `collectionGroup("events").where("expiresAt", "<=", ...)`
+  — ma non il corrispondente override in `firestore.indexes.json`
+  (presente solo per `locations`/`quota`/`messages`, mai esteso a
+  "events"). Firestore richiede un indice esplicito a scope "Collection
+  group" per una query di range su un collection group; senza,
+  rifiuta la query con un errore che `Promise.all()` propaga e
+  `wrapHandler` trasforma nel 500 generico visto nei log. Stessa classe
+  di bug gia' capitata con le regole di sicurezza (una modifica di
+  codice che presuppone una configurazione Firestore mai effettivamente
+  pubblicata) — vedi voce piu' in alto sulle zone che non comparivano.
+
+  Fix: aggiunto l'override mancante in `firestore.indexes.json`. **Il
+  file nel repo da solo non risolve nulla**: gli indici Firestore vano
+  ripubblicati esplicitamente (Console: Firestore Database → Indexes →
+  Single field → Add index, collection "events", campo "expiresAt",
+  scope "Collection group", ordine Ascending; oppure da riga di comando
+  con `firebase deploy --only firestore:indexes` da `backend/`, che
+  legge lo stesso `firestore.indexes.json` — `backend/firebase.json` e'
+  gia' configurato per questo). Fino alla ripubblicazione, il cron
+  continuera' a fallire ogni notte (fallimento innocuo: nessun dato
+  viene perso, solo la pulizia dello storico scaduto non avviene finche'
+  l'indice non e' attivo).

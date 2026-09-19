@@ -7,6 +7,24 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-09-19
+
+### Fixed
+- Il workflow GitHub Actions "Pulizia storico backend" (`cleanup-cron.yml`)
+  falliva ogni notte con HTTP 500, segnalato dall'utente. Causa: la
+  pulizia del gruppo di collezioni `events` (aggiunta a `cleanup.js` il
+  16/9) interroga Firestore con `collectionGroup("events")`, ma
+  `firestore.indexes.json` non aveva mai avuto il corrispondente
+  override di indice a scope "Collection group" per `events.expiresAt`
+  (presenti solo per `locations`/`quota`/`messages`) — Firestore
+  rifiuta la query, l'errore viene inghiottito dal gestore generico e
+  restituito come "Internal server error" senza dettagli.
+  - Aggiunto l'override mancante in `firestore.indexes.json`.
+  - **Il file nel repo da solo non basta**: va ripubblicato su
+    Firestore (Console o `firebase deploy --only firestore:indexes`),
+    stessa classe di problema già vista con le regole di sicurezza
+    (vedi CONTEXT.md, "Distribuzione app"/log decisioni).
+
 ## [0.63.0] - 2026-09-19
 
 ### Added

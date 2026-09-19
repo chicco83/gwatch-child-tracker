@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.4.0
+ * Versione: 0.5.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -28,6 +28,23 @@
  *   _lib/auth.js/timingSafeEquals), prima un semplice !==; (2) torna la pulizia
  *   del gruppo "events" (retention 12 mesi, scrive expiresAt in trigger-event.js):
  *   era rimasta indietro dopo il riordino multi-bambino.
+ * - 0.5.0 (2026-09-19): bug segnalato dall'utente — il workflow GitHub
+ *   Actions "Pulizia storico backend" falliva ogni notte con HTTP 500
+ *   ("Internal server error"). Causa: la v0.4.0 sopra ha aggiunto
+ *   purgeExpired(db, "events") ma non il corrispondente indice
+ *   Firestore per query collectionGroup su "events.expiresAt" —
+ *   ../firestore.indexes.json aveva l'override per locations/quota/
+ *   messages ma non per "events", introdotto (query aggiunta senza
+ *   l'indice) senza che nessuno se ne accorgesse finche' il cron non
+ *   ha iniziato a fallire. Firestore rifiuta una query collectionGroup
+ *   con filtro di range su un campo senza un indice esplicito a quello
+ *   scope, Promise.all() la propaga, wrapHandler la trasforma nel 500
+ *   generico (nessun dettaglio nella risposta, per non esporre stack
+ *   trace al chiamante). Aggiunto l'override mancante in
+ *   firestore.indexes.json — va comunque ripubblicato su Firestore
+ *   (Console o "firebase deploy --only firestore:indexes"), il file
+ *   nel repo da solo non basta, stessa classe di problema gia' vista
+ *   con le regole di sicurezza (vedi CONTEXT.md).
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
