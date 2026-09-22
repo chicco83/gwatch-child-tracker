@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.65.0
+**Versione contesto:** 0.66.0
 **Ultimo aggiornamento:** 2026-09-22
 
 ---
@@ -1892,3 +1892,19 @@ CHANGELOG.md  Storico versioni
   fonte di verita' sull'ordine di arrivo delle proprie richieste di
   rete), e centralizzarla li' protegge automaticamente anche da futuri
   path di scrittura simili, non solo da questi due.
+
+- **2026-09-22 — Richiesta posizione automatica all'apertura app +
+  data/ora assolute in "Ultima posizione".** Entrambe richieste
+  dall'utente. La prima riusa `AppViewModel.requestLocation` (stessa
+  funzione del pulsante "Aggiorna posizione") per ogni bambino noto,
+  innescata da un `LaunchedEffect(children)` in `MapScreen.kt` con un
+  flag `hasAutoRequestedLocation` per farla scattare una sola volta per
+  apertura (children arriva vuoto al primo istante e si popola via
+  listener Firestore, quindi non basta `LaunchedEffect(Unit)`). Nessuna
+  modifica backend: e' la stessa identica chiamata gia' esistente.
+  La seconda aggiunge `formatLastSeen()` in `MapScreen.kt`, che
+  affianca al relativo gia' esistente (`formatRelativeTime`, util/
+  TimeFormat.kt) la data/ora assolute nello stesso formato "dd/MM
+  HH:mm" gia' in uso in `EventsList` — utile perche' un dato vecchio di
+  ore da solo ("5 h fa") non dice "di che giorno" quando si riapre
+  l'app dopo un po'.

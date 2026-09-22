@@ -84,8 +84,12 @@ android {
         // residua" sotto la percentuale batteria, richiesta dall'utente
         // (vedi MapScreen.kt/DeviceState.batteryHoursRemaining, stimata
         // dal sistema operativo del watch, non dalla phone-app).
-        versionCode = 12
-        versionName = "0.12.0"
+        // v0.13.0 (2026-09-22): richiesto dall'utente — richiesta
+        // automatica della posizione a tutti i bambini all'apertura
+        // dell'app; "Ultima posizione" mostra ora anche data/ora
+        // assolute oltre al relativo (vedi MapScreen.kt).
+        versionCode = 13
+        versionName = "0.13.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

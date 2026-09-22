@@ -87,6 +87,15 @@ package com.gwatch.childtracker.phone.ui
 //   problema v0.10.0 invece di limitarsi a un heightIn), card a riga
 //   singola invece che a due righe impilate (piu' bassa), etichetta e
 //   valore batteria in due Text separati (solo il valore e' colorato).
+// v0.12.0 (2026-09-22): richiesto dall'utente — due aggiunte:
+//   (1) all'apertura dell'app, richiede automaticamente la posizione a
+//   tutti i bambini noti (stessa chiamata del pulsante "Aggiorna
+//   posizione", vedi AppViewModel.requestLocation), una sola volta per
+//   apertura tramite un flag "hasAutoRequestedLocation" invece che ad
+//   ogni ricomposizione; (2) "Ultima posizione" ora mostra anche data e
+//   ora assolute oltre al relativo ("5 min fa"), utile per capire "di
+//   che giorno" quando il dato e' vecchio di ore (vedi formatLastSeen
+//   sotto, stesso formato "dd/MM HH:mm" gia' usato in EventsList).
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -205,6 +214,22 @@ fun MapScreen(
             events
                 .filter { !it.acknowledged && (it.type == "sos" || (it.type == "location_request" && it.source != "parent")) }
                 .forEach { viewModel.ackEvent(childId, it.id) }
+        }
+    }
+
+    // v0.12.0: richiesta automatica della posizione all'apertura
+    // dell'app per tutti i bambini noti — stessa chiamata del pulsante
+    // "Aggiorna posizione", nessun nuovo codice lato backend/watch.
+    // "children" arriva vuoto al primo istante (listener Firestore
+    // ancora da popolare) e via via si aggiorna: il flag garantisce che
+    // scatti una sola volta per apertura, alla prima lista non vuota,
+    // invece di ripartire ad ogni ricomposizione o cambio di
+    // "children" successivo (es. un bambino rinominato).
+    var hasAutoRequestedLocation by remember { mutableStateOf(false) }
+    LaunchedEffect(children) {
+        if (!hasAutoRequestedLocation && children.isNotEmpty()) {
+            hasAutoRequestedLocation = true
+            children.forEach { child -> viewModel.requestLocation(child.id) {} }
         }
     }
 
@@ -536,7 +561,7 @@ private fun StatusCard(
             Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
                 InfoLine(
                     label = stringResource(R.string.status_last_seen_label),
-                    value = state.lastSeenMillis?.let { formatRelativeTime(it) }
+                    value = state.lastSeenMillis?.let { formatLastSeen(it) }
                         ?: stringResource(R.string.no_data_yet),
                 )
                 state.battery?.let { battery ->
@@ -611,6 +636,17 @@ private fun formatHoursRemaining(hours: Double): String {
         else -> "~${m}min"
     }
 }
+
+/**
+ * "5 min fa · 22/09 14:35" per "Ultima posizione" — il relativo da solo
+ * (formatRelativeTime) non dice "di che giorno" quando il dato e'
+ * vecchio di ore, richiesto dall'utente. Stesso formato "dd/MM HH:mm"
+ * gia' usato in EventsList, per coerenza nell'app.
+ */
+private val lastSeenAbsoluteFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
+
+private fun formatLastSeen(millis: Long): String =
+    "${formatRelativeTime(millis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
 
 @Composable
 private fun InfoLine(label: String, value: String, valueColor: Color = Color.Unspecified) {

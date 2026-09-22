@@ -7,6 +7,18 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.66.0] - 2026-09-22
+
+### Added
+- All'apertura della phone-app, richiesta automatica della posizione a
+  tutti i bambini noti — stessa chiamata del pulsante "Aggiorna
+  posizione" (`AppViewModel.requestLocation`), una sola volta per
+  apertura. Richiesto dall'utente.
+- "Ultima posizione" nella `StatusCard` mostra ora anche data e ora
+  assolute oltre al relativo ("5 min fa · 22/09 14:35"), richiesto
+  dall'utente per capire "di che giorno" quando il dato è vecchio di
+  ore.
+
 ## [0.65.0] - 2026-09-22
 
 ### Fixed
