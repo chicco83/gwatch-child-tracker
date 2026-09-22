@@ -16,10 +16,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   commenti/Storico versioni sono state mantenute, solo il nome/data di
   attribuzione è stato tolto. Eliminato `PLAN-qwen3.8turbo-coder.md`
   (piano interamente relativo a quella sessione, superato da
-  CONTEXT.md); da `TESTING-E2E.md` tolte solo le due righe di
-  attribuzione, mantenuta la procedura di test. Le voci storiche di
-  questo CHANGELOG e di CONTEXT.md sul relativo incidente (v0.42.0)
-  restano come promemoria dei fatti, col nome dell'AI anonimizzato.
+  CONTEXT.md); da `TESTING-E2E.md` tolte inizialmente solo le due
+  righe di attribuzione, mantenuta la procedura di test — poi il file
+  è stato cancellato direttamente dalla stessa AI locale con un push
+  concorrente sul branch mentre questa sessione era ancora al lavoro
+  (vedi Log decisioni in CONTEXT.md), cancellazione accettata in fase
+  di merge. Le voci storiche di questo CHANGELOG e di CONTEXT.md sul
+  relativo incidente (v0.42.0) restano come promemoria dei fatti, col
+  nome dell'AI anonimizzato.
+
+### Known limitations
+- L'AI locale dell'utente (tag "qwen3.8turbo-coder") risulta ancora
+  attiva: durante questa stessa sessione ha pushato direttamente sul
+  branch un commit che cancella `TESTING-E2E.md`, bypassando questa
+  sessione (stesso pattern dell'incidente v0.42.0). Nessun problema di
+  codice in quel commit (solo cancellazione di un file di
+  documentazione), ma resta il monito già in CONTEXT.md: chi riprende
+  il lavoro deve sempre confrontare lo stato remoto con l'ultimo
+  commit noto, non assumere che rifletta solo le modifiche di questa
+  sessione.
 
 ## [0.66.0] - 2026-09-22
 

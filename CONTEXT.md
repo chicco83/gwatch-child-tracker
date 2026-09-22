@@ -1918,14 +1918,30 @@ CHANGELOG.md  Storico versioni
   interamente relativo a quella sessione, eliminato: nessuna
   informazione li' non gia' coperta da questo file) e le due righe di
   attribuzione in `TESTING-E2E.md` (contenuto della procedura di test
-  mantenuto, e' l'unico dei due file non ridondante con CONTEXT.md).
-  In ogni commento tecnico e' stata tenuta la spiegazione (perche' quel
-  cambio, cosa correggeva) e tolta solo l'attribuzione nome+data — le
-  decisioni stesse (confronto costant-time, push via topic FCM,
-  retention eventi, bump SDK 35, fix del battery indicator) non sono
-  state toccate, solo la loro attribuzione testuale. Le voci storiche
-  di CHANGELOG.md/CONTEXT.md sull'incidente restano come promemoria dei
-  fatti realmente accaduti, col nome dell'AI anonimizzato ("un'altra AI
-  locale") anziche' rimosse del tutto: coerente col mandato di
-  CLAUDE.md che questi due file siano un log di decisioni accurato, non
-  solo un elenco di feature.
+  mantenuto inizialmente, essendo l'unico dei due file non ridondante
+  con CONTEXT.md). In ogni commento tecnico e' stata tenuta la
+  spiegazione (perche' quel cambio, cosa correggeva) e tolta solo
+  l'attribuzione nome+data — le decisioni stesse (confronto
+  costant-time, push via topic FCM, retention eventi, bump SDK 35, fix
+  del battery indicator) non sono state toccate, solo la loro
+  attribuzione testuale. Le voci storiche di CHANGELOG.md/CONTEXT.md
+  sull'incidente restano come promemoria dei fatti realmente accaduti,
+  col nome dell'AI anonimizzato ("un'altra AI locale") anziche' rimosse
+  del tutto: coerente col mandato di CLAUDE.md che questi due file
+  siano un log di decisioni accurato, non solo un elenco di feature.
+
+  **Push concorrente della stessa AI locale durante questa sessione**:
+  al momento del push di questa pulizia, `git push` e' stato respinto
+  ("fetch first") — un commit `0c29ad9` era arrivato nel frattempo
+  sullo stesso branch, autore `qwen3.8turbo-coder`, che cancella
+  interamente `TESTING-E2E.md` (lo stesso file appena ripulito qui
+  sopra dalle sole righe di attribuzione). Nessun problema di codice in
+  quel commit — e' una singola cancellazione di file di documentazione,
+  non uno dei bug bloccanti dell'incidente v0.42.0 — quindi la
+  cancellazione e' stata accettata in fase di merge invece di essere
+  ripristinata (il file era ormai comunque privo di scopo distintivo
+  dopo la rimozione dell'attribuzione). Confermata pero' la lezione gia'
+  scritta nella voce v0.42.0 sopra: quell'AI locale e' ancora attiva e
+  puo' pushare direttamente sul branch in qualsiasi momento, quindi ogni
+  ripresa di lavoro (anche a meta' sessione, come qui) deve verificare
+  lo stato remoto con un fetch prima di push, non solo all'inizio.
