@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.65.0] - 2026-09-22
+
+### Fixed
+- Segnalato dall'utente: la StatusCard mostrava "ultima posizione 5
+  ore fa" anche quando lo storico ("Percorso 24h") aveva già punti
+  molto più recenti. Causa: `ingest-location.js`/`trigger-event.js`
+  sovrascrivevano lo stato "attuale" del device
+  (`lastLocation`/`lastSeen`/batteria/ecc.) in modo **incondizionato**
+  ad ogni chiamata — con connettività instabile (es. a scuola), due
+  upload potevano restare in volo insieme e, se quello con dati più
+  vecchi completava dopo quello con dati più freschi, "lastSeen"
+  regrediva all'indietro nel tempo. I singoli punti nello storico non
+  erano mai coinvolti (ogni punto è un documento a sé, mai
+  sovrascritto), da cui la discrepanza tra le due viste.
+  - Lo stato "attuale" ora si scrive dentro una transazione Firestore
+    che confronta il nuovo timestamp con l'ultimo `lastSeen` salvato e
+    salta l'aggiornamento se non è più recente.
+  - Le notifiche di batteria scarica (10%/5%/2%) ora valutano solo
+    dati effettivamente più freschi di quelli già noti, per lo stesso
+    motivo.
+  - `sosActive` resta sempre marcato `true` su un evento SOS a
+    prescindere dalla freschezza del fix di posizione: è un flag di
+    sicurezza, non va mai protetto dalla stessa logica.
+
 ## [0.64.0] - 2026-09-19
 
 ### Fixed

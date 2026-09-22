@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.64.0
-**Ultimo aggiornamento:** 2026-09-19
+**Versione contesto:** 0.65.0
+**Ultimo aggiornamento:** 2026-09-22
 
 ---
 
@@ -1836,3 +1836,59 @@ CHANGELOG.md  Storico versioni
   continuera' a fallire ogni notte (fallimento innocuo: nessun dato
   viene perso, solo la pulizia dello storico scaduto non avviene finche'
   l'indice non e' attivo).
+
+  **Aggiornamento 2026-09-22**: indice pubblicato dall'utente su
+  Firestore Console (tab "Campo singolo", non il wizard "Crea indice"
+  generico — quello e' per indici compositi multi-campo e rifiuta da
+  solo un indice a campo singolo con questo messaggio: "this index is
+  not necessary, configure using single field index controls").
+  Verificato rilanciando il workflow a mano (`workflow_dispatch`):
+  verde.
+
+- **2026-09-22 — Fix: "lastSeen" del device poteva regredire
+  all'indietro nel tempo.** Segnalato dall'utente: la StatusCard
+  mostrava "ultima posizione 5 ore fa" mentre lo storico ("Percorso
+  24h", che legge `devices/{childId}/locations`) aveva gia' punti molto
+  piu' recenti — la discrepanza tra le due viste era il primo indizio
+  che uno storico corretto e uno stato "attuale" sbagliato potessero
+  divergere.
+
+  Causa: sia `ingest-location.js` che `trigger-event.js` scrivevano lo
+  stato "attuale" del device (`lastLocation`/`lastSeen`/batteria/ecc.)
+  con un `batch.set(deviceRef, {...}, {merge:true})` **incondizionato**
+  — l'ultimo dato di QUESTA chiamata vinceva sempre, senza controllare
+  se fosse davvero piu' recente di quanto gia' salvato. Con
+  connettivita' instabile (es. dentro un edificio scolastico) due
+  upload possono restare "in volo" insieme: il tracking periodico
+  automatico e l'upload "immediato" innescato al superamento soglia
+  buffer (`LocationTrackingService.kt`, `UPLOAD_TRIGGER_THRESHOLD`)
+  usano nomi di unique work DIVERSI (nessuna mutua esclusione tra
+  loro), e se quella con dati piu' vecchi (es. rimasta a ritentare per
+  un po' con successo tardivo) completa DOPO quella con dati piu'
+  freschi, la sua scrittura vince e regredisce "lastSeen" indietro nel
+  tempo — pur restando tutti i singoli punti storici corretti (ogni
+  punto e' un documento a se' in `locations`, mai sovrascritto, per
+  questo "Percorso 24h" mostrava sempre il dato giusto).
+
+  Fix: lo stato "attuale" ora si scrive dentro una **transazione
+  Firestore** che legge il `lastSeen` gia' salvato e scrive il nuovo
+  stato solo se il timestamp in arrivo e' strettamente piu' recente —
+  altrimenti la chiamata e' un no-op su quel fronte (lo storico
+  `locations`/l'evento restano comunque scritti sempre, incondizionati:
+  non c'e' un "piu' vecchio" da proteggere quando ogni voce e' un
+  documento a se'). Le notifiche di batteria scarica (10%/5%/2%) sono
+  guardate allo stesso modo: non vengono valutate su un dato che si e'
+  appena scoperto essere piu' vecchio di quanto gia' noto. Eccezione
+  deliberata in `trigger-event.js`: `sosActive` va sempre marcato
+  `true` su un evento "sos", indipendentemente dalla freschezza del fix
+  di posizione — e' un flag di sicurezza (far scattare/mantenere
+  l'allarme), non un dato di posizione da proteggere da regressioni
+  temporali, e non deve mai poter essere "perso" per una race di rete.
+
+  Non toccato deliberatamente: la causa a monte lato watch (le due
+  unique work "location-upload-periodic"/"location-upload-oneshot" che
+  possono correre in parallelo) non e' stata unificata — la garanzia va
+  comunque tenuta lato backend (un client non puo' mai essere l'unica
+  fonte di verita' sull'ordine di arrivo delle proprie richieste di
+  rete), e centralizzarla li' protegge automaticamente anche da futuri
+  path di scrittura simili, non solo da questi due.

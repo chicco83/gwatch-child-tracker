@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.7.0
+ * Versione: 0.8.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -39,6 +39,25 @@
  *   differenza di battery/batteryTemp/ecc.): non serve nessuna
  *   estrapolazione lato client, il dato e' gia' la stima diretta del
  *   sistema operativo del watch ad ogni campione.
+ * - 0.8.0 (2026-09-22): bug segnalato dall'utente — la StatusCard
+ *   mostrava "ultima posizione 5 ore fa" anche se lo storico
+ *   ("Percorso 24h") aveva gia' punti molto piu' recenti. Causa: lo
+ *   stato "attuale" del device (lastLocation/lastSeen/batteria/ecc.)
+ *   veniva sovrascritto in modo INCONDIZIONATO ad ogni chiamata, con
+ *   l'ultimo punto DI QUESTO BATCH — senza controllare se fosse
+ *   davvero piu' recente di quanto gia' salvato. Con connettivita'
+ *   ballerina (es. a scuola) due upload (quello periodico e quello
+ *   "immediato" al superamento soglia buffer, vedi
+ *   LocationTrackingService.kt) possono restare entrambi in volo
+ *   contemporaneamente: se quello con dati piu' vecchi completa DOPO
+ *   quello con dati piu' freschi, il suo scrivere regredisce lo stato
+ *   "attuale" all'indietro nel tempo — pur restando tutti i singoli
+ *   punti corretti nello storico "locations" (mai sovrascritto,
+ *   ogni punto e' un documento a se'), da cui la discrepanza. Lo stato
+ *   "attuale" ora si scrive solo dentro una transazione che confronta
+ *   il nuovo timestamp con l'attuale "lastSeen" salvato e salta la
+ *   scrittura se non e' piu' recente — i punti storici restano scritti
+ *   sempre, incondizionatamente, come prima.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -125,31 +144,51 @@ module.exports = wrapHandler(async (req, res) => {
     }
   }
 
-  if (last) {
-    batch.set(
-      deviceRef,
-      {
-        lastLocation: {
-          lat: last.lat,
-          lon: last.lon,
-          accuracy: last.accuracy ?? null,
-        },
-        battery: last.battery ?? null,
-        activity: last.activity ?? null,
-        batteryTemp: last.batteryTemp ?? null,
-        charging: last.charging ?? null,
-        speed: last.speed ?? null,
-        batteryHoursRemaining: last.batteryHoursRemaining ?? null,
-        lastSeen: last.timestamp,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-  }
-
+  // Lo storico (sopra, nel batch) si scrive sempre incondizionatamente:
+  // ogni punto e' un documento a se', non c'e' un "piu' vecchio" da
+  // proteggere. Lo stato "attuale" del device invece puo' arrivare da
+  // chiamate in volo contemporaneamente con dati di eta' diversa (vedi
+  // Storico versioni 0.8.0) — va scritto solo se il nuovo punto e'
+  // davvero piu' recente di quanto gia' salvato, altrimenti si rischia
+  // di regredire "lastSeen" all'indietro nel tempo.
   await batch.commit();
 
+  let updatedCurrentState = false;
   if (last) {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(deviceRef);
+      const currentLastSeen = snap.exists ? snap.get("lastSeen") : null;
+      if (currentLastSeen && currentLastSeen.toMillis() >= last.timestamp.toMillis()) {
+        return; // dato piu' vecchio (o pari) di quanto gia' salvato: non regredire
+      }
+      tx.set(
+        deviceRef,
+        {
+          lastLocation: {
+            lat: last.lat,
+            lon: last.lon,
+            accuracy: last.accuracy ?? null,
+          },
+          battery: last.battery ?? null,
+          activity: last.activity ?? null,
+          batteryTemp: last.batteryTemp ?? null,
+          charging: last.charging ?? null,
+          speed: last.speed ?? null,
+          batteryHoursRemaining: last.batteryHoursRemaining ?? null,
+          lastSeen: last.timestamp,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      updatedCurrentState = true;
+    });
+  }
+
+  // Le notifiche di batteria scarica valutano lo stato piu' fresco
+  // conosciuto: se questo batch era piu' vecchio di quanto gia' salvato
+  // (updatedCurrentState=false), il livello di batteria che porta non
+  // e' il piu' recente e non ha senso valutarlo per un allarme.
+  if (last && updatedCurrentState) {
     await checkBatteryAlerts(db, deviceRef, childId, last.battery ?? null, last.charging ?? null);
   }
 

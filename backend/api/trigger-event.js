@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.16.0
+ * Versione: 0.17.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -145,6 +145,17 @@
  *   watch al proprio sistema operativo, vedi watch-app/.../location/
  *   BatteryInfo.kt), salvato su devices/{childId} insieme al resto
  *   dello stato batteria, stesso pattern di batteryTemp/charging/speed.
+ * - 0.17.0 (2026-09-22): bug segnalato dall'utente (vedi
+ *   ingest-location.js v0.8.0, stesso problema) — lo stato "attuale"
+ *   del device (lastLocation/lastSeen/batteria/ecc.) veniva
+ *   sovrascritto in modo incondizionato, potendo regredire "lastSeen"
+ *   all'indietro se una chiamata con dati piu' vecchi completa dopo
+ *   una piu' recente (es. ritentativi con connettivita' ballerina). Ora
+ *   scritto dentro una transazione che confronta il timestamp con
+ *   "lastSeen" gia' salvato e salta l'aggiornamento se non e' piu'
+ *   recente. "sosActive" resta sempre marcato true su un "sos" a
+ *   prescindere dalla freschezza del fix (flag di sicurezza, non un
+ *   dato di posizione).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -254,20 +265,6 @@ module.exports = wrapHandler(async (req, res) => {
   const wasSosActive = type === "sos" ? deviceSnapBefore.data()?.sosActive === true : false;
   const childName = deviceSnapBefore.data()?.childName || "Bambino";
 
-  const deviceUpdate = {
-    lastLocation: { lat, lon, accuracy: accuracy ?? null },
-    battery: battery ?? null,
-    batteryTemp: batteryTemp ?? null,
-    charging: charging ?? null,
-    speed: speed ?? null,
-    batteryHoursRemaining: batteryHoursRemaining ?? null,
-    lastSeen: ts,
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-  if (type === "sos") {
-    deviceUpdate.sosActive = true;
-  }
-
   const batch = db.batch();
   batch.set(deviceRef.collection("events").doc(), {
     type,
@@ -288,10 +285,44 @@ module.exports = wrapHandler(async (req, res) => {
     // corretto da qwen3.8-Flash-Next il 16-9-26: letto da cleanup.js/purgeExpired
     expiresAt: Timestamp.fromMillis(ts.toMillis() + EVENT_RETENTION_HOURS * 3_600_000),
   });
-  batch.set(deviceRef, deviceUpdate, { merge: true });
   await batch.commit();
 
-  if (typeof battery === "number") {
+  // Lo stato "attuale" del device (lastLocation/lastSeen/batteria/ecc.)
+  // si scrive dentro una transazione, non incondizionatamente: se
+  // questa chiamata trasporta un fix piu' vecchio di quanto gia'
+  // salvato (es. una richiesta rimasta in coda/ritentata con
+  // connettivita' ballerina, arrivata dopo una piu' recente), non deve
+  // regredire "lastSeen" all'indietro — stesso bug e stessa correzione
+  // di ingest-location.js v0.8.0. "sosActive" invece va sempre marcato
+  // true per un "sos", indipendentemente dalla freschezza del fix: e'
+  // un flag di sicurezza, non un dato di posizione da proteggere.
+  let updatedCurrentState = false;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(deviceRef);
+    const currentLastSeen = snap.exists ? snap.get("lastSeen") : null;
+    const isFresh = !currentLastSeen || ts.toMillis() > currentLastSeen.toMillis();
+
+    const update = {};
+    if (isFresh) {
+      update.lastLocation = { lat, lon, accuracy: accuracy ?? null };
+      update.battery = battery ?? null;
+      update.batteryTemp = batteryTemp ?? null;
+      update.charging = charging ?? null;
+      update.speed = speed ?? null;
+      update.batteryHoursRemaining = batteryHoursRemaining ?? null;
+      update.lastSeen = ts;
+      update.updatedAt = FieldValue.serverTimestamp();
+      updatedCurrentState = true;
+    }
+    if (type === "sos") {
+      update.sosActive = true;
+    }
+    if (Object.keys(update).length > 0) {
+      tx.set(deviceRef, update, { merge: true });
+    }
+  });
+
+  if (typeof battery === "number" && updatedCurrentState) {
     await checkBatteryAlerts(db, deviceRef, childId, battery, charging ?? null, deviceSnapBefore.data());
   }
 
