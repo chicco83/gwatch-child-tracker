@@ -1930,18 +1930,19 @@ CHANGELOG.md  Storico versioni
   del tutto: coerente col mandato di CLAUDE.md che questi due file
   siano un log di decisioni accurato, non solo un elenco di feature.
 
-  **Push concorrente della stessa AI locale durante questa sessione**:
-  al momento del push di questa pulizia, `git push` e' stato respinto
+  **Commit concorrente dell'utente durante questa sessione**: al
+  momento del push di questa pulizia, `git push` e' stato respinto
   ("fetch first") — un commit `0c29ad9` era arrivato nel frattempo
-  sullo stesso branch, autore `qwen3.8turbo-coder`, che cancella
-  interamente `TESTING-E2E.md` (lo stesso file appena ripulito qui
-  sopra dalle sole righe di attribuzione). Nessun problema di codice in
-  quel commit — e' una singola cancellazione di file di documentazione,
-  non uno dei bug bloccanti dell'incidente v0.42.0 — quindi la
-  cancellazione e' stata accettata in fase di merge invece di essere
-  ripristinata (il file era ormai comunque privo di scopo distintivo
-  dopo la rimozione dell'attribuzione). Confermata pero' la lezione gia'
-  scritta nella voce v0.42.0 sopra: quell'AI locale e' ancora attiva e
-  puo' pushare direttamente sul branch in qualsiasi momento, quindi ogni
-  ripresa di lavoro (anche a meta' sessione, come qui) deve verificare
-  lo stato remoto con un fetch prima di push, non solo all'inizio.
+  sullo stesso branch (autore ancora taggato `qwen3.8turbo-coder`, il
+  suo strumento locale), che cancella interamente `TESTING-E2E.md` (lo
+  stesso file appena ripulito qui sopra dalle sole righe di
+  attribuzione). L'utente ha confermato di aver cancellato il file
+  personalmente: non e' un'azione autonoma dell'AI locale, solo un
+  commit fatto tramite quello strumento mentre questa sessione era
+  ancora al lavoro sullo stesso branch. Cancellazione accettata in
+  fase di merge (il file era ormai comunque privo di scopo distintivo
+  dopo la rimozione dell'attribuzione). Promemoria pratico, non
+  legato all'incidente v0.42.0: modifiche dirette dell'utente sullo
+  stesso branch durante una sessione attiva sono normali, quindi un
+  `git push` puo' essere respinto anche senza che sia successo nulla
+  di anomalo — basta un fetch/merge prima di ripushare.
