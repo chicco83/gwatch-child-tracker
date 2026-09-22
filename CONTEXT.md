@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.66.0
+**Versione contesto:** 0.67.0
 **Ultimo aggiornamento:** 2026-09-22
 
 ---
@@ -1141,9 +1141,9 @@ CHANGELOG.md  Storico versioni
   Firebase segnala che non è più registrato. Nessuna migrazione dati
   richiesta.
 - 2026-09-18: **Review di un'altra AI locale pushata su GitHub
-  (v0.42.0)**. L'utente aveva fatto girare un'AI in locale (commit
-  taggati "qwen3.8turbo-coder"/"qwen3.8-Flash-Next") che ha pushato
-  direttamente su questo stesso branch, bypassando questa sessione.
+  (v0.42.0)**. L'utente aveva fatto girare un'AI in locale che ha
+  pushato direttamente su questo stesso branch, bypassando questa
+  sessione.
   Richiesto di controllare cosa avesse fatto. Trovati diversi bug
   gravi, alcuni bloccanti: **tutti i 10 endpoint backend** avevano una
   parentesi di chiusura mancante attorno a un nuovo `wrapHandler(...)`
@@ -1908,3 +1908,41 @@ CHANGELOG.md  Storico versioni
   HH:mm" gia' in uso in `EventsList` — utile perche' un dato vecchio di
   ore da solo ("5 h fa") non dice "di che giorno" quando si riapre
   l'app dopo un po'.
+
+- **2026-09-22 — Rimossi i riferimenti nominali all'AI locale
+  dell'utente dal repo.** Richiesto dall'utente. Riguardava le due
+  identita' comparse nell'incidente del 2026-09-18 (v0.42.0, vedi voce
+  sopra): commenti "corretto da qwen3.8-Flash-Next il 16-9-26"/"Bug
+  (qwen3.8turbo-coder, ...)" sparsi in backend, phone-app e watch-app
+  (circa 30 occorrenze), il file `PLAN-qwen3.8turbo-coder.md` (piano
+  interamente relativo a quella sessione, eliminato: nessuna
+  informazione li' non gia' coperta da questo file) e le due righe di
+  attribuzione in `TESTING-E2E.md` (contenuto della procedura di test
+  mantenuto inizialmente, essendo l'unico dei due file non ridondante
+  con CONTEXT.md). In ogni commento tecnico e' stata tenuta la
+  spiegazione (perche' quel cambio, cosa correggeva) e tolta solo
+  l'attribuzione nome+data — le decisioni stesse (confronto
+  costant-time, push via topic FCM, retention eventi, bump SDK 35, fix
+  del battery indicator) non sono state toccate, solo la loro
+  attribuzione testuale. Le voci storiche di CHANGELOG.md/CONTEXT.md
+  sull'incidente restano come promemoria dei fatti realmente accaduti,
+  col nome dell'AI anonimizzato ("un'altra AI locale") anziche' rimosse
+  del tutto: coerente col mandato di CLAUDE.md che questi due file
+  siano un log di decisioni accurato, non solo un elenco di feature.
+
+  **Commit concorrente dell'utente durante questa sessione**: al
+  momento del push di questa pulizia, `git push` e' stato respinto
+  ("fetch first") — un commit `0c29ad9` era arrivato nel frattempo
+  sullo stesso branch (autore ancora taggato `qwen3.8turbo-coder`, il
+  suo strumento locale), che cancella interamente `TESTING-E2E.md` (lo
+  stesso file appena ripulito qui sopra dalle sole righe di
+  attribuzione). L'utente ha confermato di aver cancellato il file
+  personalmente: non e' un'azione autonoma dell'AI locale, solo un
+  commit fatto tramite quello strumento mentre questa sessione era
+  ancora al lavoro sullo stesso branch. Cancellazione accettata in
+  fase di merge (il file era ormai comunque privo di scopo distintivo
+  dopo la rimozione dell'attribuzione). Promemoria pratico, non
+  legato all'incidente v0.42.0: modifiche dirette dell'utente sullo
+  stesso branch durante una sessione attiva sono normali, quindi un
+  `git push` puo' essere respinto anche senza che sia successo nulla
+  di anomalo — basta un fetch/merge prima di ripushare.

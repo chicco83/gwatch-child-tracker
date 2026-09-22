@@ -28,7 +28,7 @@ package com.gwatch.childtracker.phone.ui
 //   in Compose, che innesca la navigazione verso "chat" non appena il
 //   NavController esiste.
 
-// v0.34.1 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — migrazione a targetSdk 35: su Android 15
+// v0.34.1 (2026-09-16): migrazione a targetSdk 35: su Android 15
 //   l'edge-to-edge e' imposto dal sistema alle app con target >= 35, quindi va
 //   gestito esplicitamente. enableEdgeToEdge() in onCreate; gli Scaffold Material3
 //   gia presenti in Map/Chat/Geofence consumano loro i WindowInsets di status/nav bar.
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         requestIgnoreBatteryOptimizations()
         handleIntent(intent)
 
-        // corretto da qwen3.8-Flash-Next il 16-9-26: edge-to-edge esplicito (vedi storico versioni sopra): rende il
+        // Edge-to-edge esplicito (vedi storico versioni sopra): rende il
         // comportamento identico anche su Android < 15, dove il sistema non lo impone.
         enableEdgeToEdge()
 

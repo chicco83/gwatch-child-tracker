@@ -23,7 +23,7 @@
  *   send-message.js/send-message-to-child.js, che scrivono
  *   "expiresAt" allo stesso modo di ingest-location.js). Stesso
  *   meccanismo, nessun cron/endpoint separato necessario.
- * - 0.4.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — due ritocchi
+ * - 0.4.0 (2026-09-16): due ritocchi
  *   di sicurezza/manutenzione: (1) confronto costant-time del CRON_SECRET (vedi
  *   _lib/auth.js/timingSafeEquals), prima un semplice !==; (2) torna la pulizia
  *   del gruppo "events" (retention 12 mesi, scrive expiresAt in trigger-event.js):
@@ -49,7 +49,7 @@
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
-// corretto da qwen3.8-Flash-Next il 16-9-26: confronto costant-time del CRON_SECRET
+// Confronto costant-time del CRON_SECRET.
 const { timingSafeEquals } = require("./_lib/auth");
 
 const BATCH_SIZE = 500;
@@ -77,7 +77,7 @@ async function purgeExpired(db, collectionGroupName) {
 }
 
 module.exports = wrapHandler(async (req, res) => {
-  // corretto da qwen3.8-Flash-Next il 16-9-26: timingSafeEquals al posto di !==
+  // timingSafeEquals al posto di !==.
   const authHeader = req.headers["authorization"] || "";
   if (!process.env.CRON_SECRET || !timingSafeEquals(authHeader, `Bearer ${process.env.CRON_SECRET}`)) {
     res.status(401).send("Unauthorized");
@@ -87,7 +87,7 @@ module.exports = wrapHandler(async (req, res) => {
   getAdminApp();
   const db = getFirestore();
 
-  // corretto da qwen3.8-Flash-Next il 16-9-26: aggiunto "events" (vedi trigger-event.js)
+  // Include "events" (vedi trigger-event.js).
   const [locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted] = await Promise.all([
     purgeExpired(db, "locations"),
     purgeExpired(db, "quota"),

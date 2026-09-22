@@ -2,7 +2,7 @@
 // applicate poi nel modulo app/. Stesse versioni AGP/Kotlin di
 // watch-app per coerenza (vedi ../watch-app/build.gradle.kts).
 plugins {
-    // corretto da qwen3.8-Flash-Next il 16-9-26: AGP allineata a watch-app (prima 8.5.2: la divergenza di
+    // AGP allineata a watch-app (prima 8.5.2: la divergenza di
     //   tooling tra i due moduli rendeva la manutenzione piu' pesante). Kotlin e
     //   google-services erano gia coincidenti.
     id("com.android.application") version "8.13.2" apply false

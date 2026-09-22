@@ -92,7 +92,7 @@
  *   esistere piu' se il watch aveva gia' sincronizzato dopo la
  *   migrazione. Nessun impatto se la zona non viene trovata: restano i
  *   default prudenti gia' in uso (notifica sempre, nessun allarme).
- * - 0.10.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — due ritocchi:
+ * - 0.10.0 (2026-09-16): due ritocchi:
  *   (1) gli eventi scrivono ora "expiresAt" (retention 12 mesi, come locations),
  *   puliti dal cron in cleanup.js: era l'ultimo gruppo di collezioni senza limite;
  *   (2) le push ai genitori partono sul topic FCM "parents" invece di leggere
@@ -166,7 +166,7 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
-// corretto da qwen3.8-Flash-Next il 16-9-26: retention eventi (stesso valore di
+// Retention eventi (stesso valore di
 // HISTORY_RETENTION_HOURS in ingest-location.js) e topic FCM dei genitori.
 const EVENT_RETENTION_HOURS = 24 * 365;
 const PARENTS_TOPIC = "parents";
@@ -198,7 +198,7 @@ function buildNotification(type, childName, zoneName, source) {
   };
 }
 
-// corretto da qwen3.8-Flash-Next il 16-9-26: rimossa fetchParentFcmTokens (leggeva
+// Rimossa fetchParentFcmTokens (leggeva
 // l'intera collezione parents a ogni evento). L'invio avviene sul topic "parents":
 // gli array fcmTokens su parents/{uid} restano scritti dalla phone-app (inutilizzati
 // per l'invio, utili al debug; eventuali rimozione in Fase 2).
@@ -282,7 +282,7 @@ module.exports = wrapHandler(async (req, res) => {
     source: type === "location_request" ? (source ?? "child") : null,
     timestamp: ts,
     acknowledged: false,
-    // corretto da qwen3.8-Flash-Next il 16-9-26: letto da cleanup.js/purgeExpired
+    // Letto da cleanup.js/purgeExpired
     expiresAt: Timestamp.fromMillis(ts.toMillis() + EVENT_RETENTION_HOURS * 3_600_000),
   });
   await batch.commit();
@@ -342,7 +342,7 @@ module.exports = wrapHandler(async (req, res) => {
   const shouldSosAlarm = type === "sos" && shouldNotify;
 
   if (shouldNotify || shouldAlarm || shouldSosAlarm) {
-    // corretto da qwen3.8-Flash-Next il 16-9-26: invio via topic, nessun array di
+    // Invio via topic, nessun array di
     // token da leggere/controllare (il blocco semplice mantiene le graffe bilanciate)
     {
       if (shouldNotify) {

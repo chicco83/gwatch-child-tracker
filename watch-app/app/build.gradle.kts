@@ -41,13 +41,13 @@ plugins {
 
 android {
     namespace = "com.gwatch.childtracker"
-    // corretto da qwen3.8-Flash-Next il 16-9-26: SDK 35, requisito Play Store per i nuovi upload (vedi phone-app).
+    // SDK 35, requisito Play Store per i nuovi upload (vedi phone-app).
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.gwatch.childtracker"
         minSdk = 30 // Wear OS 3 (Galaxy Watch4 e successivi)
-        targetSdk = 35 // corretto da qwen3.8-Flash-Next il 16-9-26
+        targetSdk = 35
         // 2026-09-18: versionCode/versionName erano fermi a 2/"0.2.0" da
         // decine di commit — mai piu' incrementati dopo il primo bump.
         // Utente non riusciva a verificare da Impostazioni watch se

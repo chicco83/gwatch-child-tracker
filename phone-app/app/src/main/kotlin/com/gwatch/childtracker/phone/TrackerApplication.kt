@@ -51,7 +51,7 @@ class TrackerApplication : Application() {
             osmdroidTileCache = File(osmdroidBasePath, "tiles")
         }
 
-        // Bug (qwen3.8turbo-coder, 2026-09-18): questa chiamata era stata
+        // Bug (2026-09-18): questa chiamata era stata
         // messa DOPO la chiusura di onCreate() invece che al suo interno —
         // uno statement eseguibile piazzato direttamente nel corpo della
         // classe, non valido in Kotlin (la app non compilava piu'). Vedi

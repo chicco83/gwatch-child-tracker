@@ -42,7 +42,7 @@
  *   gia' installato prima di questa versione continua a funzionare
  *   senza nessun passaggio manuale. DEVICE_TOKEN resta quindi
  *   documentato come legacy in .env.example, non va rimosso.
- * - 0.4.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — confronto
+ * - 0.4.0 (2026-09-16): confronto
  *   costant-time (crypto.timingSafeEqual) per i due token statici superstiti
  *   (legacy DEVICE_TOKEN e HA_STATUS_TOKEN): l'operatore === esce alla prima
  *   differenza di carattere, tempo teoricamente misurabile; qui il confronto
@@ -57,7 +57,7 @@ function hashToken(token) {
 
 const LEGACY_DEVICE_ID = "figlio";
 
-// corretto da qwen3.8-Flash-Next il 16-9-26: confronto costant-time. Lunghezze
+// Confronto costant-time. Lunghezze
 // diverse escono subito (irrilevante, i token hanno lunghezza fissa nota).
 function timingSafeEquals(a, b) {
   const left = Buffer.from(String(a ?? ""));
@@ -80,7 +80,7 @@ async function resolveDeviceId(req, db) {
   // DEVICE_TOKEN e "figlio" non ha ancora un deviceTokenHash, lo
   // impostiamo ora invece di rispondere 401 a un watch che prima
   // funzionava.
-  // corretto da qwen3.8-Flash-Next il 16-9-26: confronto costant-time
+  // Confronto costant-time.
   if (process.env.DEVICE_TOKEN && timingSafeEquals(token, process.env.DEVICE_TOKEN)) {
     const legacyRef = db.collection("devices").doc(LEGACY_DEVICE_ID);
     const legacySnap = await legacyRef.get();
@@ -94,10 +94,10 @@ async function resolveDeviceId(req, db) {
 }
 
 function checkHaToken(req) {
-  if (!process.env.HA_STATUS_TOKEN) return false; // fail-closed (qwen3.8-Flash-Next)
+  if (!process.env.HA_STATUS_TOKEN) return false; // fail-closed
   const header = req.headers["authorization"] || "";
   const token = header.replace(/^Bearer\s+/i, "");
-  // corretto da qwen3.8-Flash-Next il 16-9-26: confronto costant-time
+  // Confronto costant-time.
   return Boolean(token) && timingSafeEquals(token, process.env.HA_STATUS_TOKEN);
 }
 
