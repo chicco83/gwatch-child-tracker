@@ -7,6 +7,48 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.68.0] - 2026-09-22
+
+### Added
+- **Isolamento tra famiglie diverse sullo stesso deployment**
+  (individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5).
+  Prima `checkParentAuth()` verificava solo che `parents/{uid}`
+  esistesse: qualunque genitore autenticato poteva leggere/comandare
+  QUALSIASI bambino di QUALSIASI famiglia sullo stesso progetto
+  Firebase — `cancel_sos` incluso (silenziare l'SOS attivo di un
+  bambino non proprio). Bug di sicurezza reale, non solo teorico, non
+  appena una seconda famiglia avesse installato l'app. Aggiunto un
+  campo `familyId` su `parents/{uid}`/`devices/{childId}`/
+  `geofences/{zoneId}`: `firestore.rules` (v0.7.0) ora richiede che
+  `familyId` combaci per leggere/scrivere un documento;
+  `parent-command.js` (v0.4.0) verifica la stessa cosa lato server
+  prima di ogni azione con un `childId` esplicito (le regole non
+  proteggono le chiamate Admin SDK). `familyId` non è mai scrivibile
+  dal client (altrimenti basterebbe indovinare/forzare l'id di
+  un'altra famiglia): lo scrive solo il backend, alla creazione del
+  primo bambino (`create_child`, self-heal) o accettando un invito.
+- Nuove azioni `create_family_invite`/`accept_family_invite` in
+  `parent-command.js` per collegare un secondo genitore alla stessa
+  famiglia (codice a singolo uso, TTL 24h, collezione
+  `familyInvites` backend-only) — nuova sezione "Genitori" in
+  `SettingsScreen.kt` (phone-app) per generarlo/inserirlo.
+- Nuovo script one-time `backend/scripts/migrate-family-ids.js`:
+  assegna un `familyId` a tutti i documenti pre-esistenti (oggi una
+  sola famiglia reale) — da eseguire PRIMA di pubblicare
+  `firestore.rules` v0.7.0.
+
+### Fixed
+- **Migrazione geofence legacy** (`device-config.js`, individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): la subcollection
+  legacy non viene mai svuotata dopo la copia, quindi
+  `ensureGeofencesMigrated` si ripete a OGNI chiamata dell'endpoint,
+  non solo alla prima. Scriveva `childIds: [childId]` con
+  `merge:true` — su un campo array il merge di Firestore SOSTITUISCE
+  il valore invece di unirlo: ogni sync del watch di un bambino con
+  residui nella subcollection legacy azzerava i `childIds` di quella
+  zona, staccandola da altri bambini a cui era stata assegnata nel
+  frattempo. Sostituito con `FieldValue.arrayUnion(childId)`.
+
 ## [0.67.0] - 2026-09-22
 
 ### Changed

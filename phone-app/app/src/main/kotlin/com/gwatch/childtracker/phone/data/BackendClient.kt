@@ -28,6 +28,12 @@ package com.gwatch.childtracker.phone.data
 //   ancora stata aggiornata). Aggiunto il parametro childId a tutte e
 //   quattro. Aggiunti anche setChildNickname e createChild per la nuova
 //   SettingsScreen.kt (nickname bambini, "Aggiungi bambino").
+// v0.5.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+//   implementato da Sonnet 5 — isolamento famiglie (vedi
+//   backend/firestore.rules v0.7.0/parent-command.js v0.4.0). Aggiunti
+//   createFamilyInvite (genera un codice per un secondo genitore) e
+//   acceptFamilyInvite (lo usa per unirsi alla stessa famiglia), per la
+//   nuova sezione "Genitori" di SettingsScreen.kt.
 
 import android.util.Log
 import com.gwatch.childtracker.phone.util.Constants
@@ -57,6 +63,9 @@ import kotlin.coroutines.resume
  */
 /** Esito di "create_child": il token esce in chiaro solo in questa risposta, una volta sola. */
 data class NewChildResult(val childId: String, val deviceToken: String)
+
+/** Esito di "create_family_invite": il codice va condiviso col secondo genitore, scade dopo expiresAtIso. */
+data class FamilyInviteResult(val inviteCode: String, val expiresAtIso: String)
 
 class BackendClient {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -138,6 +147,26 @@ class BackendClient {
         return executeForNewChild(request, "createChild")
     }
 
+    /** Genera un codice di invito per un secondo genitore (TTL 24h, uso singolo). */
+    suspend fun createFamilyInvite(idToken: String): FamilyInviteResult? {
+        val body = JSONObject().apply { put("action", "create_family_invite") }
+        val request = Request.Builder()
+            .url("${Constants.BACKEND_BASE_URL}/api/parent-command")
+            .header("Authorization", "Bearer $idToken")
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+        return executeForFamilyInvite(request, "createFamilyInvite")
+    }
+
+    /** Unisce il genitore loggato alla famiglia del codice d'invito. */
+    suspend fun acceptFamilyInvite(idToken: String, inviteCode: String): Boolean {
+        val body = JSONObject().apply {
+            put("action", "accept_family_invite")
+            put("inviteCode", inviteCode)
+        }
+        return callParentCommand(idToken, body, "acceptFamilyInvite")
+    }
+
     private suspend fun callParentCommand(idToken: String, body: JSONObject, tag: String): Boolean {
         val request = Request.Builder()
             .url("${Constants.BACKEND_BASE_URL}/api/parent-command")
@@ -189,6 +218,33 @@ class BackendClient {
                         val childId = json?.optString("childId")?.takeIf { s -> s.isNotBlank() }
                         val token = json?.optString("deviceToken")?.takeIf { s -> s.isNotBlank() }
                         val result = if (childId != null && token != null) NewChildResult(childId, token) else null
+                        if (cont.isActive) cont.resume(result)
+                    }
+                }
+            })
+        }
+
+    private suspend fun executeForFamilyInvite(request: Request, tag: String): FamilyInviteResult? =
+        suspendCancellableCoroutine { cont ->
+            val call = http.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.w(TAG, "$tag: chiamata fallita", e)
+                    if (cont.isActive) cont.resume(null)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        if (!it.isSuccessful) {
+                            Log.w(TAG, "$tag: HTTP ${it.code} — ${it.body?.string()}")
+                            if (cont.isActive) cont.resume(null)
+                            return
+                        }
+                        val json = runCatching { JSONObject(it.body?.string().orEmpty()) }.getOrNull()
+                        val code = json?.optString("inviteCode")?.takeIf { s -> s.isNotBlank() }
+                        val expiresAt = json?.optString("expiresAt")?.takeIf { s -> s.isNotBlank() }
+                        val result = if (code != null && expiresAt != null) FamilyInviteResult(code, expiresAt) else null
                         if (cont.isActive) cont.resume(result)
                     }
                 }

@@ -43,15 +43,18 @@ backend/
 ```
 devices/{childId}                      stato corrente (childName, lastLocation, battery,
                                         lastSeen, activity, deviceTokenHash, fcmToken,
-                                        geofencesMigrated)
+                                        geofencesMigrated, familyId)
 devices/{childId}/locations/{autoId}    storico posizioni (retention 12 mesi via TTL, vedi Setup)
 devices/{childId}/events/{autoId}       eventi (sos, geofence_enter, geofence_exit)
 devices/{childId}/messages/{autoId}     chat testuale (sender, senderId, senderName, text, timestamp)
 devices/{childId}/quota/{YYYY-MM-DD}    contatore chiamate/giorno (solo backend, vedi sotto)
 geofences/{zoneId}                      zone configurate dal genitore (name, lat, lon, radiusMeters,
                                         active, childIds: string[] — una zona puo' valere per piu'
-                                        bambini)
-parents/{uid}                           nickname + token FCM del genitore per le push
+                                        bambini —, familyId)
+parents/{uid}                           nickname + token FCM del genitore per le push + familyId
+                                        (mai scrivibile dal client, vedi Setup/isolamento famiglie)
+familyInvites/{code}                    codice d'invito per un secondo genitore (familyId,
+                                        createdBy, expiresAt — TTL 24h, uso singolo, solo backend)
 ```
 
 `devices/{childId}.deviceTokenHash`: hash SHA-256 del token che
@@ -86,7 +89,7 @@ commento in cima a quel file. Multi-genitore invariato (vedi Setup).
 | `/api/device-config` | GET | header `X-Device-Token` | watch-app (legge geofence attive) |
 | `/api/ha-status` | GET | header `Authorization: Bearer <token>` + `?child=<childId>` facoltativo | Home Assistant (polling opzionale) |
 | `/api/send-message` | POST | header `X-Device-Token` | watch-app (chat: messaggio verso i genitori) — scrive + invia la push FCM nella stessa chiamata |
-| `/api/parent-command` | POST | header `Authorization: Bearer <Firebase ID token>` | phone-app — dispatcha su `body.action` (`message`, `request_location`, `cancel_sos`, `ack_event`, `set_nickname`, `create_child`) |
+| `/api/parent-command` | POST | header `Authorization: Bearer <Firebase ID token>` | phone-app — dispatcha su `body.action` (`message`, `request_location`, `cancel_sos`, `ack_event`, `set_nickname`, `create_child`, `create_family_invite`, `accept_family_invite`) |
 | `/api/register-watch-token` | POST | header `X-Device-Token` | watch-app (registra il token FCM per ricevere la chat) |
 | `/api/messages` | GET | header `X-Device-Token` | watch-app (storico chat recente, per recuperare messaggi persi ad app chiusa) |
 
@@ -134,7 +137,31 @@ in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
    ```
    L'UID si ottiene creando l'utente Firebase Auth (Console ->
    Authentication, o `auth.createUser({ email })` via Admin SDK) se
-   non esiste già.
+   non esiste già. Il **primo** genitore di ogni famiglia crea i suoi
+   bambini normalmente (`create_child` gli assegna un `familyId` al
+   volo); un **secondo** genitore della stessa famiglia si collega da
+   Impostazioni -> "Genitori" -> "Ho un codice d'invito", col codice
+   generato dal primo tramite "Invita un secondo genitore" (vedi
+   `parent-command.js`, azioni `create_family_invite`/
+   `accept_family_invite`) — nessun passaggio manuale extra oltre alla
+   creazione del documento `parents/{uid}` sopra.
+3. **Isolamento famiglie** (v0.7.0, individuato da
+   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): `parents/{uid}`,
+   `devices/{childId}` e `geofences/{zoneId}` portano tutti un campo
+   `familyId` — le regole Firestore e `parent-command.js` lo usano per
+   impedire che un genitore autenticato legga/comandi i bambini di
+   un'altra famiglia sullo stesso progetto. I documenti creati PRIMA di
+   questa versione (in particolare il bambino storico `"figlio"`) non
+   hanno ancora `familyId`: eseguire **una tantum**, PRIMA di
+   pubblicare `firestore.rules` v0.7.0,
+   ```
+   export FIREBASE_SERVICE_ACCOUNT_B64=<stesso valore di Vercel>
+   node backend/scripts/migrate-family-ids.js
+   ```
+   che assegna lo stesso `familyId` a tutti i documenti esistenti
+   (oggi una sola famiglia reale). Pubblicare le regole solo dopo che
+   lo script ha finito, altrimenti la famiglia esistente perde
+   l'accesso nella finestra fra le due operazioni.
 3. **Pulizia storico**: la TTL policy nativa di Firestore richiede il
    piano Blaze (anche per un uso gratuito), quindi non la usiamo — la
    pulizia gira invece via un **workflow GitHub Actions**

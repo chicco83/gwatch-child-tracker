@@ -26,6 +26,14 @@ package com.gwatch.childtracker.phone.data
 // non piu' sempre Constants.DEVICE_ID) e mappa anche senderId/
 // senderName/childId dal documento, denormalizzati al momento
 // dell'invio (vedi backend/api/send-message.js, parent-command.js).
+// v0.7.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+// implementato da Sonnet 5 — isolamento famiglie (vedi
+// backend/firestore.rules v0.7.0). observeGeofences() mappa anche
+// "familyId" (le regole ora lo richiedono per leggere/scrivere una
+// zona); saveGeofence() lo scrive cosi' com'e' nell'oggetto passato
+// (AppViewModel lo valorizza prima di chiamare, non e' mai scelto
+// dall'utente). Aggiunto observeOwnFamilyId(): serve ad AppViewModel
+// per sapere quale familyId stampare su una zona nuova.
 
 import android.util.Log
 import com.google.firebase.Timestamp
@@ -144,6 +152,7 @@ class DeviceRepository {
                         alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
                         childIds = (d.get("childIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         dndOnZone = d.getBoolean("dndOnZone") ?: false,
+                        familyId = d.getString("familyId") ?: "",
                     )
                 },
             )
@@ -249,6 +258,7 @@ class DeviceRepository {
                 "alarmOnExit" to zone.alarmOnExit,
                 "childIds" to zone.childIds,
                 "dndOnZone" to zone.dndOnZone,
+                "familyId" to zone.familyId,
             ),
             SetOptions.merge(),
         ).await()
@@ -281,6 +291,19 @@ class DeviceRepository {
         db.collection("parents").document(uid)
             .set(mapOf("nickname" to nickname), SetOptions.merge())
             .await()
+    }
+
+    // v0.7.0: familyId del genitore loggato — sola lettura, scritto solo
+    // dal backend (create_child/accept_family_invite in
+    // parent-command.js, le regole vietano al client di toccarlo, vedi
+    // firestore.rules v0.7.0). Null finche' il genitore non ha ancora
+    // creato o unito una famiglia.
+    fun observeOwnFamilyId(uid: String): Flow<String?> = callbackFlow {
+        val registration = db.collection("parents").document(uid).addSnapshotListener { snap, error ->
+            if (error != null) Log.e(TAG, "observeOwnFamilyId", error)
+            trySend(snap?.getString("familyId"))
+        }
+        awaitClose { registration.remove() }
     }
 
     companion object {

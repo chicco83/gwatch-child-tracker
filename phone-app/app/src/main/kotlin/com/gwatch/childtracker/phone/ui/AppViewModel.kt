@@ -9,6 +9,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.gwatch.childtracker.phone.auth.AuthRepository
 import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
+import com.gwatch.childtracker.phone.data.FamilyInviteResult
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.NewChildResult
 import com.gwatch.childtracker.phone.data.model.ChatMessage
@@ -110,6 +111,17 @@ class AppViewModel(
         .flatMapLatest { u -> if (u == null) flowOf(null) else deviceRepository.observeOwnNickname(u.uid) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    // v0.31.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+    // implementato da Sonnet 5 — isolamento famiglie (vedi
+    // backend/firestore.rules v0.7.0). Null finche' il genitore non ha
+    // ancora creato/unito una famiglia (nessun bambino/invito ancora
+    // fatto) — saveGeofence() sotto lo stampa su ogni zona nuova, le
+    // regole lo richiedono per leggere/scrivere.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val ownFamilyId: StateFlow<String?> = user
+        .flatMapLatest { u -> if (u == null) flowOf(null) else deviceRepository.observeOwnFamilyId(u.uid) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     private val _optimisticMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
 
     private val _selectedChatChildId = MutableStateFlow<String?>(null)
@@ -187,9 +199,17 @@ class AppViewModel(
         _user.value = null
     }
 
+    /**
+     * Una zona nuova (familyId ancora vuoto) viene stampata con la
+     * propria famiglia prima di scrivere — mai scelta dall'utente, le
+     * regole Firestore rifiutano altrimenti la creazione (vedi
+     * backend/firestore.rules v0.7.0). Una zona esistente arriva gia'
+     * col suo familyId (da observeGeofences), invariato in aggiornamento.
+     */
     fun saveGeofence(zone: GeofenceZone, onDone: () -> Unit) {
         viewModelScope.launch {
-            runCatching { deviceRepository.saveGeofence(zone) }
+            val stamped = if (zone.familyId.isBlank()) zone.copy(familyId = ownFamilyId.value.orEmpty()) else zone
+            runCatching { deviceRepository.saveGeofence(stamped) }
             onDone()
         }
     }
@@ -321,6 +341,30 @@ class AppViewModel(
                 backendClient.createChild(idToken, nickname)
             }.getOrNull()
             onResult(result)
+        }
+    }
+
+    /** Genera un codice d'invito per un secondo genitore (vedi SettingsScreen.kt). */
+    fun createFamilyInvite(onResult: (FamilyInviteResult?) -> Unit) {
+        val user = _user.value ?: return onResult(null)
+        viewModelScope.launch {
+            val result = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.createFamilyInvite(idToken)
+            }.getOrNull()
+            onResult(result)
+        }
+    }
+
+    /** Unisce il genitore loggato alla famiglia del codice d'invito (vedi SettingsScreen.kt). */
+    fun acceptFamilyInvite(inviteCode: String, onResult: (Boolean) -> Unit) {
+        val user = _user.value ?: return onResult(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.acceptFamilyInvite(idToken, inviteCode)
+            }.getOrDefault(false)
+            onResult(ok)
         }
     }
 

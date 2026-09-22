@@ -1,5 +1,5 @@
 // Regole di sicurezza Firestore — gwatch-child-tracker
-// Versione: 0.6.0
+// Versione: 0.7.0
 //
 // Tutte le scritture "di dati" (posizione, batteria, eventi SOS)
 // passano SOLO dalle funzioni backend tramite Admin SDK, che bypassa
@@ -44,6 +44,31 @@
 //   cancellati) e vengono migrati automaticamente al primo utilizzo dal
 //   backend (vedi backend/api/device-config.js) — nessun passaggio
 //   manuale richiesto.
+// - 0.7.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+//   implementato da Sonnet 5 — isolamento tra famiglie diverse sullo
+//   stesso deployment. Prima isParent() bastava per leggere/scrivere
+//   QUALSIASI bambino/zona/chat di QUALSIASI famiglia: bug di
+//   sicurezza reale (non solo teorico) non appena una seconda famiglia
+//   avesse installato l'app sullo stesso progetto Firebase — lo stesso
+//   gap valeva anche lato backend (Admin SDK, vedi parent-command.js)
+//   e lato push FCM (topic globale "parents", vedi
+//   backend/api/trigger-event.js/send-message.js e
+//   phone-app/.../TrackerApplication.kt). Ogni parents/{uid} guadagna
+//   un campo "familyId" (scrivibile SOLO da backend via Admin SDK —
+//   create_child/accept_family_invite in parent-command.js — MAI dal
+//   client, altrimenti basterebbe indovinare/forzare l'id di
+//   un'altra famiglia per unirsi). devices/{id} e geofences/{zoneId}
+//   guadagnano lo stesso campo, scritto una volta alla creazione.
+//   Lettura/scrittura ora richiedono myFamilyId() == familyId del
+//   documento (per le subcollection di device, il familyId si legge
+//   dal documento device padre con un get() dedicato, non hanno un
+//   proprio campo familyId). Nuova collezione familyInvites/{code}
+//   (codici di invito per un secondo genitore, TTL 24h), backend-only
+//   come quota/messages. Richiede una migrazione one-time dei
+//   documenti pre-esistenti (vedi backend/scripts/migrate-family-ids.js)
+//   PRIMA di pubblicare questa versione delle regole — altrimenti la
+//   famiglia gia' in uso perde l'accesso nella finestra fra le due
+//   operazioni.
 rules_version = '2';
 
 service cloud.firestore {
@@ -54,17 +79,27 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/parents/$(request.auth.uid));
     }
 
+    // v0.7.0: legge il proprio familyId (mai scrivibile dal client
+    // direttamente, vedi allow update su parents/{parentId} sotto).
+    function myFamilyId() {
+      return get(/databases/$(database)/documents/parents/$(request.auth.uid)).data.familyId;
+    }
+
+    function deviceFamilyId(deviceId) {
+      return get(/databases/$(database)/documents/devices/$(deviceId)).data.familyId;
+    }
+
     match /devices/{deviceId} {
-      allow read: if isParent();
+      allow read: if isParent() && myFamilyId() == resource.data.familyId;
       allow write: if false; // solo Admin SDK via le funzioni backend
 
       match /locations/{locId} {
-        allow read: if isParent();
+        allow read: if isParent() && myFamilyId() == deviceFamilyId(deviceId);
         allow write: if false;
       }
 
       match /events/{eventId} {
-        allow read: if isParent();
+        allow read: if isParent() && myFamilyId() == deviceFamilyId(deviceId);
         allow write: if false;
       }
 
@@ -73,21 +108,42 @@ service cloud.firestore {
       }
 
       match /messages/{messageId} {
-        allow read: if isParent();
+        allow read: if isParent() && myFamilyId() == deviceFamilyId(deviceId);
         allow write: if false; // solo Admin SDK, vedi send-message*.js
       }
     }
 
     match /parents/{parentId} {
       allow create: if false; // solo admin puo' pre-autorizzare un genitore
-      allow read, update: if request.auth != null && request.auth.uid == parentId;
+      allow read: if request.auth != null && request.auth.uid == parentId;
+      // v0.7.0: familyId escluso dai campi scrivibili dal client — lo
+      // scrivono solo create_child/accept_family_invite in
+      // parent-command.js (Admin SDK, bypassa questa regola).
+      allow update: if request.auth != null && request.auth.uid == parentId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['familyId']);
       allow delete: if false;
+    }
+
+    // v0.7.0: codici di invito per un secondo genitore — backend-only
+    // (parent-command.js, create_family_invite/accept_family_invite),
+    // stesso trattamento di quota/messages: mai letti/scritti dal
+    // client, contengono il familyId da propagare a un nuovo genitore.
+    match /familyInvites/{code} {
+      allow read, write: if false;
     }
 
     // v0.6.0: geofence come risorsa condivisa (childIds: string[]), non
     // piu' annidata sotto un singolo device — vedi Storico versioni.
+    // v0.7.0: isolata per famiglia — il client scrive ancora
+    // direttamente (nessun giro dal backend, invariato), ma solo
+    // dentro la propria famiglia: in creazione il familyId dichiarato
+    // deve combaciare col proprio, non e' modificabile in seguito.
     match /geofences/{zoneId} {
-      allow read, write: if isParent(); // unica scrittura diretta dal client
+      allow read: if isParent() && myFamilyId() == resource.data.familyId;
+      allow create: if isParent() && myFamilyId() == request.resource.data.familyId;
+      allow update: if isParent() && myFamilyId() == resource.data.familyId &&
+        request.resource.data.familyId == resource.data.familyId;
+      allow delete: if isParent() && myFamilyId() == resource.data.familyId;
     }
   }
 }

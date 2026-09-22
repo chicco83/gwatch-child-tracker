@@ -48,6 +48,17 @@
  *   differenza di carattere, tempo teoricamente misurabile; qui il confronto
  *   e' uniforme. Aggiunta anche fail-closed esplicita su HA_STATUS_TOKEN
  *   mancante. Esportato timingSafeEquals, ora coperto da test (backend/test/).
+ * - 0.5.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+ *   implementato da Sonnet 5 — isolamento famiglie (vedi
+ *   firestore.rules v0.7.0/parent-command.js v0.4.0): prima
+ *   checkParentAuth verificava solo che parents/{uid} esistesse, senza
+ *   nessun legame a QUALI bambini quel genitore potesse vedere/
+ *   comandare — bug di sicurezza reale con piu' di una famiglia sullo
+ *   stesso deployment. Aggiunto getFamilyId(db, parentUid): legge
+ *   parents/{uid}.familyId (mai scrivibile dal client, solo da
+ *   create_child/accept_family_invite in parent-command.js), usato da
+ *   li' per verificare che un childId appartenga alla stessa famiglia
+ *   del genitore chiamante prima di eseguire qualunque azione.
  */
 const crypto = require("crypto");
 
@@ -101,6 +112,12 @@ function checkHaToken(req) {
   return Boolean(token) && timingSafeEquals(token, process.env.HA_STATUS_TOKEN);
 }
 
+/** Ritorna parents/{parentUid}.familyId, o null se assente (genitore non ancora associato a una famiglia). */
+async function getFamilyId(db, parentUid) {
+  const snap = await db.collection("parents").doc(parentUid).get();
+  return snap.exists ? (snap.data().familyId ?? null) : null;
+}
+
 /** Ritorna l'uid del genitore autenticato, o null se non autorizzato. */
 async function checkParentAuth(req, db) {
   const { getAuth } = require("firebase-admin/auth");
@@ -117,4 +134,4 @@ async function checkParentAuth(req, db) {
   }
 }
 
-module.exports = { resolveDeviceId, hashToken, checkHaToken, checkParentAuth, timingSafeEquals };
+module.exports = { resolveDeviceId, hashToken, checkHaToken, checkParentAuth, timingSafeEquals, getFamilyId };

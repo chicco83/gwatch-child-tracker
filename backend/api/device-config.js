@@ -44,21 +44,36 @@
  *   di una sola lettura extra della subcollection legacy (tipicamente
  *   vuota dopo la prima copia reale), nessun rischio di perdita dati
  *   permanente.
+ * - 0.6.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+ *   implementato da Sonnet 5 — bug reale, non solo teorico: la
+ *   subcollection legacy non viene mai svuotata dopo la copia (vedi
+ *   sopra, v0.5.0), quindi ensureGeofencesMigrated si ripete a OGNI
+ *   chiamata di questo endpoint, non solo alla prima. Scriveva
+ *   "childIds: [childId]" con merge:true — su un campo array, il merge
+ *   di Firestore SOSTITUISCE il valore, non lo unisce: ogni sync del
+ *   watch di un bambino con residui nella subcollection legacy
+ *   azzerava i childIds di quella zona, staccandola da eventuali altri
+ *   bambini a cui era stata assegnata nel frattempo dalla phone-app
+ *   (GeofenceScreen.kt). Sostituito con FieldValue.arrayUnion(childId).
+ *   Aggiunto anche "familyId" alle zone migrate (vedi firestore.rules
+ *   v0.7.0/isolamento famiglie): letto dal device stesso, che ce l'ha
+ *   gia' (create_child lo assegna alla creazione).
  */
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-async function ensureGeofencesMigrated(db, deviceRef, childId) {
+async function ensureGeofencesMigrated(db, deviceRef, childId, familyId) {
   const legacySnap = await deviceRef.collection("geofences").get();
   if (legacySnap.empty) return;
   const batch = db.batch();
   legacySnap.docs.forEach((d) => {
+    const { childIds, ...rest } = d.data();
     batch.set(
       db.collection("geofences").doc(d.id),
-      { ...d.data(), childIds: [childId] },
+      { ...rest, familyId, childIds: FieldValue.arrayUnion(childId) },
       { merge: true },
     );
   });
@@ -87,7 +102,9 @@ module.exports = wrapHandler(async (req, res) => {
   }
 
   const deviceRef = db.collection("devices").doc(childId);
-  await ensureGeofencesMigrated(db, deviceRef, childId);
+  const deviceSnap = await deviceRef.get();
+  const familyId = deviceSnap.data()?.familyId ?? null;
+  await ensureGeofencesMigrated(db, deviceRef, childId, familyId);
 
   const snap = await db.collection("geofences").where("childIds", "array-contains", childId).get();
   const geofences = snap.docs

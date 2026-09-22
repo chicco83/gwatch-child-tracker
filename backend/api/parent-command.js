@@ -1,20 +1,23 @@
 /**
  * POST /api/parent-command
- * Versione: 0.3.0
+ * Versione: 0.4.0
  *
  * Endpoint unico per i comandi rapidi del genitore verso il watch:
  * messaggio di chat, richiesta posizione immediata, annulla SOS,
- * conferma lettura posizione, nickname, aggiungi bambino. Prima erano
- * 4 file separati (send-message-to-child.js, request-location.js,
- * cancel-sos.js, ack-event.js): il deploy Vercel falliva silenziosamente
- * da quando ack-event.js aveva portato backend/api/ a 13 file — "No
- * more than 12 Serverless Functions can be added to a Deployment on
- * the Hobby plan". Accorpati in questo unico file per tornare sotto al
- * limite, con margine per le due nuove azioni di questa versione.
+ * conferma lettura posizione, nickname, aggiungi bambino, invito di un
+ * secondo genitore. Prima erano 4 file separati
+ * (send-message-to-child.js, request-location.js, cancel-sos.js,
+ * ack-event.js): il deploy Vercel falliva silenziosamente da quando
+ * ack-event.js aveva portato backend/api/ a 13 file — "No more than 12
+ * Serverless Functions can be added to a Deployment on the Hobby
+ * plan". Accorpati in questo unico file per tornare sotto al limite,
+ * con margine per le nuove azioni successive.
  *
  * Auth: header "Authorization: Bearer <Firebase ID token genitore>".
  * Body: { action, ... }
  *   - action = "create_child": { nickname } — nessun childId, ne crea uno
+ *   - action = "create_family_invite": {} — genera un codice per un secondo genitore
+ *   - action = "accept_family_invite": { inviteCode }
  *   - action = "set_nickname": { childId, nickname }
  *   - action = "message": { childId, text }
  *   - action = "request_location": { childId }
@@ -59,18 +62,42 @@
  *   documento device, cosi' i tentativi successivi non ripetono lo
  *   stesso fallimento silenzioso finche' il watch non si registra di
  *   nuovo (onNewToken/FcmService lato watch).
+ * - 0.4.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+ *   implementato da Sonnet 5 — isolamento famiglie. checkParentAuth
+ *   verificava solo che parents/{uid} esistesse: QUALSIASI genitore
+ *   autenticato poteva agire su QUALSIASI childId, "cancel_sos"
+ *   incluso (silenziare l'SOS attivo di un bambino di un'altra
+ *   famiglia). Aggiunto verifyChildOwnership(): tutte le azioni con un
+ *   childId esplicito (message/request_location/cancel_sos/ack_event/
+ *   set_nickname, unificate sotto lo stesso controllo, prima
+ *   set_nickname era un caso a parte) ora richiedono che
+ *   parents/{uid}.familyId combaci con devices/{childId}.familyId,
+ *   altrimenti 403. create_child assegna il familyId al nuovo bambino:
+ *   se il genitore non ne ha ancora uno (primo bambino mai creato),
+ *   ensureFamilyId() ne genera uno nuovo al volo (self-heal, stesso
+ *   stile della migrazione legacy del token in _lib/auth.js) — cosi'
+ *   non serve un'azione "crea famiglia" separata. Nuove azioni
+ *   "create_family_invite"/"accept_family_invite" per collegare un
+ *   secondo genitore alla stessa famiglia (codice a singolo uso, TTL
+ *   24h, collezione familyInvites — backend-only, vedi
+ *   firestore.rules v0.7.0): l'accept rifiuta se il genitore ha gia'
+ *   una famiglia con bambini propri, per non perdere per sbaglio
+ *   l'accesso a quelli entrando in un'altra famiglia. Richiede la
+ *   migrazione one-time dei dati pre-esistenti, vedi
+ *   backend/scripts/migrate-family-ids.js.
  */
 const crypto = require("crypto");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
-const { checkParentAuth, hashToken } = require("./_lib/auth");
+const { checkParentAuth, hashToken, getFamilyId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_NICKNAME_LENGTH = 40;
 const MESSAGE_RETENTION_HOURS = 24;
+const INVITE_TTL_HOURS = 24;
 
 /**
  * Invia una push al watch senza mai far fallire la richiesta del
@@ -89,7 +116,31 @@ async function sendPushSafe(deviceRef, watchToken, payload) {
   }
 }
 
-async function handleCreateChild(db, body, res) {
+/**
+ * Ritorna il familyId del genitore, creandone uno nuovo se non ne ha
+ * ancora uno (primo bambino mai creato da questa identita' — vedi
+ * Storico versioni 0.4.0). Non sovrascrive mai un familyId gia'
+ * presente.
+ */
+async function ensureFamilyId(db, parentUid) {
+  const existing = await getFamilyId(db, parentUid);
+  if (existing) return existing;
+  const familyId = crypto.randomUUID();
+  await db.collection("parents").doc(parentUid).set({ familyId }, { merge: true });
+  return familyId;
+}
+
+/** true se il bambino appartiene alla stessa famiglia del genitore chiamante. */
+async function verifyChildOwnership(db, parentUid, childId) {
+  const [myFamilyId, deviceSnap] = await Promise.all([
+    getFamilyId(db, parentUid),
+    db.collection("devices").doc(childId).get(),
+  ]);
+  const childFamilyId = deviceSnap.exists ? deviceSnap.data().familyId : null;
+  return Boolean(myFamilyId) && myFamilyId === childFamilyId;
+}
+
+async function handleCreateChild(db, parentUid, body, res) {
   const { nickname } = body;
   if (typeof nickname !== "string" || nickname.trim().length === 0) {
     res.status(400).send("Bad Request: 'nickname' mancante o vuoto");
@@ -100,12 +151,14 @@ async function handleCreateChild(db, body, res) {
     return;
   }
 
+  const familyId = await ensureFamilyId(db, parentUid);
   const token = crypto.randomBytes(24).toString("hex");
   const childRef = db.collection("devices").doc(); // Firestore auto-id
 
   await childRef.set({
     childName: nickname.trim(),
     deviceTokenHash: hashToken(token),
+    familyId,
     createdAt: FieldValue.serverTimestamp(),
   });
 
@@ -114,12 +167,61 @@ async function handleCreateChild(db, body, res) {
   res.status(200).json({ ok: true, childId: childRef.id, deviceToken: token });
 }
 
-async function handleSetNickname(db, body, res) {
-  const { childId, nickname } = body;
-  if (typeof childId !== "string" || childId.trim().length === 0) {
-    res.status(400).send("Bad Request: 'childId' mancante");
+/**
+ * Genera un codice di invito a singolo uso (TTL 24h) per far entrare
+ * un secondo genitore nella stessa famiglia — l'unico modo in cui
+ * parents/{uid}.familyId puo' cambiare per un genitore che ne ha gia'
+ * uno diverso e' rifiutato in handleAcceptFamilyInvite sotto.
+ */
+async function handleCreateFamilyInvite(db, parentUid, res) {
+  const familyId = await ensureFamilyId(db, parentUid);
+  const code = crypto.randomBytes(16).toString("hex");
+  const expiresAt = Timestamp.fromMillis(Date.now() + INVITE_TTL_HOURS * 3_600_000);
+
+  await db.collection("familyInvites").doc(code).set({ familyId, createdBy: parentUid, expiresAt });
+  res.status(200).json({ ok: true, inviteCode: code, expiresAt: expiresAt.toDate().toISOString() });
+}
+
+async function handleAcceptFamilyInvite(db, parentUid, body, res) {
+  const { inviteCode } = body;
+  if (typeof inviteCode !== "string" || inviteCode.trim().length === 0) {
+    res.status(400).send("Bad Request: 'inviteCode' mancante");
     return;
   }
+
+  const inviteRef = db.collection("familyInvites").doc(inviteCode.trim());
+  const inviteSnap = await inviteRef.get();
+  if (!inviteSnap.exists) {
+    res.status(404).send("Codice invito non valido o gia' usato");
+    return;
+  }
+  const { familyId, expiresAt } = inviteSnap.data();
+  if (expiresAt.toMillis() < Date.now()) {
+    await inviteRef.delete();
+    res.status(410).send("Codice invito scaduto");
+    return;
+  }
+
+  // Rifiuta se il genitore ha gia' una propria famiglia con bambini:
+  // accettare un altro invito sovrascriverebbe familyId e li renderebbe
+  // irraggiungibili (nessuna migrazione automatica dei suoi bambini
+  // esistenti verso la nuova famiglia).
+  const currentFamilyId = await getFamilyId(db, parentUid);
+  if (currentFamilyId) {
+    const ownChildren = await db.collection("devices").where("familyId", "==", currentFamilyId).limit(1).get();
+    if (!ownChildren.empty) {
+      res.status(409).send("Hai gia' una famiglia con bambini registrati: non puoi unirti a un'altra famiglia");
+      return;
+    }
+  }
+
+  await db.collection("parents").doc(parentUid).set({ familyId }, { merge: true });
+  await inviteRef.delete(); // uso singolo
+  res.status(200).json({ ok: true });
+}
+
+async function handleSetNickname(deviceRef, body, res) {
+  const { nickname } = body;
   if (typeof nickname !== "string" || nickname.trim().length === 0) {
     res.status(400).send("Bad Request: 'nickname' mancante o vuoto");
     return;
@@ -129,7 +231,7 @@ async function handleSetNickname(db, body, res) {
     return;
   }
 
-  await db.collection("devices").doc(childId).set({ childName: nickname.trim() }, { merge: true });
+  await deviceRef.set({ childName: nickname.trim() }, { merge: true });
   res.status(200).json({ ok: true });
 }
 
@@ -251,13 +353,17 @@ module.exports = wrapHandler(async (req, res) => {
 
   const body = req.body || {};
 
-  // Le uniche due azioni che non operano su un bambino gia' esistente.
+  // Le uniche tre azioni che non operano su un bambino gia' esistente.
   if (body.action === "create_child") {
-    await handleCreateChild(db, body, res);
+    await handleCreateChild(db, parentUid, body, res);
     return;
   }
-  if (body.action === "set_nickname") {
-    await handleSetNickname(db, body, res);
+  if (body.action === "create_family_invite") {
+    await handleCreateFamilyInvite(db, parentUid, res);
+    return;
+  }
+  if (body.action === "accept_family_invite") {
+    await handleAcceptFamilyInvite(db, parentUid, body, res);
     return;
   }
 
@@ -266,9 +372,22 @@ module.exports = wrapHandler(async (req, res) => {
     res.status(400).send("Bad Request: 'childId' mancante");
     return;
   }
+
+  // Individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5
+  // (vedi Storico versioni 0.4.0): senza questo controllo, un genitore
+  // autenticato poteva agire su un childId di qualunque famiglia.
+  const owns = await verifyChildOwnership(db, parentUid, childId);
+  if (!owns) {
+    res.status(403).send("Forbidden: bambino non associato alla tua famiglia");
+    return;
+  }
+
   const deviceRef = db.collection("devices").doc(childId);
 
   switch (body.action) {
+    case "set_nickname":
+      await handleSetNickname(deviceRef, body, res);
+      return;
     case "message":
       await handleMessage(db, deviceRef, childId, parentUid, body, res);
       return;

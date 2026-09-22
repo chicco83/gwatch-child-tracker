@@ -145,4 +145,23 @@
     <string name="settings_add_child_token_copy">Copia</string>
     <string name="settings_add_child_token_copied">Copiato negli appunti</string>
     <string name="settings_add_child_token_close">Ho copiato, chiudi</string>
+
+    <!-- v0.9.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+         implementato da Sonnet 5 — sezione "Genitori" di
+         SettingsScreen.kt (isolamento famiglie, vedi
+         backend/firestore.rules v0.7.0): invita un secondo genitore
+         nella stessa famiglia / unisciti con un codice ricevuto. -->
+    <string name="settings_family_section">Genitori</string>
+    <string name="settings_family_invite_button">Invita un secondo genitore</string>
+    <string name="settings_family_invite_failed">Generazione codice fallita, riprova</string>
+    <string name="settings_family_invite_title">Codice d\'invito generato</string>
+    <string name="settings_family_invite_message">Condividilo con l\'altro genitore: dovrà incollarlo qui sotto in \"Ho un codice d\'invito\" per vedere gli stessi bambini. Valido 24 ore, un solo uso.</string>
+    <string name="settings_family_invite_copy">Copia</string>
+    <string name="settings_family_invite_copied">Copiato negli appunti</string>
+    <string name="settings_family_invite_close">Chiudi</string>
+    <string name="settings_family_accept_section">Ho un codice d\'invito</string>
+    <string name="settings_family_accept_label">Codice ricevuto</string>
+    <string name="settings_family_accept_button">Unisciti</string>
+    <string name="settings_family_accept_succeeded">Fatto: ora vedi gli stessi bambini</string>
+    <string name="settings_family_accept_failed">Codice non valido, scaduto o già usato</string>
 </resources>

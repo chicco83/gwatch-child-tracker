@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.67.0
+**Versione contesto:** 0.68.0
 **Ultimo aggiornamento:** 2026-09-22
 
 ---
@@ -1946,3 +1946,100 @@ CHANGELOG.md  Storico versioni
   stesso branch durante una sessione attiva sono normali, quindi un
   `git push` puo' essere respinto anche senza che sia successo nulla
   di anomalo — basta un fetch/merge prima di ripushare.
+
+- **2026-09-22 — Review di sicurezza `qwen_plan.md` (locale, mai
+  pushata su GitHub) e isolamento tra famiglie diverse (v0.68.0).**
+  L'utente ha chiesto di leggere una nuova analisi della sua AI locale
+  (tag "qwen3.8-27B-UD-IQ4_XS", diverso dai tag "qwen3.8turbo-coder"/
+  "qwen3.8-Flash-Next" dell'incidente v0.42.0 — stessa AI, versione/
+  quantizzazione diversa) e valutare se le idee fossero fondate prima
+  di implementarle, avendo gia' visto quella stessa AI produrre in
+  passato sia idee valide sia esecuzioni bacate. Verificato ogni punto
+  sul codice reale (non sulla sola lettura del documento) prima di
+  costruirci sopra un piano: la maggior parte dei punti critici era
+  confermata e alcuni erano *piu'* gravi di come descritti (vedi sotto
+  e CHANGELOG.md v0.68.0); un paio di punti minori erano invece stale
+  o gia' risolti (retry SOS gia' espedito via setExpedited(),
+  GeofenceSyncWorker gia' segnato come scelta deliberata dalla stessa
+  review, tre voci di "igiene documentazione" — placeholder in
+  CHANGELOG.md, entry [0.33.1] vuota, IMPROVEMENT_PLAN.md — inesistenti
+  sul branch attuale) — scartati dal piano.
+
+  **Ownership genitore->bambino (il gap piu' critico trovato).**
+  `checkParentAuth()` verificava solo che `parents/{uid}` esistesse,
+  mai *quali* bambini quel genitore potesse vedere/comandare: con una
+  seconda famiglia sullo stesso progetto Firebase, ogni genitore
+  avrebbe potuto leggere posizione/storico/chat di bambini non suoi e,
+  via `parent-command.js`, silenziare un SOS altrui. Stesso buco lato
+  regole Firestore (`isParent()` non dipendeva dal device) e lato push
+  FCM (topic globale "parents", non ancora corretto in questa fase —
+  vedi Fase 2 non ancora implementata sotto). Prima di implementare ho
+  dovuto decidere un punto di design non deducibile dal codice: come
+  deve funzionare l'accesso di un SECONDO genitore della stessa
+  famiglia quando il primo crea un bambino. Chiesto esplicitamente
+  all'utente (due opzioni: "e' sempre stata una sola famiglia,
+  familyId condiviso tra tutti i parents/* esistenti" vs "famiglie
+  davvero isolate con un flusso di invito esplicito") — scelta la
+  seconda, piu' corretta per il caso reale (piu' famiglie sullo stesso
+  deployment) anche se piu' lavoro della prima.
+
+  Implementato: campo `familyId` su `parents/{uid}` (mai scrivibile
+  dal client — solo `create_child`/`accept_family_invite` in
+  `parent-command.js`, altrimenti un genitore autenticato potrebbe
+  auto-assegnarsi la famiglia di un altro indovinando/forzando l'id),
+  `devices/{childId}` e `geofences/{zoneId}`. `firestore.rules`
+  v0.7.0: `myFamilyId()` (un `get()` sul proprio doc parents) confrontato
+  col `familyId` del documento richiesto, per lettura su
+  devices/locations/events/messages (le subcollection non hanno un
+  proprio familyId, lo leggono dal device padre con un secondo `get()`)
+  e per read/create/update/delete su geofences (in creazione il valore
+  dichiarato dal client deve combaciare col proprio, non e' piu'
+  modificabile dopo). `parent-command.js` v0.4.0:
+  `verifyChildOwnership()` chiamata per ogni azione con un `childId`
+  esplicito, unificando anche `set_nickname` (prima un caso a parte
+  senza nessun controllo) sotto lo stesso gate. `create_child` assegna
+  il familyId al nuovo bambino, generandone uno nuovo al volo
+  (`ensureFamilyId`, self-heal) se il genitore non ne ha ancora uno —
+  stesso stile della migrazione legacy del token in `_lib/auth.js`.
+  Nuove azioni `create_family_invite` (genera un codice a singolo uso,
+  TTL 24h, in una nuova collezione `familyInvites` backend-only, stesso
+  trattamento di quota/messages nelle regole) e
+  `accept_family_invite` (associa il genitore chiamante al familyId
+  del codice; rifiuta se il genitore ha gia' una propria famiglia CON
+  bambini, per non perdere per sbaglio l'accesso a quelli entrando in
+  un'altra famiglia per errore) — nuova sezione "Genitori" in
+  `SettingsScreen.kt` (phone-app), stesso pattern "genera, mostra in un
+  dialogo, copia" gia' in uso per il token di un nuovo bambino.
+
+  **Bug di migrazione geofence trovato durante la verifica, non solo
+  nel documento originale**: `ensureGeofencesMigrated` (device-config.js)
+  scriveva `childIds: [childId]` con `merge:true` — su un campo array
+  il merge di Firestore SOSTITUISCE il valore invece di unirlo — E la
+  subcollection legacy non viene mai svuotata dopo la copia, quindi la
+  funzione si ripete a OGNI sync del watch, non solo alla prima: ogni
+  volta azzerava i `childIds` di una zona gia' migrata, staccandola da
+  altri bambini a cui fosse stata assegnata nel frattempo dalla
+  phone-app. La review originale descriveva solo il rischio teorico di
+  due subcollection con lo stesso id zona; il meccanismo reale
+  (rieseguita ad ogni chiamata) e' piu' subdolo e piu' probabile.
+  Sostituito con `FieldValue.arrayUnion(childId)`; approfittata la
+  stessa funzione per stampare anche il nuovo `familyId` (letto dal
+  device) sulle zone migrate.
+
+  **Richiesta dell'utente sull'attribuzione**: a differenza della
+  pulizia di riferimenti del giro precedente (rimozione totale), qui
+  l'utente ha chiesto di taggare esplicitamente questi fix come
+  "individuato da qwen3.8-27B-UD-IQ4_XS implementato da Sonnet 5" —
+  applicato nei commenti/Storico versioni di ogni file toccato e in
+  questa voce, coerente con lo stile "chi ha trovato cosa" gia' in uso
+  nel progetto (es. "segnalato dall'utente").
+
+  **Non ancora fatto** (resta nel piano concordato con l'utente, non
+  implementato in questo giro): Fase 2 (topic FCM per-bambino invece
+  del topic globale "parents" — stesso genere di leak cross-famiglia,
+  ma lato notifiche push invece che lato dati Firestore), Fase 3 (race
+  upload worker sul watch, conteggio quota per scrittura invece che
+  per chiamata), Fase 4 (fix minori: maxDuration cleanup.js, range
+  lat/lon, OkHttpClient singleton sul watch, ecc.), Fase 5 (job CI
+  `npm test`). Ordine di priorita' invariato rispetto al piano
+  originale in chat.

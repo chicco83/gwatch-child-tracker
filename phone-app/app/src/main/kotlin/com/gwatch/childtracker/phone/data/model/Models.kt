@@ -67,6 +67,12 @@ data class GeofenceZone(
     // watch-app/.../dnd/DndController.kt). Default false, opt-in
     // esplicito come alarmOnExit.
     val dndOnZone: Boolean = false,
+    // v0.10.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+    // implementato da Sonnet 5 — isolamento famiglie (vedi
+    // backend/firestore.rules v0.7.0). Vuoto per una zona non ancora
+    // salvata: AppViewModel.saveGeofence lo valorizza col proprio
+    // familyId prima della scrittura, non e' mai scelto dall'utente.
+    val familyId: String = "",
 )
 
 // v0.6.0 (2026-09-11): elenco bambini registrati (query live su

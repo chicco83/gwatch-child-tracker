@@ -14,6 +14,13 @@ package com.gwatch.childtracker.phone.ui
 //   questo progetto, causa errore di compilazione) — le righe con
 //   campo+pulsante usano una Column con il pulsante allineato a destra
 //   sotto il campo, non un Row pesato.
+// v0.2.0 (2026-09-22): individuato da qwen3.8-27B-UD-IQ4_XS,
+//   implementato da Sonnet 5 — isolamento famiglie (vedi
+//   backend/firestore.rules v0.7.0/parent-command.js v0.4.0). Nuova
+//   sezione "Genitori": genera un codice d'invito per un secondo
+//   genitore (stesso pattern di dialogo "copia e chiudi" gia' usato per
+//   il token di un nuovo bambino sopra) e un campo per incollare un
+//   codice ricevuto e unirsi alla stessa famiglia.
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.gwatch.childtracker.phone.R
+import com.gwatch.childtracker.phone.data.FamilyInviteResult
 import com.gwatch.childtracker.phone.data.NewChildResult
 import com.gwatch.childtracker.phone.data.model.ChildInfo
 
@@ -66,6 +74,42 @@ fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val clipboard = LocalClipboardManager.current
 
     var newChildResult by remember { mutableStateOf<NewChildResult?>(null) }
+    var familyInviteResult by remember { mutableStateOf<FamilyInviteResult?>(null) }
+
+    familyInviteResult?.let { result ->
+        AlertDialog(
+            // Stesso motivo del dialogo del token bambino sotto: il
+            // codice non sara' piu' recuperabile dopo, niente dismiss a
+            // caso (tocco fuori/back).
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.settings_family_invite_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.settings_family_invite_message))
+                    Text(
+                        text = result.inviteCode,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(result.inviteCode))
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_family_invite_copied),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text(stringResource(R.string.settings_family_invite_copy)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { familyInviteResult = null }) {
+                    Text(stringResource(R.string.settings_family_invite_close))
+                }
+            },
+        )
+    }
 
     newChildResult?.let { result ->
         AlertDialog(
@@ -157,6 +201,30 @@ fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     },
                 )
             }
+            item {
+                Divider()
+                FamilySection(
+                    onInvite = {
+                        viewModel.createFamilyInvite { result ->
+                            if (result != null) {
+                                familyInviteResult = result
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.settings_family_invite_failed),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
+                    },
+                    onAccept = { code ->
+                        viewModel.acceptFamilyInvite(code) { ok ->
+                            val res = if (ok) R.string.settings_family_accept_succeeded else R.string.settings_family_accept_failed
+                            Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -200,6 +268,39 @@ private fun ChildNicknameRow(child: ChildInfo, onSave: (String) -> Unit) {
                 TextButton(onClick = { if (text.isNotBlank()) onSave(text.trim()) }) {
                     Text(stringResource(R.string.settings_own_nickname_save))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FamilySection(onInvite: () -> Unit, onAccept: (String) -> Unit) {
+    var code by remember { mutableStateOf("") }
+    Card(modifier = Modifier.fillMaxWidth().padding(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = stringResource(R.string.settings_family_section), style = MaterialTheme.typography.titleMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onInvite) { Text(stringResource(R.string.settings_family_invite_button)) }
+            }
+            Text(
+                text = stringResource(R.string.settings_family_accept_section),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            OutlinedTextField(
+                value = code,
+                onValueChange = { code = it },
+                label = { Text(stringResource(R.string.settings_family_accept_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = {
+                    if (code.isNotBlank()) {
+                        onAccept(code.trim())
+                        code = ""
+                    }
+                }) { Text(stringResource(R.string.settings_family_accept_button)) }
             }
         }
     }
