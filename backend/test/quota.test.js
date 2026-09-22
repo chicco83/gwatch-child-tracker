@@ -1,4 +1,4 @@
-// Test per _lib/quota.js — scritto da qwen3.8-Flash-Next il 16-9-26.
+// Test per _lib/quota.js.
 // Richiede node_modules (npm install): quota.js importa firebase-admin a top-level.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");

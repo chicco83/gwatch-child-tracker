@@ -7,6 +7,20 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-09-22
+
+### Changed
+- Rimossi dal repo tutti i riferimenti nominali all'AI locale
+  dell'utente (tag "qwen3.8turbo-coder"/"qwen3.8-Flash-Next", vedi
+  v0.42.0) — richiesto dall'utente. Le spiegazioni tecniche nei
+  commenti/Storico versioni sono state mantenute, solo il nome/data di
+  attribuzione è stato tolto. Eliminato `PLAN-qwen3.8turbo-coder.md`
+  (piano interamente relativo a quella sessione, superato da
+  CONTEXT.md); da `TESTING-E2E.md` tolte solo le due righe di
+  attribuzione, mantenuta la procedura di test. Le voci storiche di
+  questo CHANGELOG e di CONTEXT.md sul relativo incidente (v0.42.0)
+  restano come promemoria dei fatti, col nome dell'AI anonimizzato.
+
 ## [0.66.0] - 2026-09-22
 
 ### Added
@@ -523,8 +537,8 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 ## [0.42.0] - 2026-09-18
 
 ### Fixed
-- **Review di un'altra AI locale (tag "qwen3.8turbo-coder"/"qwen3.8-Flash-Next")
-  che aveva pushato direttamente su questo branch**: conteneva alcune idee
+- **Review di un'altra AI locale che aveva pushato direttamente su
+  questo branch**: conteneva alcune idee
   valide ma con difetti di esecuzione gravi, alcuni al punto da rompere
   completamente sia il backend che la phone-app. Corretti tutti prima che
   arrivassero al bambino/genitore in produzione:
@@ -588,10 +602,10 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   <25%) nelle status-card della mappa — tenuto, corretto come sopra.
 
 ### Known limitations
-- `PLAN-qwen3.8turbo-coder.md` e `TESTING-E2E.md`, creati dalla stessa
-  review, restano nel repo come documentazione di quella sessione — a
-  differenza di CONTEXT.md/CHANGELOG.md non sono mantenuti né
-  considerati fonte di verità sullo stato del progetto.
+- `TESTING-E2E.md`, creato dalla stessa review, resta nel repo come
+  documentazione di quella sessione — a differenza di
+  CONTEXT.md/CHANGELOG.md non è mantenuto né considerato fonte di
+  verità sullo stato del progetto.
 
 ## [0.41.0] - 2026-09-18
 

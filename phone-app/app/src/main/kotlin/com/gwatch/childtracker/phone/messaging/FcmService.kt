@@ -70,7 +70,7 @@ class FcmService : FirebaseMessagingService() {
     private val repository = DeviceRepository()
 
     override fun onNewToken(token: String) {
-        // corretto da qwen3.8-Flash-Next il 16-9-26: ri-iscrizione al topic (idempotente, vedi TrackerApplication.kt):
+        // Ri-iscrizione al topic (idempotente, vedi TrackerApplication.kt):
         // se l'avvio precedente era offline la subscription puo essere mancante.
         FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC)
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return

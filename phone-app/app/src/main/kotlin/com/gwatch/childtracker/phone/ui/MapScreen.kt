@@ -496,7 +496,7 @@ private fun StatusCard(
 ) {
     // Storico versioni (sezione batteria)
     // v0.9.0 (2026-09-18): la UX del battery indicator colorato
-    // (qwen3.8turbo-coder) era corretta nell'idea ma rotta
+    // era corretta nell'idea ma rotta
     // nell'esecuzione — graffe/parentesi sbilanciate (il pulsante
     // "Aggiorna posizione" era rimasto incastrato dentro il Row della
     // batteria) e un LinearProgressIndicator con Modifier.weight(),

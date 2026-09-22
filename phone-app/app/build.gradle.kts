@@ -42,14 +42,14 @@ plugins {
 
 android {
     namespace = "com.gwatch.childtracker.phone"
-    // corretto da qwen3.8-Flash-Next il 16-9-26: SDK 35, requisito Play Store per i nuovi upload (il 34 non
+    // SDK 35, requisito Play Store per i nuovi upload (il 34 non
     //   e' piu' accettato). Edge-to-edge gestito in MainActivity.enableEdgeToEdge().
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.gwatch.childtracker.phone"
         minSdk = 26
-        targetSdk = 35 // corretto da qwen3.8-Flash-Next il 16-9-26
+        targetSdk = 35
         // 2026-09-18: stesso problema segnalato sul watch-app — versionCode/
         // versionName fermi a 2/"0.2.0" da decine di commit, mai
         // incrementati dopo il primo bump. Bump ad ogni release d'ora in poi.

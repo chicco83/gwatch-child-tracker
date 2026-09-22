@@ -35,7 +35,7 @@
  *   perche' con piu' bambini "sender: child" da solo non basta piu' a
  *   dire di chi si tratta. childId incluso anche nel payload della
  *   push, cosi' la phone-app puo' aprire la conversazione giusta.
- * - 0.5.0 (2026-09-16): corretto da qwen3.8-Flash-Next il 16-9-26 — le push ai
+ * - 0.5.0 (2026-09-16): le push ai
  *   genitori partono sul topic FCM "parents" invece di leggere l'intera
  *   collezione parents e iterare gli array fcmTokens a ogni messaggio (stesso
  *   intervento gia fatto in trigger-event.js v0.10.0): -1 lettura Firestore per
@@ -51,7 +51,7 @@ const { checkAndConsumeQuota } = require("./_lib/quota");
 
 const MAX_TEXT_LENGTH = 500;
 const MESSAGE_RETENTION_HOURS = 24;
-// corretto da qwen3.8-Flash-Next il 16-9-26: topic FCM dei genitori (vedi Storico versioni)
+// Topic FCM dei genitori (vedi Storico versioni).
 const PARENTS_TOPIC = "parents";
 
 module.exports = wrapHandler(async (req, res) => {
@@ -101,7 +101,7 @@ module.exports = wrapHandler(async (req, res) => {
     expiresAt,
   });
 
-  // corretto da qwen3.8-Flash-Next il 16-9-26: invio sul topic FCM "parents"
+  // Invio sul topic FCM "parents"
   // (iscrizione lato phone-app). Niente piu lettura della collezione parents a
   // ogni messaggio; gli array fcmTokens restano scritti per debug ma non sono
   // usati per l'invio. Solo "data" (vedi storico versioni v0.3.0 sopra): cosi'

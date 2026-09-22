@@ -1,5 +1,4 @@
 // Configurazione centralizzata per il backend.
-// Scritto da qwen3.8turbo-coder il 17-9-26.
 
 const requiredVars = ['FIREBASE_SERVICE_ACCOUNT_B64'];
 

@@ -1,6 +1,5 @@
 # Procedura test end-to-end — gwatch-child-tracker
 
-**Tag:** qwen3.8turbo-coder
 **Data:** 2026-09-18
 
 ## Prerequisiti
@@ -41,5 +40,3 @@
 - Aggiungi secondo bambino nelle Impostazioni
 - Verifica entrambi i bambini sulla mappa
 - Invia messaggi a ciascun bambino separatamente
-
-*Procedura generata da qwen3.8turbo-coder*

@@ -19,7 +19,7 @@ const config = require("./config.js");
 // secondi no-stop per 24h, molto oltre il sampling adattivo previsto)
 // restiamo su una piccola frazione delle quote gratuite reali.
 const MAX_BACKEND_CALLS_PER_DAY = config.MAX_BACKEND_CALLS_PER_DAY;
-// Bug (qwen3.8turbo-coder, 2026-09-18): qui c'era
+// Bug (2026-09-18): qui c'era
 // "config.RETENTION_HOURS / 24" — RETENTION_HOURS e' la retention
 // dello storico posizioni/eventi (12 mesi, vedi ingest-location.js),
 // un concetto scorrelato da "per quanto tenere il contatore di quota

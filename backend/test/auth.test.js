@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Test per _lib/auth.js — corretto da qwen3.8-Flash-Next il 16-9-26.
+// Test per _lib/auth.js.
 // Bug (2026-09-18): sintassi import ESM in un progetto senza
 // "type": "module" in package.json (tutto il resto del backend e'
 // CommonJS, vedi _lib/auth.js stesso) — "node --test test/" (lo
