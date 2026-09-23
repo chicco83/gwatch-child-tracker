@@ -136,8 +136,10 @@ android {
         // v0.23.0 (2026-09-24): la barra dei tentativi sparisce appena arriva
         // una posizione; gli avvisi di riaccensione/modalita' aereo non
         // contano piu' come tentativo fallito (lastNoFixAt).
-        versionCode = 23
-        versionName = "0.23.0"
+        // v0.24.0 (2026-09-24): interruttore "Alta precisione da fermo" per
+        // bambino nelle Impostazioni.
+        versionCode = 24
+        versionName = "0.24.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.99.0] - 2026-09-24
+
+### Changed
+- **Tracking da fermo di nuovo a priorita' bilanciata** (richiesta
+  utente; watch-app v0.29.0): la causa del 20/9 era "Migliora
+  precisione" spenta, non la priorita'. In movimento resta alta.
+  L'alta precisione anche da fermo si attiva per bambino dalla
+  phone-app (v0.24.0, Impostazioni → "Alta precisione da fermo", con
+  spiegazione del consumo). Percorso: `parent-command.js` v0.5.0 (nuova
+  azione `set_tracking_mode`, stesso controllo di famiglia) salva
+  `devices/{id}.trackingHighAccuracy` e manda la push `tracking_mode` al
+  watch; `device-config.js` v0.5.0 lo restituisce anche a ogni sync.
+  Sul watch `location/TrackingMode.kt` lo salva e fa riapplicare subito
+  la richiesta al servizio (intervallo corrente invariato). La
+  diagnostica mostra "bilanciata" o "alta".
+
+### Fixed
+- **watch-app: le zone venivano cancellate se la sync falliva** (bug
+  trovato lavorando su questa modifica): `fetchDeviceConfig()` restituiva
+  una lista vuota anche per un errore di rete e `GeofenceSyncWorker`
+  rimuoveva tutte le zone dal watch, considerando il lavoro riuscito:
+  niente zone fino alla sync successiva (6 ore). Ora un errore restituisce
+  null e il worker ritenta senza toccare le zone registrate.
+
+### Known limitations
+- watch-app e phone-app non compilate in questa sessione.
+
 ## [0.98.1] - 2026-09-24
 
 ### Documentazione

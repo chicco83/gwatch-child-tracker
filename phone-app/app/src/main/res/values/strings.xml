@@ -19,6 +19,11 @@
     <string name="status_sats_format">%1$d visti, %2$d agganciati</string>
     <string name="status_sats_not_used">GPS non usato (posizione da Wi-Fi/rete)</string>
     <!-- 2026-09-23: nuovo tentativo automatico di richiesta posizione -->
+    <!-- 2026-09-24: alta precisione del tracking da fermo -->
+    <string name="settings_tracking_label">Alta precisione da fermo</string>
+    <string name="settings_tracking_hint">Accende il GPS anche quando il bambino è fermo, ogni 10 minuti. Più affidabile senza Wi-Fi, ma consuma più batteria del watch. Spento: usa Wi-Fi e rete.</string>
+    <string name="settings_tracking_saved">Impostazione inviata al watch</string>
+    <string name="settings_tracking_failed">Impossibile salvare l\'impostazione</string>
     <!-- 2026-09-23: stato del watch -->
     <string name="status_watch_label">Stato watch:</string>
     <string name="status_watch_airplane">in modalità aereo</string>

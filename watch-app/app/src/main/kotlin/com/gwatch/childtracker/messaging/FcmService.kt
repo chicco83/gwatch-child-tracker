@@ -102,6 +102,7 @@ import com.gwatch.childtracker.TrackerApplication
 import com.gwatch.childtracker.data.MessageStore
 import com.gwatch.childtracker.location.LocationRequestWorker
 import com.gwatch.childtracker.location.LocationTrackingService
+import com.gwatch.childtracker.location.TrackingMode
 import com.gwatch.childtracker.location.TrackingStatus
 import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
@@ -137,6 +138,8 @@ class FcmService : FirebaseMessagingService() {
             "location_request" -> handleLocationRequest()
             "sos_cancel" -> handleSosCancel()
             "location_seen" -> handleLocationSeen()
+            // 2026-09-24: interruttore "alta precisione" dalla phone-app.
+            "tracking_mode" -> TrackingMode.set(this, message.data["highAccuracy"] == "true")
         }
     }
 

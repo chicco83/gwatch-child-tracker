@@ -1,6 +1,6 @@
 /**
  * POST /api/parent-command
- * Versione: 0.4.0
+ * Versione: 0.5.0
  *
  * Endpoint unico per i comandi rapidi del genitore verso il watch:
  * messaggio di chat, richiesta posizione immediata, annulla SOS,
@@ -23,6 +23,7 @@
  *   - action = "request_location": { childId }
  *   - action = "cancel_sos": { childId }
  *   - action = "ack_event": { childId, eventId }
+ *   - action = "set_tracking_mode": { childId, highAccuracy: boolean }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-10): versione iniziale (accorpamento dei 4 file).
@@ -85,6 +86,12 @@
  *   l'accesso a quelli entrando in un'altra famiglia. Richiede la
  *   migrazione one-time dei dati pre-esistenti, vedi
  *   backend/scripts/migrate-family-ids.js.
+ * - 0.5.0 (2026-09-24): azione "set_tracking_mode" (richiesta utente):
+ *   il tracking del watch da fermo torna a priorita' bilanciata, con un
+ *   interruttore sulla phone-app per forzare l'alta precisione. Scrive
+ *   devices/{childId}.trackingHighAccuracy e manda la push data-only
+ *   "tracking_mode" al watch; stesso controllo di appartenenza alla
+ *   famiglia delle altre azioni con childId.
  */
 const crypto = require("crypto");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -296,6 +303,25 @@ async function handleRequestLocation(db, deviceRef, childId, res) {
   res.status(200).json({ ok: true });
 }
 
+// v0.5.0 (2026-09-24): alta precisione del tracking anche da fermo,
+// scelta dal genitore (vedi Storico versioni). Salvata sul device (la
+// rilegge anche device-config.js) e mandata subito al watch con una push.
+async function handleSetTrackingMode(deviceRef, body, res) {
+  const { highAccuracy } = body;
+  if (typeof highAccuracy !== "boolean") {
+    res.status(400).send("Bad Request: 'highAccuracy' deve essere true/false");
+    return;
+  }
+  await deviceRef.set({ trackingHighAccuracy: highAccuracy }, { merge: true });
+  const watchToken = (await deviceRef.get()).data()?.fcmToken;
+  if (watchToken) {
+    await sendPushSafe(deviceRef, watchToken, {
+      data: { type: "tracking_mode", highAccuracy: String(highAccuracy) },
+    });
+  }
+  res.status(200).json({ ok: true });
+}
+
 async function handleCancelSos(deviceRef, res) {
   await deviceRef.set({ sosActive: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
 
@@ -399,6 +425,9 @@ module.exports = wrapHandler(async (req, res) => {
       return;
     case "ack_event":
       await handleAckEvent(deviceRef, body, res);
+      return;
+    case "set_tracking_mode":
+      await handleSetTrackingMode(deviceRef, body, res);
       return;
     default:
       res.status(400).send("Bad Request: 'action' non valido");

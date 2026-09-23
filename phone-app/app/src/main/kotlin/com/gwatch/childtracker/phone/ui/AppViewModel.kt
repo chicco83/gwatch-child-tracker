@@ -469,6 +469,18 @@ class AppViewModel(
     // '}'" alla prima graffa che il parser non vedeva piu'. Riscritto
     // senza l'asterisco per non riaprire il problema.
     /** Rinomina un bambino (passa dal backend, la collezione devices e' scrivibile solo da li'). */
+    // 2026-09-24: alta precisione del tracking da fermo (SettingsScreen).
+    fun setTrackingHighAccuracy(childId: String, highAccuracy: Boolean, onDone: (Boolean) -> Unit) {
+        val user = _user.value ?: return onDone(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.setTrackingMode(idToken, childId, highAccuracy)
+            }.getOrDefault(false)
+            onDone(ok)
+        }
+    }
+
     fun setChildNickname(childId: String, nickname: String, onDone: (Boolean) -> Unit) {
         val user = _user.value ?: return onDone(false)
         viewModelScope.launch {

@@ -39,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -70,6 +72,8 @@ import com.gwatch.childtracker.phone.data.model.ChildInfo
 fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val ownNickname by viewModel.ownNickname.collectAsState()
     val children by viewModel.children.collectAsState()
+    // 2026-09-24: stato corrente dell'interruttore "alta precisione".
+    val deviceStates by viewModel.deviceStates.collectAsState()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
 
@@ -173,6 +177,8 @@ fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 )
             }
             items(children) { child ->
+              // 2026-09-24: Column esplicita per nickname + interruttore.
+              Column {
                 ChildNicknameRow(
                     child = child,
                     onSave = { nickname ->
@@ -182,6 +188,17 @@ fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                         }
                     },
                 )
+                // 2026-09-24: richiesta utente — alta precisione anche da fermo.
+                TrackingModeRow(
+                    highAccuracy = deviceStates[child.id]?.trackingHighAccuracy ?: false,
+                    onChange = { value ->
+                        viewModel.setTrackingHighAccuracy(child.id, value) { ok ->
+                            val res = if (ok) R.string.settings_tracking_saved else R.string.settings_tracking_failed
+                            Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+              }
             }
             item {
                 Divider()
@@ -328,5 +345,36 @@ private fun AddChildSection(onAdd: (String) -> Unit) {
                 }) { Text(stringResource(R.string.settings_add_child_button)) }
             }
         }
+    }
+}
+
+/**
+ * 2026-09-24: interruttore "Alta precisione da fermo" per bambino. Il
+ * valore mostrato e' quello salvato sul device (Firestore), con un valore
+ * locale ottimistico finche' la conferma non arriva. Etichetta corta sulla
+ * riga dello Switch e spiegazione sotto: una Row con testo lungo spingeva
+ * lo Switch fuori schermo (stesso problema gia' visto in GeofenceScreen,
+ * niente Modifier.weight in questo progetto).
+ */
+@Composable
+private fun TrackingModeRow(highAccuracy: Boolean, onChange: (Boolean) -> Unit) {
+    var pending by remember(highAccuracy) { mutableStateOf<Boolean?>(null) }
+    val checked = pending ?: highAccuracy
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = stringResource(R.string.settings_tracking_label), style = MaterialTheme.typography.bodyMedium)
+            Switch(
+                checked = checked,
+                onCheckedChange = { value ->
+                    pending = value
+                    onChange(value)
+                },
+            )
+        }
+        Text(text = stringResource(R.string.settings_tracking_hint), style = MaterialTheme.typography.bodySmall)
     }
 }

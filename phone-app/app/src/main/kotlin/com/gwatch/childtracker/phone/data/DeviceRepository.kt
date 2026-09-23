@@ -115,6 +115,7 @@ class DeviceRepository {
                     satsAtMillis = (gnssMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
                     gnssActive = gnssMap?.get("active") as? Boolean,
                     watchState = watchStateMap?.get("state") as? String,
+                    trackingHighAccuracy = snap.getBoolean("trackingHighAccuracy") ?: false,
                     watchStateAtMillis = (watchStateMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
                 ),
             )

@@ -111,6 +111,12 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 2026-09-24: cambio di TrackingMode dal genitore: riapplica la
+        // richiesta con l'intervallo corrente (fermo/movimento invariato).
+        if (intent?.getBooleanExtra(EXTRA_REAPPLY, false) == true) {
+            startLocationUpdates(currentIntervalMillis)
+            return START_STICKY
+        }
         val moving = intent?.getBooleanExtra(EXTRA_MOVING, false) ?: false
         val newInterval = if (moving) INTERVAL_MOVING_MS else INTERVAL_STILL_MS
 
@@ -149,8 +155,14 @@ class LocationTrackingService : Service() {
         //     } else {
         //         Priority.PRIORITY_BALANCED_POWER_ACCURACY
         //     }
-        val priority = Priority.PRIORITY_HIGH_ACCURACY
-        GpsAssist.injectAssistance(this)
+        // 2026-09-24: richiesta utente — torna la priorita' bilanciata da
+        // fermo (la causa del 20/9 era "Migliora precisione" spenta, non la
+        // priorita'), con l'alta precisione attivabile dal genitore sulla
+        // phone-app (TrackingMode). In movimento resta sempre alta.
+        // Precedente (2026-09-23): val priority = Priority.PRIORITY_HIGH_ACCURACY
+        val high = intervalMillis == INTERVAL_MOVING_MS || TrackingMode.isHighAccuracy(this)
+        val priority = if (high) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+        if (high) GpsAssist.injectAssistance(this)
 
         val request = LocationRequest.Builder(priority, intervalMillis)
             .setMinUpdateIntervalMillis(intervalMillis / 2)
@@ -162,7 +174,8 @@ class LocationTrackingService : Service() {
         try {
             fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
             updatesActive = true
-            TrackingStatus.priorityLabel = "alta, ogni ${intervalMillis / 60000} min"
+            TrackingStatus.priorityLabel =
+                (if (high) "alta" else "bilanciata") + ", ogni ${intervalMillis / 60000} min"
             Log.i(TAG, "richiesta posizioni: ${TrackingStatus.priorityLabel}")
         } catch (e: Exception) {
             TrackingStatus.lastError = "requestLocationUpdates: ${e.javaClass.simpleName}"
@@ -220,6 +233,8 @@ class LocationTrackingService : Service() {
         private const val NOTIFICATION_ID = 1
 
         const val EXTRA_MOVING = "moving"
+        // 2026-09-24: vedi TrackingMode.set().
+        const val EXTRA_REAPPLY = "reapply_mode"
 
         // Sampling adattivo: 10 min da fermi, 1 min in movimento
         // (vedi CONTEXT.md — risparmio batteria).

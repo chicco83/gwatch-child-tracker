@@ -61,6 +61,9 @@ data class DeviceState(
     // (devices/{id}.watchState, trigger-event.js v0.22.0).
     val watchState: String? = null,
     val watchStateAtMillis: Long? = null,
+    // 2026-09-24: tracking ad alta precisione anche da fermo (scelto dal
+    // genitore, parent-command.js set_tracking_mode).
+    val trackingHighAccuracy: Boolean = false,
 )
 
 data class LocationPoint(

@@ -136,8 +136,11 @@ android {
         // espedito + riavvio del tracking se fermo (messaging/FcmService.kt).
         // v0.28.0 (2026-09-23): avvisi modalita' aereo/spegnimento/riaccensione
         // (location/WatchStateReporter.kt).
-        versionCode = 28
-        versionName = "0.28.0"
+        // v0.29.0 (2026-09-24): tracking da fermo di nuovo bilanciato, alta
+        // precisione attivabile dalla phone-app (location/TrackingMode.kt);
+        // la sync zone non cancella piu' le zone se la rete manca.
+        versionCode = 29
+        versionName = "0.29.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

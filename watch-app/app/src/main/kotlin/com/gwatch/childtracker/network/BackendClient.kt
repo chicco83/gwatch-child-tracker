@@ -206,21 +206,34 @@ class BackendClient {
         return executeForSuccess(request)
     }
 
-    /** Geofence attive configurate dal genitore. Lista vuota se la chiamata fallisce. */
-    suspend fun fetchDeviceConfig(): List<GeofenceZone> {
+    /**
+     * Geofence attive configurate dal genitore + impostazione di precisione
+     * del tracking. null se la chiamata fallisce.
+     *
+     * 2026-09-24: prima ritornava List<GeofenceZone>, VUOTA anche in caso di
+     * errore: GeofenceSyncWorker non distingueva "nessuna zona" da "rete
+     * assente" e cancellava tutte le zone dal watch fino alla sync
+     * successiva (6 ore). Ora null = errore, il worker ritenta senza
+     * toccare le zone. Aggiunto trackingHighAccuracy (device-config.js v0.5.0).
+     */
+    suspend fun fetchDeviceConfig(): DeviceConfig? {
         val request = Request.Builder()
             .url("${BackendConfig.baseUrl}/api/device-config")
             .header("X-Device-Token", BackendConfig.deviceToken)
             .get()
             .build()
 
-        val responseBody = executeForBody(request) ?: return emptyList()
+        val responseBody = executeForBody(request) ?: return null
         return try {
             val json = JSONObject(responseBody)
             val arr = json.getJSONArray("geofences")
-            (0 until arr.length()).map { GeofenceZone.fromJson(arr.getJSONObject(it)) }
+            DeviceConfig(
+                zones = (0 until arr.length()).map { GeofenceZone.fromJson(arr.getJSONObject(it)) },
+                trackingHighAccuracy = if (json.has("trackingHighAccuracy")) json.getBoolean("trackingHighAccuracy") else null,
+            )
         } catch (e: Exception) {
-            emptyList()
+            Log.w(TAG, "fetchDeviceConfig: risposta non valida", e)
+            null
         }
     }
 
@@ -358,3 +371,6 @@ enum class SosHeartbeatResult { ACCEPTED, STOP, FAILED }
 
 /** Esito di triggerEvent() — vedi Storico versioni sopra (v0.9.0). */
 data class TriggerEventResult(val ok: Boolean, val dnd: Boolean?)
+
+// 2026-09-24: risposta di /api/device-config (vedi fetchDeviceConfig).
+data class DeviceConfig(val zones: List<GeofenceZone>, val trackingHighAccuracy: Boolean?)

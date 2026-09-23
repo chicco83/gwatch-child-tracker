@@ -9,6 +9,7 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import com.gwatch.childtracker.location.TrackingMode
 import com.gwatch.childtracker.network.BackendClient
 import kotlinx.coroutines.tasks.await
 
@@ -26,7 +27,14 @@ class GeofenceSyncWorker(
 
     @Suppress("MissingPermission") // permessi verificati da MainActivity prima di avviare la sync
     override suspend fun doWork(): Result {
-        val zones = BackendClient().fetchDeviceConfig()
+        // 2026-09-24: config null = chiamata fallita → si ritenta senza
+        // rimuovere le zone gia' registrate (prima una lista vuota per
+        // errore di rete cancellava tutte le zone fino alla sync successiva).
+        // Si aggiorna anche l'impostazione "alta precisione" (TrackingMode).
+        // Precedente: val zones = BackendClient().fetchDeviceConfig()
+        val config = BackendClient().fetchDeviceConfig() ?: return Result.retry()
+        config.trackingHighAccuracy?.let { TrackingMode.set(appContext, it) }
+        val zones = config.zones
         val geofencingClient: GeofencingClient = LocationServices.getGeofencingClient(appContext)
         val pendingIntent = geofencePendingIntent()
 

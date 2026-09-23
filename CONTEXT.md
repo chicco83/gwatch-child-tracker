@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.98.1
+**Versione contesto:** 0.99.0
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,8 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.28.0**, phone-app **v0.23.0**, backend `trigger-event.js` **v0.23.0**,
+**v0.29.0**, phone-app **v0.24.0**, backend `trigger-event.js` **v0.23.0**
+(`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
 
@@ -118,10 +119,10 @@ Node.js **24**. Le app Android non si compilano in queste sessioni
 
 **Aggiunto in questa sessione (tutto verificato dall'utente salvo dove
 indicato):** Ricerca GPS con barre satelliti, diagnostica, reset dati
-GPS e iniezione A-GPS (`GpsAssist`); tracking ad alta precisione anche
-da fermo (v0.20.0, **da rivalutare per la batteria**: ora che la causa
-era "Migliora precisione" si potrebbe tornare a bilanciata — decisione
-aperta con l'utente); pulsante "Invia posizione" a colori (barra blu /
+GPS e iniezione A-GPS (`GpsAssist`); tracking da fermo tornato a
+priorita' bilanciata (24/9, decisione dell'utente) con interruttore
+"Alta precisione da fermo" per bambino nelle Impostazioni della
+phone-app (`TrackingMode`, azione `set_tracking_mode`); pulsante "Invia posizione" a colori (barra blu /
 verde / rosso); batteria anche senza fix (`status`) con avvisi di
 batteria scarica; satelliti visti/agganciati o "GPS non usato" sul
 telefono; "adesso" che avanza; verde batteria leggibile; tracking
@@ -144,8 +145,7 @@ vedi CLAUDE.md): `node backend/scripts/diag-device-history.js [giorni]
 con precisione, distanze e riepilogo orario, ora italiana, mai
 coordinate stampate.
 
-**Aperto/backlog**: priorita' del tracking da fermo (batteria);
-satelliti/"status" non inviati dal tracking periodico, solo dai tentativi
+**Aperto/backlog**: satelliti/"status" non inviati dal tracking periodico, solo dai tentativi
 manuali/remoti; avvisi di stato del watch dipendono dal servizio di
 tracking attivo; backlog Fase 2/3 invariato (sotto).
 
@@ -2717,3 +2717,16 @@ CHANGELOG.md  Storico versioni
   file (fotografia per chi riprende), aggiornata "Struttura repo";
   corretto README.md (backend descritto ancora come "Cloud Functions",
   aggiunti Node 24, scripts/ e workflow) (v0.98.1).
+- 2026-09-24: Decisione utente sulla priorita' del tracking da fermo:
+  torna bilanciata (default), con interruttore per bambino sulla
+  phone-app per forzare l'alta precisione. Scelte: il valore vive sul
+  device in Firestore (devices/{id}.trackingHighAccuracy), scritto solo
+  dal backend (parent-command set_tracking_mode, controllo famiglia; le
+  regole non permettono scritture client su devices), inviato al watch
+  con push e riletto a ogni sync di device-config (se la push si perde).
+  Sul watch il cambio riapplica la richiesta senza cambiare fermo/
+  movimento (EXTRA_REAPPLY). Trovato e corretto nello stesso giro un bug
+  preesistente: GeofenceSyncWorker cancellava tutte le zone quando la
+  chiamata a device-config falliva (lista vuota = errore); ora ritenta.
+  watch-app v0.29.0, phone-app v0.24.0, parent-command/device-config
+  v0.5.0 (v0.99.0).

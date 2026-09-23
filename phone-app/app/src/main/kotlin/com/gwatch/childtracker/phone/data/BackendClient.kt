@@ -127,6 +127,17 @@ class BackendClient {
         return callParentCommand(idToken, body, "setChildNickname")
     }
 
+    // 2026-09-24: interruttore "alta precisione anche da fermo" del tracking
+    // del watch (parent-command.js v0.5.0, azione set_tracking_mode).
+    suspend fun setTrackingMode(idToken: String, childId: String, highAccuracy: Boolean): Boolean {
+        val body = JSONObject().apply {
+            put("action", "set_tracking_mode")
+            put("childId", childId)
+            put("highAccuracy", highAccuracy)
+        }
+        return callParentCommand(idToken, body, "setTrackingMode")
+    }
+
     /**
      * Registra un nuovo bambino: il backend genera childId + token e
      * salva solo l'hash del token. Il token in chiaro torna SOLO in

@@ -1,6 +1,6 @@
 /**
  * GET /api/device-config
- * Versione: 0.4.0
+ * Versione: 0.5.0
  *
  * Restituisce al watch le geofence attive configurate dal genitore
  * dalla phone-app, per registrarle localmente con la Geofencing API
@@ -58,6 +58,9 @@
  *   Aggiunto anche "familyId" alle zone migrate (vedi firestore.rules
  *   v0.7.0/isolamento famiglie): letto dal device stesso, che ce l'ha
  *   gia' (create_child lo assegna alla creazione).
+ * - 0.5.0 (2026-09-24): la risposta include trackingHighAccuracy
+ *   (interruttore "alta precisione" della phone-app, vedi
+ *   parent-command.js v0.5.0).
  */
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -111,5 +114,8 @@ module.exports = wrapHandler(async (req, res) => {
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((g) => g.active !== false);
 
-  res.status(200).json({ geofences });
+  // v0.5.0: anche l'impostazione di precisione del tracking, cosi' il
+  // watch la recupera a ogni sync anche se la push e' andata persa.
+  // Precedente: res.status(200).json({ geofences });
+  res.status(200).json({ geofences, trackingHighAccuracy: deviceSnap.data()?.trackingHighAccuracy === true });
 });
