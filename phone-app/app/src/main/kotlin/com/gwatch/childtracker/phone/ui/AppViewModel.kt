@@ -1,5 +1,6 @@
 package com.gwatch.childtracker.phone.ui
 
+import android.app.Application
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -11,6 +12,7 @@ import com.gwatch.childtracker.phone.data.BackendClient
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.FamilyInviteResult
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
+import com.gwatch.childtracker.phone.data.KnownChildrenCache
 import com.gwatch.childtracker.phone.data.NewChildResult
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.data.model.ChildInfo
@@ -18,6 +20,7 @@ import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
 import com.gwatch.childtracker.phone.data.model.LocationPoint
+import com.gwatch.childtracker.phone.util.Constants
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,35 +77,38 @@ import kotlinx.coroutines.tasks.await
 // stesso schema del documento reale (ChatScreen.kt allinea le bolle su
 // senderId == proprio uid, non piu' sul solo ruolo "parent"/"child" —
 // necessario ora che due genitori condividono lo stesso thread).
+// v0.31.0 (2026-09-23): due interventi distinti.
+// (1) Bug trovato lavorando sul punto (2) sotto, NON dal documento di
+// review: "children"/"geofences" leggevano deviceRepository.
+// observeChildren()/observeGeofences() SENZA filtro familyId — le
+// regole v0.7.0 rifiutano in blocco una query non provabilmente
+// vincolata (vedi DeviceRepository.kt v0.8.0), quindi appena
+// pubblicate quelle regole la lista bambini/zone avrebbe smesso di
+// caricarsi per chiunque. Entrambe ora derivano da "ownFamilyId" con
+// flatMapLatest (null finche' non risolto -> lista vuota), passato
+// come parametro alle query.
+// (2) Fase 2 di qwen_plan.md (individuato da qwen3.8-27B-UD-IQ4_XS,
+// implementato da Sonnet 5): topic FCM per-bambino al posto del topic
+// globale "parents" (vedi Constants.kt/backend). Un collector interno
+// su "children" (avviato nell'init, vive quanto il ViewModel — la
+// sottoscrizione FCM e' un'operazione server-side una tantum, non ha
+// bisogno di restare legata alla UI in primo piano) mantiene allineate
+// le iscrizioni FirebaseMessaging: iscrive i topic dei bambini nuovi,
+// disiscrive quelli non piu' nella lista, e scrive la stessa lista in
+// KnownChildrenCache (letta da FcmService.onMessageReceived come
+// seconda barriera). Su signOut(), disiscrizione di tutti i topic
+// correnti e pulizia della cache: altrimenti il telefono resterebbe
+// iscritto ai topic della famiglia precedente anche dopo un cambio
+// account.
 class AppViewModel(
     private val authRepository: AuthRepository,
     private val deviceRepository: DeviceRepository,
+    private val application: Application,
     private val backendClient: BackendClient = BackendClient(),
 ) : ViewModel() {
 
     private val _user = MutableStateFlow(authRepository.currentUser)
     val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
-
-    val children: StateFlow<List<ChildInfo>> = deviceRepository.observeChildren()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val deviceStates: StateFlow<Map<String, DeviceState>> = children
-        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeDeviceState(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val historyByChild: StateFlow<Map<String, List<LocationPoint>>> = children
-        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeHistory(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val eventsByChild: StateFlow<Map<String, List<DeviceEvent>>> = children
-        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeRecentEvents(it) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
-    val geofences: StateFlow<List<GeofenceZone>> = deviceRepository.observeGeofences()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Proprio nickname (parents/{uid}.nickname) — segue l'utente loggato,
     // null se nessuno ha ancora fatto login o non l'ha ancora impostato.
@@ -121,6 +127,59 @@ class AppViewModel(
     val ownFamilyId: StateFlow<String?> = user
         .flatMapLatest { u -> if (u == null) flowOf(null) else deviceRepository.observeOwnFamilyId(u.uid) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // v0.31.0 (2026-09-23): ora derivati da "ownFamilyId", non piu' da
+    // una query senza filtro — vedi Storico versioni sopra (punto 1).
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val children: StateFlow<List<ChildInfo>> = ownFamilyId
+        .flatMapLatest { familyId -> if (familyId == null) flowOf(emptyList()) else deviceRepository.observeChildren(familyId) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val deviceStates: StateFlow<Map<String, DeviceState>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeDeviceState(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val historyByChild: StateFlow<Map<String, List<LocationPoint>>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeHistory(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val eventsByChild: StateFlow<Map<String, List<DeviceEvent>>> = children
+        .flatMapLatest { list -> combineByChild(list) { deviceRepository.observeRecentEvents(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val geofences: StateFlow<List<GeofenceZone>> = ownFamilyId
+        .flatMapLatest { familyId -> if (familyId == null) flowOf(emptyList()) else deviceRepository.observeGeofences(familyId) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // v0.31.0 (2026-09-23): Fase 2 di qwen_plan.md — vedi Storico
+    // versioni sopra (punto 2). Collector indipendente dalla UI:
+    // mantiene le iscrizioni FCM per-bambino allineate a "children" per
+    // tutta la vita del ViewModel, non solo mentre una schermata lo
+    // osserva (le iscrizioni FCM devono restare valide anche ad app in
+    // background). subscribedChildIds tiene l'ultimo insieme noto in
+    // questo processo, per disiscrivere solo i topic che sono davvero
+    // usciti dalla lista.
+    private var subscribedChildIds: Set<String> = emptySet()
+
+    init {
+        viewModelScope.launch {
+            children.collect { list -> syncChildTopics(list.map { it.id }.toSet()) }
+        }
+    }
+
+    private suspend fun syncChildTopics(currentIds: Set<String>) {
+        val messaging = FirebaseMessaging.getInstance()
+        val added = currentIds - subscribedChildIds
+        val removed = subscribedChildIds - currentIds
+        added.forEach { id -> runCatching { messaging.subscribeToTopic(Constants.fcmChildTopic(id)).await() } }
+        removed.forEach { id -> runCatching { messaging.unsubscribeFromTopic(Constants.fcmChildTopic(id)).await() } }
+        subscribedChildIds = currentIds
+        KnownChildrenCache.update(application, currentIds)
+    }
 
     private val _optimisticMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
 
@@ -194,7 +253,18 @@ class AppViewModel(
         }
     }
 
+    /**
+     * v0.31.0: prima di disconnettersi, disiscrive tutti i topic
+     * per-bambino correnti e pulisce KnownChildrenCache — altrimenti il
+     * telefono resterebbe iscritto ai topic della famiglia precedente
+     * (e la cache conterrebbe ancora quei childId) anche dopo il login
+     * di un genitore diverso sullo stesso dispositivo.
+     */
     fun signOut() {
+        val messaging = FirebaseMessaging.getInstance()
+        subscribedChildIds.forEach { id -> messaging.unsubscribeFromTopic(Constants.fcmChildTopic(id)) }
+        subscribedChildIds = emptySet()
+        KnownChildrenCache.clear(application)
         authRepository.signOut()
         _user.value = null
     }
@@ -371,9 +441,10 @@ class AppViewModel(
     class Factory(
         private val authRepository: AuthRepository,
         private val deviceRepository: DeviceRepository,
+        private val application: Application,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            AppViewModel(authRepository, deviceRepository) as T
+            AppViewModel(authRepository, deviceRepository, application) as T
     }
 }

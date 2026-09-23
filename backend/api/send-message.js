@@ -1,6 +1,6 @@
 /**
  * POST /api/send-message
- * Versione: 0.5.0
+ * Versione: 0.6.0
  *
  * Messaggio di chat inviato dal watch verso il genitore. Scrive il
  * messaggio e invia subito la push FCM a tutti i genitori nella stessa
@@ -41,6 +41,12 @@
  *   intervento gia fatto in trigger-event.js v0.10.0): -1 lettura Firestore per
  *   invio, token obsoleti smaltiti da FCM stesso. L'iscrizione al topic e
  *   lato phone-app (TrackerApplication.kt + FcmService.onNewToken).
+ * - 0.6.0 (2026-09-23): Fase 2 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — il topic globale
+ *   "parents" mandava un messaggio di chat di un bambino a QUALSIASI
+ *   telefono di QUALSIASI famiglia iscritta. Sostituito col topic
+ *   per-bambino "child-<childId>" (vedi _lib/fcmTopics.js), a cui la
+ *   phone-app si iscrive solo per i propri figli.
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -48,11 +54,10 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
+const { childTopic } = require("./_lib/fcmTopics.js");
 
 const MAX_TEXT_LENGTH = 500;
 const MESSAGE_RETENTION_HOURS = 24;
-// Topic FCM dei genitori (vedi Storico versioni).
-const PARENTS_TOPIC = "parents";
 
 module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "POST") {
@@ -101,13 +106,13 @@ module.exports = wrapHandler(async (req, res) => {
     expiresAt,
   });
 
-  // Invio sul topic FCM "parents"
-  // (iscrizione lato phone-app). Niente piu lettura della collezione parents a
+  // Invio sul topic per-bambino "child-<childId>" (v0.6.0, iscrizione
+  // lato phone-app). Niente piu lettura della collezione parents a
   // ogni messaggio; gli array fcmTokens restano scritti per debug ma non sono
   // usati per l'invio. Solo "data" (vedi storico versioni v0.3.0 sopra): cosi'
   // onMessageReceived() gira sempre lato phone-app anche ad app in background.
   await getMessaging().send({
-    topic: PARENTS_TOPIC,
+    topic: childTopic(childId),
     data: { type: "chat", sender: "child", senderName, text, childId },
     android: { priority: "high" },
   });

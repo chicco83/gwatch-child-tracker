@@ -54,14 +54,22 @@ class TrackerApplication : Application() {
         // Bug (2026-09-18): questa chiamata era stata
         // messa DOPO la chiusura di onCreate() invece che al suo interno —
         // uno statement eseguibile piazzato direttamente nel corpo della
-        // classe, non valido in Kotlin (la app non compilava piu'). Vedi
-        // Constants.kt: iscrizione al topic FCM dei genitori. L'iscrizione
-        // e' idempotente: ripetuta ad ogni avvio dell'app, cosi' sopravvive
-        // anche a reset dati/cancellazione del token. runCatching perche' un
-        // eventuale fallimento (es. offline al primo avvio) non deve mai
-        // bloccare l'avvio; in quel caso la ri-iscrizione di
-        // FcmService.onNewToken copre il buco.
-        runCatching { FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC) }
+        // classe, non valido in Kotlin (la app non compilava piu'). Prima
+        // qui si faceva l'iscrizione al topic FCM globale dei genitori
+        // (Constants.FCM_PARENTS_TOPIC) — rimossa in Fase 2 (vedi
+        // Constants.kt/AppViewModel.kt): nessuna iscrizione a un topic
+        // per-bambino e' possibile qui, perche' a questo punto (avvio
+        // dell'app, prima del login) non si sa ancora quale famiglia/
+        // quali figli abbia l'utente.
+        //
+        // v0.9.0 (2026-09-23): disiscrizione una tantum dal vecchio topic
+        // globale "parents" — installazioni esistenti restano iscritte
+        // finche' non lo fanno esplicitamente, continuando a ricevere le
+        // push cross-famiglia che la Fase 2 elimina lato backend/nuove
+        // iscrizioni. unsubscribeFromTopic e' idempotente (nessun errore
+        // se gia' non iscritti), quindi va bene richiamarla ad ogni avvio
+        // invece di tenere un flag "gia' fatto" in SharedPreferences.
+        runCatching { FirebaseMessaging.getInstance().unsubscribeFromTopic(Constants.LEGACY_PARENTS_TOPIC) }
     }
 
     companion object {

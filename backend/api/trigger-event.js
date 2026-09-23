@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.17.0
+ * Versione: 0.18.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -156,6 +156,15 @@
  *   recente. "sosActive" resta sempre marcato true su un "sos" a
  *   prescindere dalla freschezza del fix (flag di sicurezza, non un
  *   dato di posizione).
+ * - 0.18.0 (2026-09-23): Fase 2 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — le tre push
+ *   (notifica normale, exit_alarm, sos_alarm) partivano sul topic FCM
+ *   globale "parents": qualunque telefono di qualunque famiglia
+ *   iscritto riceveva/sentiva suonare l'allarme di un bambino non
+ *   proprio. Ora ognuna parte sul topic per-bambino
+ *   "child-<childId>" (vedi _lib/fcmTopics.js), a cui la phone-app si
+ *   iscrive solo per i propri figli (TrackerApplication.kt/
+ *   AppViewModel.kt).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -164,12 +173,11 @@ const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
+const { childTopic } = require("./_lib/fcmTopics.js");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
-// Retention eventi (stesso valore di
-// HISTORY_RETENTION_HOURS in ingest-location.js) e topic FCM dei genitori.
+// Retention eventi, stesso valore di HISTORY_RETENTION_HOURS in ingest-location.js.
 const EVENT_RETENTION_HOURS = 24 * 365;
-const PARENTS_TOPIC = "parents";
 
 function buildNotification(type, childName, zoneName, source) {
   if (type === "sos") {
@@ -198,10 +206,11 @@ function buildNotification(type, childName, zoneName, source) {
   };
 }
 
-// Rimossa fetchParentFcmTokens (leggeva
-// l'intera collezione parents a ogni evento). L'invio avviene sul topic "parents":
-// gli array fcmTokens su parents/{uid} restano scritti dalla phone-app (inutilizzati
-// per l'invio, utili al debug; eventuali rimozione in Fase 2).
+// Rimossa fetchParentFcmTokens (leggeva l'intera collezione parents a
+// ogni evento). L'invio avviene sul topic per-bambino "child-<childId>"
+// (vedi _lib/fcmTopics.js/Storico versioni v0.18.0): gli array
+// fcmTokens su parents/{uid} restano scritti dalla phone-app
+// (inutilizzati per l'invio, utili solo al debug).
 
 module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "POST") {
@@ -342,13 +351,15 @@ module.exports = wrapHandler(async (req, res) => {
   const shouldSosAlarm = type === "sos" && shouldNotify;
 
   if (shouldNotify || shouldAlarm || shouldSosAlarm) {
-    // Invio via topic, nessun array di
-    // token da leggere/controllare (il blocco semplice mantiene le graffe bilanciate)
+    // v0.18.0: invio sul topic per-bambino, non piu' sul topic globale
+    // "parents" (vedi Storico versioni sopra) — nessun array di token
+    // da leggere/controllare.
+    const topic = childTopic(childId);
     {
       if (shouldNotify) {
         const { title, body } = buildNotification(type, childName, zoneName, source);
         await getMessaging().send({
-          topic: PARENTS_TOPIC,
+          topic,
           notification: { title, body },
           data: { type, lat: String(lat), lon: String(lon), childId },
           android: { priority: "high" },
@@ -360,7 +371,7 @@ module.exports = wrapHandler(async (req, res) => {
         // mostrare una notifica passiva quando l'utente la tocca (vedi
         // storico versioni sopra).
         await getMessaging().send({
-          topic: PARENTS_TOPIC,
+          topic,
           data: { type: "exit_alarm", zoneName, childId },
           android: { priority: "high" },
         });
@@ -370,7 +381,7 @@ module.exports = wrapHandler(async (req, res) => {
         // poter avviare SosAlarmService anche ad app in
         // background/uccisa (vedi phone-app/.../alarm/SosAlarmService.kt).
         await getMessaging().send({
-          topic: PARENTS_TOPIC,
+          topic,
           data: { type: "sos_alarm", childName, childId },
           android: { priority: "high" },
         });

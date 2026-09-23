@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: AppViewModel = viewModel(
-                factory = AppViewModel.Factory(authRepository, deviceRepository),
+                factory = AppViewModel.Factory(authRepository, deviceRepository, application),
             )
             val navController = rememberNavController()
             val user by viewModel.user.collectAsState()

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.70.0
+**Versione contesto:** 0.71.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2112,3 +2112,36 @@ CHANGELOG.md  Storico versioni
   sessione non ha visibilita' su quale APK sia davvero installato sul
   telefono dell'utente — puo' solo garantire che il numero di versione
   nel repo rifletta correttamente il codice sorgente attuale.
+- 2026-09-23: Implementata la Fase 2 di qwen_plan.md (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): topic FCM
+  per-bambino ("child-<childId>", nuovo backend/api/_lib/fcmTopics.js)
+  al posto del topic globale "parents" a cui si iscriveva ogni
+  phone-app ancor prima del login — SOS/geofence/chat/batteria di un
+  bambino arrivavano a QUALSIASI telefono di QUALSIASI famiglia sullo
+  stesso progetto Firebase, allarme sonoro incluso. trigger-event.js/
+  send-message.js/_lib/batteryAlerts.js mandano ora sul topic del
+  bambino coinvolto; AppViewModel.kt tiene le iscrizioni allineate a
+  "children" con un collector indipendente dalla UI (le iscrizioni FCM
+  devono restare valide anche ad app in background); TrackerApplication.kt
+  non si iscrive piu' al topic globale, anzi se ne disiscrive una
+  tantum per migrare le installazioni esistenti. Aggiunto anche il
+  "minimo sindacale" del piano: FcmService.onMessageReceived() scarta
+  un messaggio il cui childId non e' tra i propri figli (nuova
+  KnownChildrenCache, SharedPreferences), seconda barriera oltre al
+  topic. signOut() disiscrive tutto e pulisce la cache, per non
+  lasciare un secondo genitore che fa login sullo stesso telefono
+  iscritto ai topic della famiglia precedente.
+
+  Lavorando su questo e' emerso un bug bloccante nella Fase 1, NON dal
+  documento di review: DeviceRepository.observeChildren()/
+  observeGeofences() interrogavano le collezioni "devices"/"geofences"
+  senza alcun where(), ma le regole v0.7.0 richiedono
+  myFamilyId()==resource.data.familyId per ogni documento — una query
+  Firestore non provabilmente vincolata da quella stessa condizione
+  viene rifiutata IN BLOCCO (non filtrata documento per documento).
+  Invisibile finche' l'utente non pubblica firestore.rules v0.7.0
+  (passaggio manuale ancora in sospeso), ma una volta pubblicate la
+  lista bambini/zone si sarebbe svuotata per chiunque. Corretto
+  aggiungendo whereEqualTo("familyId", ...) a entrambe le query
+  (DeviceRepository.kt v0.8.0), col familyId preso da
+  AppViewModel.ownFamilyId. phone-app portata a v0.15.0 (v0.71.0).

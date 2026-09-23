@@ -97,8 +97,20 @@ android {
         // versionName: un rebuild sarebbe rimasto indistinguibile dal
         // build precedente. Individuato verificando con l'utente quale
         // fosse la versione realmente in produzione sul telefono.
-        versionCode = 14
-        versionName = "0.14.0"
+        // v0.15.0 (2026-09-23): due interventi (vedi CHANGELOG.md
+        // v0.71.0). (1) Bug trovato lavorando sul punto 2, non dal
+        // documento di review: observeChildren()/observeGeofences() in
+        // DeviceRepository.kt interrogavano le collezioni senza filtro
+        // familyId — le regole Firestore v0.7.0 rifiutano in blocco una
+        // query non provabilmente vincolata, quindi appena pubblicate
+        // la lista bambini/zone si sarebbe svuotata per chiunque.
+        // (2) Fase 2 di qwen_plan.md (individuato da
+        // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): topic FCM
+        // per-bambino al posto del topic globale "parents" — SOS/
+        // geofence/chat/batteria di un bambino non arrivano piu' a
+        // telefoni di altre famiglie iscritti allo stesso topic.
+        versionCode = 15
+        versionName = "0.15.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

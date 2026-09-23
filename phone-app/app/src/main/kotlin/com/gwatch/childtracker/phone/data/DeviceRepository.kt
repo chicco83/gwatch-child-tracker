@@ -34,6 +34,20 @@ package com.gwatch.childtracker.phone.data
 // (AppViewModel lo valorizza prima di chiamare, non e' mai scelto
 // dall'utente). Aggiunto observeOwnFamilyId(): serve ad AppViewModel
 // per sapere quale familyId stampare su una zona nuova.
+// v0.8.0 (2026-09-23): bug trovato lavorando sulla Fase 2 (topic FCM
+// per-bambino, vedi AppViewModel.kt) — NON viene dal documento di
+// review. observeChildren()/observeGeofences() interrogavano le
+// collezioni "devices"/"geofences" SENZA alcun where(): le regole
+// Firestore v0.7.0 richiedono myFamilyId()==resource.data.familyId
+// per ogni documento, ma Firestore rifiuta IN BLOCCO una query senza
+// un where che combaci esplicitamente con la regola (non filtra
+// documento per documento, vedi doc "security rules aren't filters")
+// — una volta pubblicate le regole v0.7.0, la lista bambini/zone
+// avrebbe smesso di caricarsi del tutto per chiunque. Aggiunto
+// .whereEqualTo("familyId", familyId) a entrambe le query, ora
+// provabilmente conformi alla regola; entrambe prendono il familyId
+// del genitore loggato come parametro esplicito invece di leggerlo
+// da capo (AppViewModel lo ha gia' via observeOwnFamilyId).
 
 import android.util.Log
 import com.google.firebase.Timestamp
@@ -131,53 +145,59 @@ class DeviceRepository {
     // v0.4.0: collezione radice "geofences" (non piu' annidata sotto un
     // singolo device) — una zona puo' valere per piu' bambini, vedi
     // GeofenceZone.childIds e backend/firestore.rules v0.6.0.
-    fun observeGeofences(): Flow<List<GeofenceZone>> = callbackFlow {
-        val registration = db.collection("geofences").addSnapshotListener { snap, error ->
-            if (error != null) Log.e(TAG, "observeGeofences", error)
-            if (snap == null) {
-                trySend(emptyList())
-                return@addSnapshotListener
+    // v0.8.0: filtro whereEqualTo("familyId", ...) obbligatorio, vedi
+    // Storico versioni sopra — senza, la query intera viene rifiutata
+    // dalle regole v0.7.0 non appena pubblicate.
+    fun observeGeofences(familyId: String): Flow<List<GeofenceZone>> = callbackFlow {
+        val registration = db.collection("geofences")
+            .whereEqualTo("familyId", familyId)
+            .addSnapshotListener { snap, error ->
+                if (error != null) Log.e(TAG, "observeGeofences", error)
+                if (snap == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                trySend(
+                    snap.documents.map { d ->
+                        GeofenceZone(
+                            id = d.id,
+                            name = d.getString("name") ?: "",
+                            lat = d.getDouble("lat") ?: 0.0,
+                            lon = d.getDouble("lon") ?: 0.0,
+                            radiusMeters = d.getDouble("radiusMeters") ?: 150.0,
+                            active = d.getBoolean("active") ?: true,
+                            notifyOnEnter = d.getBoolean("notifyOnEnter") ?: true,
+                            notifyOnExit = d.getBoolean("notifyOnExit") ?: true,
+                            alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
+                            childIds = (d.get("childIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                            dndOnZone = d.getBoolean("dndOnZone") ?: false,
+                            familyId = d.getString("familyId") ?: "",
+                        )
+                    },
+                )
             }
-            trySend(
-                snap.documents.map { d ->
-                    GeofenceZone(
-                        id = d.id,
-                        name = d.getString("name") ?: "",
-                        lat = d.getDouble("lat") ?: 0.0,
-                        lon = d.getDouble("lon") ?: 0.0,
-                        radiusMeters = d.getDouble("radiusMeters") ?: 150.0,
-                        active = d.getBoolean("active") ?: true,
-                        notifyOnEnter = d.getBoolean("notifyOnEnter") ?: true,
-                        notifyOnExit = d.getBoolean("notifyOnExit") ?: true,
-                        alarmOnExit = d.getBoolean("alarmOnExit") ?: false,
-                        childIds = (d.get("childIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                        dndOnZone = d.getBoolean("dndOnZone") ?: false,
-                        familyId = d.getString("familyId") ?: "",
-                    )
-                },
-            )
-        }
         awaitClose { registration.remove() }
     }
 
     // v0.4.0: elenco bambini registrati (per il selettore toggle di
     // GeofenceScreen.kt e, dalle prossime fasi, chat/mappa/impostazioni).
-    // Query live sull'intera collezione "devices", gia' leggibile da
-    // qualunque genitore autorizzato (backend/firestore.rules, isParent()
-    // non dipende dal singolo id).
-    fun observeChildren(): Flow<List<ChildInfo>> = callbackFlow {
-        val registration = db.collection("devices").addSnapshotListener { snap, error ->
-            if (error != null) Log.e(TAG, "observeChildren", error)
-            if (snap == null) {
-                trySend(emptyList())
-                return@addSnapshotListener
+    // v0.8.0: filtro whereEqualTo("familyId", ...) obbligatorio (vedi
+    // Storico versioni sopra) — non piu' l'intera collezione "devices".
+    fun observeChildren(familyId: String): Flow<List<ChildInfo>> = callbackFlow {
+        val registration = db.collection("devices")
+            .whereEqualTo("familyId", familyId)
+            .addSnapshotListener { snap, error ->
+                if (error != null) Log.e(TAG, "observeChildren", error)
+                if (snap == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                trySend(
+                    snap.documents.map { d ->
+                        ChildInfo(id = d.id, name = d.getString("childName")?.takeIf { it.isNotBlank() } ?: d.id)
+                    },
+                )
             }
-            trySend(
-                snap.documents.map { d ->
-                    ChildInfo(id = d.id, name = d.getString("childName")?.takeIf { it.isNotBlank() } ?: d.id)
-                },
-            )
-        }
         awaitClose { registration.remove() }
     }
 

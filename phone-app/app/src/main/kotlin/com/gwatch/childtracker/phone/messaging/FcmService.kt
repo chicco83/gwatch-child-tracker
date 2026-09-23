@@ -43,6 +43,19 @@ package com.gwatch.childtracker.phone.messaging
 //   payload data). Titolo ora "Messaggio da {nickname}"; se un payload
 //   piu' vecchio/senza senderName arrivasse comunque, fallback sul
 //   vecchio testo generico invece di mostrare "null".
+// v0.7.0 (2026-09-23): Fase 2 di qwen_plan.md (individuato da
+//   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — le push non
+//   arrivano piu' dal topic globale "parents" ma da un topic
+//   per-bambino (vedi Constants.fcmChildTopic/TrackerApplication.kt),
+//   quindi onNewToken() non si iscrive piu' a nessun topic globale
+//   qui (AppViewModel.kt gestisce le iscrizioni per-bambino quando
+//   cambia la lista "children", non ad ogni rotazione del token).
+//   Aggiunto anche il "minimo sindacale" del piano: prima di agire su
+//   un evento con childId (exit_alarm/sos_alarm/chat), verifica che
+//   sia uno dei propri figli (KnownChildrenCache) — seconda barriera
+//   nel caso restasse una sottoscrizione residua a un topic non piu'
+//   proprio (es. cambio famiglia, nessuna funzione di rimozione oggi,
+//   ma meglio non fare affidamento solo sul topic).
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -58,9 +71,9 @@ import com.gwatch.childtracker.phone.alarm.ExitAlarmService
 import com.gwatch.childtracker.phone.alarm.SosAlarmService
 import com.gwatch.childtracker.phone.data.DeviceRepository
 import com.gwatch.childtracker.phone.data.IncomingMessageStore
+import com.gwatch.childtracker.phone.data.KnownChildrenCache
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.ui.MainActivity
-import com.gwatch.childtracker.phone.util.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,9 +83,9 @@ class FcmService : FirebaseMessagingService() {
     private val repository = DeviceRepository()
 
     override fun onNewToken(token: String) {
-        // Ri-iscrizione al topic (idempotente, vedi TrackerApplication.kt):
-        // se l'avvio precedente era offline la subscription puo essere mancante.
-        FirebaseMessaging.getInstance().subscribeToTopic(Constants.FCM_PARENTS_TOPIC)
+        // v0.7.0: vedi Storico versioni sopra — nessuna iscrizione a un
+        // topic globale qui, le iscrizioni per-bambino le gestisce
+        // AppViewModel quando cambia la lista "children".
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         CoroutineScope(Dispatchers.IO).launch {
             runCatching { repository.registerFcmToken(uid, token) }
@@ -80,6 +93,12 @@ class FcmService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        val childId = message.data["childId"]
+        // v0.7.0: vedi Storico versioni sopra — se il payload porta un
+        // childId e non e' tra i propri figli, scarta subito: seconda
+        // barriera oltre al topic per-bambino.
+        if (childId != null && !KnownChildrenCache.contains(this, childId)) return
+
         when (message.data["type"]) {
             "exit_alarm" -> {
                 val zoneName = message.data["zoneName"] ?: getString(R.string.geofence_unknown_zone)

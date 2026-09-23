@@ -7,6 +7,52 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.71.0] - 2026-09-23
+
+### Added
+- **Fase 2 di qwen_plan.md — topic FCM per-bambino** (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5). Le push (SOS,
+  geofence, chat, batteria scarica) partivano tutte sul topic FCM
+  **globale** `"parents"`, a cui ogni phone-app si iscriveva ancor
+  prima del login: qualunque telefono di qualunque famiglia sullo
+  stesso progetto Firebase riceveva SOS/geofence/chat/batteria di
+  QUALSIASI bambino di QUALSIASI famiglia, e su `sos_alarm`/
+  `exit_alarm` l'allarme sonoro partiva anche per un bambino non
+  proprio. Sostituito con un topic per bambino (`child-<childId>`,
+  vedi nuovo `backend/api/_lib/fcmTopics.js`): `trigger-event.js`
+  (v0.18.0), `send-message.js` (v0.6.0) e `_lib/batteryAlerts.js`
+  (v0.2.0) mandano ora sul topic del bambino coinvolto. La phone-app si
+  iscrive/disiscrive dinamicamente ai topic dei propri figli quando la
+  lista cambia (`AppViewModel.kt`, nuovo collector su `children`,
+  indipendente dalla UI in primo piano); `TrackerApplication.kt` non si
+  iscrive più al topic globale all'avvio, anzi se ne disiscrive una
+  tantum per migrare le installazioni esistenti. Aggiunto anche il
+  "minimo sindacale" indicato dal piano: `FcmService.onMessageReceived()`
+  scarta subito un messaggio il cui `childId` non è tra i propri figli
+  (nuova `KnownChildrenCache`, SharedPreferences aggiornata da
+  `AppViewModel` ad ogni cambio di `children`) — seconda barriera oltre
+  al topic, per non dipendere solo da una sottoscrizione corretta.
+  `signOut()` disiscrive tutti i topic correnti e pulisce la cache,
+  altrimenti un secondo genitore che fa login sullo stesso telefono
+  resterebbe iscritto ai topic della famiglia precedente.
+
+### Fixed
+- **phone-app: lista bambini/zone si sarebbe svuotata dopo la
+  pubblicazione di `firestore.rules` v0.7.0**. Trovato lavorando sulla
+  Fase 2 sopra, non viene dal documento di review.
+  `DeviceRepository.observeChildren()`/`observeGeofences()`
+  interrogavano le collezioni `devices`/`geofences` **senza alcun
+  `where()`**, mentre le regole v0.7.0 (Fase 1, v0.68.0) richiedono
+  `myFamilyId() == resource.data.familyId` per ogni documento —
+  Firestore rifiuta in blocco (non filtra documento per documento) una
+  query che non sia provabilmente vincolata dalla stessa condizione
+  della regola. Il bug era invisibile finché quelle regole non fossero
+  state effettivamente pubblicate (passaggio manuale ancora in sospeso
+  lato utente), ma appena pubblicate la app non avrebbe più mostrato
+  nessun bambino/zona, per nessuno. Aggiunto `.whereEqualTo("familyId",
+  ...)` a entrambe le query (`DeviceRepository.kt` v0.8.0), ora prese
+  da `AppViewModel.ownFamilyId` invece che lette da capo.
+
 ## [0.70.0] - 2026-09-23
 
 ### Fixed

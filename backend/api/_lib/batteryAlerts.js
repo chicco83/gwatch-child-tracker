@@ -1,6 +1,6 @@
 /**
  * _lib/batteryAlerts.js
- * Versione: 0.1.0
+ * Versione: 0.2.0
  *
  * Notifiche automatiche di batteria scarica del watch. NON e' un
  * endpoint a se' stante (vedi il limite di 12 Serverless Function su
@@ -33,11 +33,16 @@
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-19): versione iniziale, richiesta dall'utente.
+ * - 0.2.0 (2026-09-23): Fase 2 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — la notifica di
+ *   batteria scarica partiva sul topic globale "parents", ricevuta da
+ *   qualunque famiglia iscritta. Sostituito col topic per-bambino
+ *   "child-<childId>" (vedi _lib/fcmTopics.js).
  */
 const { getMessaging } = require("firebase-admin/messaging");
 const { Timestamp, FieldValue } = require("firebase-admin/firestore");
+const { childTopic } = require("./fcmTopics.js");
 
-const PARENTS_TOPIC = "parents";
 const MESSAGE_RETENTION_HOURS = 24; // stesso valore di parent-command.js
 const LOW_BATTERY_MESSAGE_TEXT = "non hai più batteria, aspettami dove sei.";
 const LOW_BATTERY_SENDER_NAME = "gWatch";
@@ -110,7 +115,7 @@ async function checkBatteryAlerts(db, deviceRef, childId, battery, charging, pre
 
     const { title, body } = buildBatteryNotification(crossedLevel, childName);
     await getMessaging().send({
-      topic: PARENTS_TOPIC,
+      topic: childTopic(childId),
       notification: { title, body },
       data: { type: "battery_low", level: String(crossedLevel), childId },
       android: { priority: "high" },

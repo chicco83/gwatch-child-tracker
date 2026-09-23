@@ -17,9 +17,16 @@ object Constants {
     // preso a runtime), quindi nessun local.properties necessario.
     const val BACKEND_BASE_URL = "https://gwatch-child-tracker.vercel.app"
 
-    // Topic FCM dei genitori — il backend invia le push (chat, SOS,
-    // geofence) sul topic invece che sui token array letti da Firestore. La
-    // subscription e fatta in TrackerApplication.onCreate e ri-fatta in
-    // FcmService.onNewToken (idempotente). Vedi send-message.js/trigger-event.js.
-    const val FCM_PARENTS_TOPIC = "parents"
+    // v0.9.0 (2026-09-23): Fase 2 di qwen_plan.md (individuato da
+    // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — FCM_PARENTS_TOPIC
+    // globale rimosso: qualunque telefono di qualunque famiglia iscritto
+    // riceveva/sentiva suonare l'allarme di un bambino non proprio (vedi
+    // backend/api/trigger-event.js/send-message.js/_lib/batteryAlerts.js
+    // v0.18.0/0.6.0/0.2.0). Un topic per bambino, sottoscritto solo per i
+    // propri figli dopo il login (vedi AppViewModel.kt/
+    // TrackerApplication.kt). LEGACY_PARENTS_TOPIC resta solo per
+    // disiscrivere le installazioni esistenti dal vecchio topic globale
+    // (migrazione one-time, vedi TrackerApplication.kt).
+    fun fcmChildTopic(childId: String) = "child-$childId"
+    const val LEGACY_PARENTS_TOPIC = "parents"
 }
