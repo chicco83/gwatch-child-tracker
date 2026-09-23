@@ -88,8 +88,17 @@ android {
         // automatica della posizione a tutti i bambini all'apertura
         // dell'app; "Ultima posizione" mostra ora anche data/ora
         // assolute oltre al relativo (vedi MapScreen.kt).
-        versionCode = 13
-        versionName = "0.13.0"
+        // v0.14.0 (2026-09-23): bump mancato nel commit originale —
+        // la Fase 1 "isolamento famiglie" (22/09, vedi CHANGELOG.md
+        // v0.68.0) aveva aggiunto la nuova sezione "Genitori" in
+        // SettingsScreen.kt (invito/accettazione famiglia) e relativo
+        // codice in AppViewModel.kt/BackendClient.kt/
+        // DeviceRepository.kt senza incrementare versionCode/
+        // versionName: un rebuild sarebbe rimasto indistinguibile dal
+        // build precedente. Individuato verificando con l'utente quale
+        // fosse la versione realmente in produzione sul telefono.
+        versionCode = 14
+        versionName = "0.14.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

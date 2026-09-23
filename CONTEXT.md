@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.69.0
+**Versione contesto:** 0.70.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2096,3 +2096,19 @@ CHANGELOG.md  Storico versioni
   X" quando non e' vero e' esattamente il tipo di imprecisione che la
   pulizia dei riferimenti qwen di questa stessa sessione (v0.67.0) era
   nata per evitare.
+- 2026-09-23: L'utente ha chiesto quale versione della phone-app fosse
+  effettivamente in produzione, non essendone certo. Verificando
+  `phone-app/app/build.gradle.kts` e' emerso che il commit della Fase 1
+  (isolamento famiglie, 22/09, v0.68.0) aveva aggiunto codice reale alla
+  phone-app (nuova sezione "Genitori" in `SettingsScreen.kt`, invito/
+  accettazione famiglia, relative modifiche a `AppViewModel.kt`/
+  `BackendClient.kt`/`DeviceRepository.kt`) SENZA incrementare
+  versionCode/versionName — rimasti fermi a 13/"0.13.0" come prima di
+  quella modifica. Un rebuild della Fase 1 sarebbe stato indistinguibile
+  da uno precedente, stesso identico rischio di diagnosi gia' risolto
+  per watch-app in v0.5.0/versionCode ("utente non riusciva a verificare
+  se l'APK appena compilato fosse davvero quello installato"). Corretto
+  portando phone-app a versionCode 14/"0.14.0" (v0.70.0). Nota: questa
+  sessione non ha visibilita' su quale APK sia davvero installato sul
+  telefono dell'utente — puo' solo garantire che il numero di versione
+  nel repo rifletta correttamente il codice sorgente attuale.

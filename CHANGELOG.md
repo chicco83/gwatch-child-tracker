@@ -7,6 +7,19 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.70.0] - 2026-09-23
+
+### Fixed
+- **phone-app: versione ferma nonostante codice nuovo**. L'utente ha
+  chiesto quale versione della phone-app fosse in produzione, non
+  essendone certo — verificando è emerso che il commit della Fase 1
+  (isolamento famiglie, v0.68.0) aveva aggiunto la sezione "Genitori"
+  in `SettingsScreen.kt` (invito/accettazione famiglia) e il relativo
+  codice in `AppViewModel.kt`/`BackendClient.kt`/`DeviceRepository.kt`
+  senza incrementare `versionCode`/`versionName`, rimasti a 13/"0.13.0"
+  come prima della modifica — un rebuild sarebbe stato indistinguibile
+  dal precedente. Portato a `versionCode = 14` / `versionName = "0.14.0"`.
+
 ## [0.69.0] - 2026-09-23
 
 ### Fixed
