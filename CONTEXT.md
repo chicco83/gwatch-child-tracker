@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.84.0
+**Versione contesto:** 0.84.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2402,3 +2402,28 @@ CHANGELOG.md  Storico versioni
   pulsante ora mostra "Invio posizione in corso…" durante il tentativo
   (`GpsAvailability.sending`). **Da verificare**: fix senza aprire Maps
   (v0.84.0).
+- 2026-09-23: L'utente segnala che il 18-19/9 fix GPS e notifiche zone
+  funzionavano: sospetta una regressione recente. Verifica fatta:
+  (1) **Notifiche zone: regressione reale**, lato phone-app/backend, non
+  watch. Dalla Fase 2 (installata il 23/9 pomeriggio) la phone-app si
+  iscrive ai topic FCM `child-<id>` solo per i figli trovati con
+  `whereEqualTo("familyId", ...)` e scarta i messaggi di figli non in
+  `KnownChildrenCache`; in piu' si disiscrive dal vecchio topic
+  "parents". Fino alla migrazione `familyId` (sera del 23/9) nessun
+  documento aveva `familyId` → lista figli vuota → nessuna iscrizione →
+  notifiche di zone/SOS/chat perse in quella finestra. Errore
+  d'ordine: Fase 2 installata prima della migrazione. Dopo la
+  migrazione dovrebbe essere risolto: **da verificare** con un
+  ingresso/uscita zona reale.
+  (2) **GPS del watch**: nessuna modifica dopo il 19/9 tocca la
+  richiesta di posizione o la registrazione delle zone sul watch
+  (diff 1033976..e9b8d7a~1: solo buffer punti Fase 3, client HTTP
+  condiviso Fase 4, orario eventi zona, pulsante). Il blocco osservato
+  ("ultima posizione GPS di sistema: nessuna" finche' non si apre Maps)
+  e' a livello di sistema; ipotesi non verificata: riavvio/aggiornamento
+  recente del watch che ha azzerato i dati di aiuto del GPS. Il fix
+  v0.18.0 (GpsAssist) copre comunque il caso.
+  Tentata una lettura da Firestore delle date delle ultime posizioni/
+  eventi per datare l'inizio del problema: bloccata dal controllo di
+  sicurezza della sessione (dati di produzione), non aggirata — da
+  decidere con l'utente (v0.84.1).

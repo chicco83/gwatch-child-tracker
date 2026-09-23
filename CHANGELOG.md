@@ -38,6 +38,11 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 ### Known limitations
 - Non compilato in questa sessione. Da verificare sul Watch4 senza
   aprire Maps: il fix deve arrivare da solo (all'aperto).
+- **Notifiche zone/SOS/chat perse tra l'installazione della phone-app
+  con la Fase 2 (v0.71.0) e la migrazione `familyId` (v0.76.0)**: senza
+  `familyId` la lista figli era vuota, quindi nessuna iscrizione ai
+  topic per-bambino. Dopo la migrazione dovrebbe essere risolto, da
+  verificare con un evento zona reale.
 
 ## [0.83.0] - 2026-09-23
 
