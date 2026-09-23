@@ -7,7 +7,7 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
-## [0.75.0] - 2026-09-23
+## [0.76.0] - 2026-09-23
 
 ### Fixed
 - **Chiusi i due passaggi manuali rimasti in sospeso da v0.68.0** per
@@ -21,7 +21,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   solo nel repository (come già capitato in passato con le regole di
   sicurezza, vedi v0.59.0/v0.64.0): la protezione multi-famiglia
   descritta in v0.68.0 e il fix di query `familyId` di v0.71.0 non
-  erano quindi ancora effettivi sul progetto reale.
+  erano quindi ancora effettivi sul progetto reale. Eseguiti con
+  l'accesso configurato in v0.75.0 (sessione parallela partita dallo
+  stesso commit: entrambe avevano numerato v0.75.0, rinumerata questa
+  voce a v0.76.0 in fase di merge).
+
+## [0.75.0] - 2026-09-23
+
+### Infrastruttura
+- Configurato l'accesso autonomo di Claude Code a Firebase per i due
+  passi rimasti manuali dopo la Fase 5 (`scripts/migrate-family-ids.js`
+  e pubblicazione di `firestore.rules` v0.7.0). Generata una nuova
+  chiave per una service account dedicata gia' esistente nel progetto
+  e impostata come variabile d'ambiente `FIREBASE_SERVICE_ACCOUNT_B64`
+  a livello di environment (Settings, mai nel repository o in chat —
+  il tentativo di elaborarla via Bash in questa sessione e' stato
+  correttamente bloccato dal classificatore di sicurezza). Nessuna
+  modifica di codice. La variabile e' letta solo dalle sessioni avviate
+  dopo averla impostata; i due passi restano quindi da eseguire alla
+  prossima sessione, nell'ordine documentato (migrazione prima delle
+  regole).
 
 ## [0.74.0] - 2026-09-23
 

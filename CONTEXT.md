@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.75.0
+**Versione contesto:** 0.76.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2222,6 +2222,34 @@ CHANGELOG.md  Storico versioni
 
   **Con questa voce il piano di qwen_plan.md (5 fasi, tutte le
   priorita' 1-6 elencate nel documento) e' completato.**
+- 2026-09-23: Configurato l'accesso autonomo di Claude a Firebase per i
+  due passi manuali rimasti aperti dopo la Fase 5 (migrazione
+  `familyId` + pubblicazione `firestore.rules` v0.7.0). Nessuna
+  modifica di codice. Verificato che la sessione cloud non aveva ne'
+  credenziali (`FIREBASE_SERVICE_ACCOUNT_B64` assente, nessuna env var
+  Firebase/GCP) ne' CLI (`firebase`/`gcloud` non installate) — motivo
+  per cui in precedenza questi due passi erano rimasti manuali.
+  L'utente ha generato una nuova chiave per una service account
+  dedicata gia' esistente nel progetto e impostato il contenuto in
+  base64 come variabile d'ambiente `FIREBASE_SERVICE_ACCOUNT_B64` a
+  livello di **environment** Claude Code (Settings dell'environment,
+  non nel repository — letta automaticamente da ogni sessione futura;
+  dettagli della credenziale intenzionalmente non riportati qui, per
+  non lasciarli nella cronologia del repository). La chiave non e' mai
+  stata scritta su disco ne' processata da Claude in questa sessione:
+  il classificatore di sicurezza ha bloccato correttamente il
+  tentativo di leggerla/codificarla via Bash; la codifica base64 e'
+  stata fatta dall'utente in locale. Impostata a sessione gia'
+  avviata: non visibile nell'ambiente corrente (le env var si caricano
+  solo all'avvio), serve una sessione nuova perche' venga letta. Da
+  una sessione che la vede gia' in ambiente, i due passi restano da
+  eseguire nell'ordine documentato (migrazione prima, altrimenti
+  finestra di lockout per la famiglia attuale una volta pubblicate le
+  nuove regole); il deploy delle regole richiede in aggiunta
+  l'installazione on-demand di `firebase-tools` (assente in questa
+  sessione), autenticabile in modo non interattivo via
+  `GOOGLE_APPLICATION_CREDENTIALS` derivato dalla stessa variabile
+  (v0.75.0).
 - 2026-09-23: **Eseguiti i due passaggi manuali rimasti in sospeso da
   v0.68.0** per chiudere l'isolamento famiglie (Fase 1 di qwen_plan.md):
   script one-time `backend/scripts/migrate-family-ids.js` (credenziali
@@ -2246,4 +2274,7 @@ CHANGELOG.md  Storico versioni
   client. **Da confermare dall'utente al prossimo avvio reale della
   phone-app**: bambini/zone devono restare visibili come prima (nessun
   comportamento nuovo atteso, solo la rimozione della finestra di
-  rischio silenziosa).
+  rischio silenziosa). Eseguito con l'accesso configurato nella voce
+  precedente, da una sessione parallela partita dallo stesso commit
+  (entrambe avevano numerato v0.75.0: rinumerata questa a v0.76.0 in
+  fase di merge) (v0.76.0).
