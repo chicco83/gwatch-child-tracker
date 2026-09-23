@@ -110,8 +110,10 @@ android {
         // satelliti, vedi ui/GpsSearchScreen.kt.
         // v0.16.0 (2026-09-23): Ricerca GPS con diagnostica a schermo e
         // recupero da getLastKnownLocation, vedi ui/GpsSearchScreen.kt 0.2.0.
-        versionCode = 16
-        versionName = "0.16.0"
+        // v0.17.0 (2026-09-23): diagnostica permessi/AppOps/mock nella
+        // Ricerca GPS, vedi ui/GpsSearchScreen.kt 0.3.0.
+        versionCode = 17
+        versionName = "0.17.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

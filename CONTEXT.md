@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.82.0
+**Versione contesto:** 0.83.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2371,3 +2371,15 @@ CHANGELOG.md  Storico versioni
   automatico via rete, e con 14 satelliti usati il fix c'e' gia': non
   e' la causa di questo problema. Riconsiderare solo se, risolta la
   consegna, il primo fix risultasse lento (v0.82.0).
+- 2026-09-23: Secondo test Ricerca GPS (v0.16.0) su Watch4: posizione
+  di sistema ON, provider GPS ON, registrazione app OK, 10 satelliti
+  usati, 0 fix consegnati all'app. Esclusa una regressione nel codice
+  dei permessi (git: `requestPermissionsAndStart` invariato dalla
+  v0.31.0). Ipotesi principali, in ordine: (1) permesso ridotto a
+  livello AppOps (concesso "sulla carta" ma posizione ignorata);
+  (2) app di posizione fittizia attiva nelle Opzioni sviluppatore
+  (attive sul watch per l'ADB via WiFi): sostituisce il provider GPS
+  vero, i satelliti si vedono ma le posizioni reali non arrivano.
+  Aggiunte le righe di diagnostica corrispondenti (watch-app v0.17.0).
+  Riga "ultima posizione GPS di sistema" del test non ancora riportata
+  dall'utente (v0.83.0).

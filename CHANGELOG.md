@@ -7,6 +7,20 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-09-23
+
+### Added
+- **watch-app: diagnostica dei permessi nella Ricerca GPS**
+  (`ui/GpsSearchScreen.kt` v0.3.0, watch-app v0.17.0). Secondo test su
+  Watch4: posizione di sistema ON, provider GPS ON, registrazione OK,
+  10 satelliti usati, **0 fix arrivati all'app**. Verificato che non c'e'
+  una regressione nel codice che chiede i permessi (invariato dalla
+  v0.31.0; manifest toccato solo per il DND). Il sintomo e' tipico di
+  un permesso ridotto sul dispositivo, che Android non segnala come
+  errore. Nuove righe: permesso posizione precisa, permesso in
+  background, stato AppOps della posizione precisa, provider presenti,
+  posizione fittizia (mock) si/no.
+
 ## [0.82.0] - 2026-09-23
 
 ### Fixed

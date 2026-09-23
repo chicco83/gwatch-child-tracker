@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.2.0 (2026-09-23)
+// Versione: 0.3.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -37,6 +37,16 @@ package com.gwatch.childtracker.ui
 //       vale come fix anche se il listener non e' mai stato chiamato;
 //   (3) onFixFound chiamato una sola volta anche se listener e recupero
 //       scattano insieme.
+// - 0.3.0 (2026-09-23): secondo test su Watch4 — posizione di sistema ON,
+//   provider GPS ON, registrazione OK, 10 satelliti usati, ma 0 fix
+//   arrivati all'app. Android accetta la richiesta senza errori ma non
+//   consegna nulla: tipico di un permesso "ridotto" a livello di AppOps
+//   (es. posizione ignorata o solo in primo piano) che checkSelfPermission
+//   non mostra. Aggiunte alla diagnostica: permesso preciso, permesso in
+//   background, stato AppOps della posizione precisa, provider presenti,
+//   e se l'ultima posizione di sistema risulta fittizia (mock: con le
+//   Opzioni sviluppatore attive un'app di posizione fittizia sostituisce
+//   il GPS vero).
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -45,6 +55,7 @@ package com.gwatch.childtracker.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.GnssStatus
@@ -110,6 +121,12 @@ private data class GpsDiagnostics(
     val registerError: String? = null,
     val listenerFixes: Int = 0,
     val lastKnownAgeS: Long? = null,
+    // v0.3.0
+    val fineGranted: Boolean? = null,
+    val backgroundGranted: Boolean? = null,
+    val appOpMode: String? = null,
+    val providers: String? = null,
+    val lastKnownMock: Boolean? = null,
 )
 
 @Composable
@@ -161,6 +178,11 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                     locationEnabled = snapshot.locationEnabled,
                     gpsProviderEnabled = snapshot.gpsProviderEnabled,
                     lastKnownAgeS = snapshot.lastKnownAgeS,
+                    fineGranted = snapshot.fineGranted,
+                    backgroundGranted = snapshot.backgroundGranted,
+                    appOpMode = snapshot.appOpMode,
+                    providers = snapshot.providers,
+                    lastKnownMock = snapshot.lastKnownMock,
                 )
                 if (seconds % 10 == 0) Log.i(TAG, "stato: $diag, satelliti=${satellites.size}")
                 val age = snapshot.lastKnownAgeS
@@ -258,6 +280,12 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
         } else {
             context.getString(R.string.gps_diag_last_known_age, diag.lastKnownAgeS)
         },
+        // v0.3.0: permessi effettivi dell'app.
+        context.getString(R.string.gps_diag_fine, onOff(diag.fineGranted)),
+        context.getString(R.string.gps_diag_background, onOff(diag.backgroundGranted)),
+        context.getString(R.string.gps_diag_appop, diag.appOpMode ?: "?"),
+        context.getString(R.string.gps_diag_providers, diag.providers ?: "?"),
+        context.getString(R.string.gps_diag_mock, onOff(diag.lastKnownMock)),
     )
     lines.forEach {
         Text(
@@ -301,6 +329,11 @@ private data class SystemGpsState(
     val locationEnabled: Boolean?,
     val gpsProviderEnabled: Boolean?,
     val lastKnownAgeS: Long?,
+    val fineGranted: Boolean?,
+    val backgroundGranted: Boolean?,
+    val appOpMode: String?,
+    val providers: String?,
+    val lastKnownMock: Boolean?,
 )
 
 // v0.2.0: stato del sistema letto a ogni secondo. Ogni lettura e'
@@ -310,12 +343,36 @@ private fun readSystemGpsState(context: Context): SystemGpsState {
     val locationManager = context.getSystemService(LocationManager::class.java)
     val locationEnabled = runCatching { locationManager.isLocationEnabled }.getOrNull()
     val gpsEnabled = runCatching { locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrNull()
-    val ageS = runCatching {
-        locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
-            (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000L
+    val lastKnown = runCatching { locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
+    val ageS = lastKnown?.let { (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000L }
+    // v0.3.0: isFromMockProvider e' deprecato da API 31 ma disponibile
+    // da API 18 (minSdk 30): va bene per tutte le versioni del watch.
+    @Suppress("DEPRECATION")
+    val mock = lastKnown?.isFromMockProvider
+    val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+    val background = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+    // v0.3.0: stato AppOps della posizione precisa per questa app — puo'
+    // essere "ignorato" anche con il permesso concesso.
+    val appOp = runCatching {
+        val appOps = context.getSystemService(AppOpsManager::class.java)
+        val mode = appOps.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_FINE_LOCATION,
+            android.os.Process.myUid(),
+            context.packageName,
+        )
+        when (mode) {
+            AppOpsManager.MODE_ALLOWED -> "consentito"
+            AppOpsManager.MODE_FOREGROUND -> "solo in primo piano"
+            AppOpsManager.MODE_IGNORED -> "IGNORATO"
+            AppOpsManager.MODE_ERRORED -> "NEGATO"
+            AppOpsManager.MODE_DEFAULT -> "predefinito"
+            else -> "codice $mode"
         }
     }.getOrNull()
-    return SystemGpsState(locationEnabled, gpsEnabled, ageS)
+    val providers = runCatching { locationManager.allProviders.joinToString(", ") }.getOrNull()
+    return SystemGpsState(locationEnabled, gpsEnabled, ageS, fine, background, appOp, providers, mock)
 }
 
 // Avvia GPS + ascolto satelliti; ritorna la funzione che li ferma.
