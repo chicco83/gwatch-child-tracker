@@ -1,0 +1,35 @@
+# Fase 5 di qwen_plan.md (individuato da qwen3.8-27B-UD-IQ4_XS,
+# implementato da Sonnet 5): finora "npm test" (backend/test/*.test.js,
+# helper auth/quota) esisteva ma nessun job CI lo eseguiva — solo
+# cleanup-cron.yml gira automaticamente, e chiama l'endpoint /api/cleanup
+# gia' deployato, non i test. Un test rotto poteva restare inosservato
+# finche' qualcuno non lo lanciava a mano. Gira su ogni push/PR che
+# tocca backend/, non ad ogni cron.
+name: Test backend
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-test.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-test.yml"
+  workflow_dispatch: {} # permette anche l'avvio manuale da GitHub
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test

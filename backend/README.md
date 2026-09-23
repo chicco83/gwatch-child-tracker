@@ -211,6 +211,18 @@ Oppure per la sola parte Firestore, senza le funzioni:
 firebase emulators:start --only firestore
 ```
 
+## Test
+
+```
+cd backend && npm test
+```
+
+Copre gli helper `_lib/auth.js`/`_lib/quota.js` (`node --test`, nessuna
+dipendenza esterna oltre `firebase-admin`). Eseguito automaticamente
+dal workflow `.github/workflows/backend-test.yml` su ogni push/PR che
+tocca `backend/` — prima esisteva solo il cron di pulizia
+(`cleanup-cron.yml`), nessun job eseguiva i test.
+
 ## Note
 
 Vedi [`../CONTEXT.md`](../CONTEXT.md) per architettura completa e

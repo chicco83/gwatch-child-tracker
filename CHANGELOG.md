@@ -7,6 +7,35 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-09-23
+
+### Added
+- **Fase 5 di qwen_plan.md — job CI `npm test`** (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5). I test del backend
+  (`backend/test/*.test.js`, helper `auth`/`quota`) esistevano ma
+  nessun workflow GitHub Actions li eseguiva — solo il cron di pulizia
+  (`cleanup-cron.yml`) gira automaticamente, e chiama l'endpoint
+  `/api/cleanup` già deployato, non i test. Un test rotto poteva
+  restare inosservato finché qualcuno non lo lanciava a mano. Nuovo
+  `.github/workflows/backend-test.yml`: gira su ogni push/PR che tocca
+  `backend/` (`npm ci` + `npm test`), anche avviabile a mano
+  (`workflow_dispatch`). Aggiunta una sezione "Test" in
+  `backend/README.md`.
+
+### Documentazione
+- Verificate (nessuna modifica necessaria) le due segnalazioni di
+  igiene documentale del piano: il testo placeholder/l'entry vuota
+  `[0.33.1]` descritti per `CHANGELOG.md` non esistono più nella copia
+  attuale del file (probabilmente già risolti in un giro precedente);
+  `IMPROVEMENT_PLAN.md` non esiste più nel repository. Entrambe le
+  segnalazioni erano quindi non più attuali, nessun intervento
+  necessario.
+- Rimane aperta (segnalata, non eseguita) la terza voce del piano:
+  `CONTEXT.md` è cresciuto a ~137 KB (era ~108 KB alla stesura del
+  piano) — valutare di spezzarlo per componente (backend/watch/phone)
+  è una decisione strutturale che spetta all'utente, non eseguita
+  d'iniziativa in questo giro.
+
 ## [0.73.0] - 2026-09-23
 
 ### Fixed

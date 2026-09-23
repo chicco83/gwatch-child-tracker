@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.73.0
+**Versione contesto:** 0.74.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2197,3 +2197,28 @@ CHANGELOG.md  Storico versioni
   vigore; (13) GeofenceSyncWorker.kt resta una scelta deliberata gia'
   documentata (remove+re-add ad ogni sync), non un bug.
   watch-app a v0.13.0, phone-app a v0.16.0 (v0.73.0).
+- 2026-09-23: Implementata la Fase 5 di qwen_plan.md, ultima del piano
+  (individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5):
+  nuovo `.github/workflows/backend-test.yml` — i test del backend
+  esistevano ma nessun job CI li eseguiva (solo il cron di pulizia gira
+  automaticamente, e chiama l'endpoint gia' deployato, non i test).
+  Gira `npm ci && npm test` su ogni push/PR che tocca `backend/`.
+  Aggiunta una sezione "Test" in `backend/README.md`.
+
+  Verificate (nessuna modifica necessaria) le due segnalazioni di
+  igiene del piano: il placeholder/entry vuota `[0.33.1]` descritti per
+  `CHANGELOG.md` non esistono piu' nella copia attuale (verificato con
+  grep mirato, probabilmente gia' risolti in un giro precedente);
+  `IMPROVEMENT_PLAN.md` non esiste piu' nel repository. Entrambe
+  segnalazioni non piu' attuali dello stesso tipo gia' visto in Fase 1
+  (SOS retry, GeofenceSyncWorker) — il documento di review descrive lo
+  stato del repo al momento della sua stesura, non quello attuale.
+
+  Lasciata aperta (segnalata, non eseguita) la terza voce di igiene:
+  `CONTEXT.md` e' cresciuto a ~137 KB (~108 KB alla stesura del piano).
+  Spezzarlo per componente (backend/watch/phone) e' una decisione
+  strutturale — la voce del piano stesso la definisce "da valutare",
+  non un'azione da eseguire d'iniziativa; lasciata all'utente.
+
+  **Con questa voce il piano di qwen_plan.md (5 fasi, tutte le
+  priorita' 1-6 elencate nel documento) e' completato.**
