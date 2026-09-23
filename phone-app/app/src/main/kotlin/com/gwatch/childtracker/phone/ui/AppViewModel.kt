@@ -19,9 +19,14 @@ import com.gwatch.childtracker.phone.data.model.ChildInfo
 import com.gwatch.childtracker.phone.data.model.DeviceEvent
 import com.gwatch.childtracker.phone.data.model.DeviceState
 import com.gwatch.childtracker.phone.data.model.GeofenceZone
+import com.gwatch.childtracker.phone.data.model.LocationRetry
 import com.gwatch.childtracker.phone.data.model.LocationPoint
 import com.gwatch.childtracker.phone.util.Constants
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -329,15 +334,67 @@ class AppViewModel(
      * arriva poi come aggiornamento separato di deviceStates[childId]
      * via Firestore.
      */
+    // 2026-09-23: richiesta utente — se la posizione non arriva, la app
+    // "insiste": conto alla rovescia visibile (retryStates, barra nella
+    // StatusCard) e nuova richiesta, fino a MAX_LOCATION_ATTEMPTS. Esito
+    // ricavato da cio' che scrive il watch su devices/{id}:
+    // - successo: lastSeen piu' recente della richiesta (nuova posizione);
+    // - fallimento: lastStatusAt piu' recente senza nuova posizione (il
+    //   watch ha provato e non ha trovato il fix, vedi trigger-event.js
+    //   type "status"), oppure nulla entro RESPONSE_TIMEOUT_MS.
+    // Una nuova richiesta manuale per lo stesso bambino riparte da capo.
+    // Precedente: una sola richiesta, esito = solo "push partita".
+    private val _retryStates = MutableStateFlow<Map<String, LocationRetry>>(emptyMap())
+    val retryStates: StateFlow<Map<String, LocationRetry>> = _retryStates.asStateFlow()
+    private val insistJobs = mutableMapOf<String, Job>()
+
     fun requestLocation(childId: String, onResult: (Boolean) -> Unit) {
         val user = _user.value ?: return onResult(false)
-        viewModelScope.launch {
-            val ok = runCatching {
-                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
-                backendClient.requestLocation(idToken, childId)
-            }.getOrDefault(false)
-            onResult(ok)
+        insistJobs.remove(childId)?.cancel()
+        _retryStates.value = _retryStates.value - childId
+        insistJobs[childId] = viewModelScope.launch {
+            var attempt = 1
+            while (true) {
+                val requestedAt = System.currentTimeMillis()
+                val ok = sendLocationRequest(user, childId)
+                if (attempt == 1) onResult(ok)
+                val succeeded = ok && waitForLocation(childId, requestedAt)
+                if (succeeded || attempt >= MAX_LOCATION_ATTEMPTS) break
+                _retryStates.value = _retryStates.value + (
+                    childId to LocationRetry(
+                        nextRetryAtMillis = System.currentTimeMillis() + RETRY_DELAY_MS,
+                        totalWaitMillis = RETRY_DELAY_MS,
+                        attempt = attempt,
+                    )
+                )
+                delay(RETRY_DELAY_MS)
+                _retryStates.value = _retryStates.value - childId
+                attempt++
+            }
+            _retryStates.value = _retryStates.value - childId
+            insistJobs.remove(childId)
         }
+    }
+
+    private suspend fun sendLocationRequest(user: FirebaseUser, childId: String): Boolean =
+        runCatching {
+            val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+            backendClient.requestLocation(idToken, childId)
+        }.getOrDefault(false)
+
+    // true = arrivata una posizione nuova; false = il watch ha risposto
+    // senza posizione, oppure nessuna risposta entro il timeout.
+    // CLOCK_MARGIN_MS tollera piccole differenze fra orologio del telefono,
+    // del watch e del server.
+    private suspend fun waitForLocation(childId: String, requestedAt: Long): Boolean {
+        val threshold = requestedAt - CLOCK_MARGIN_MS
+        val state = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
+            deviceStates.first { states ->
+                val s = states[childId] ?: return@first false
+                (s.lastSeenMillis ?: 0L) > threshold || (s.lastStatusMillis ?: 0L) > threshold
+            }[childId]
+        } ?: return false
+        return (state.lastSeenMillis ?: 0L) > threshold
     }
 
     /** Disattiva un SOS in corso per un bambino (vedi backend/api/parent-command.js, azione cancel_sos). */
@@ -448,3 +505,12 @@ class AppViewModel(
             AppViewModel(authRepository, deviceRepository, application) as T
     }
 }
+
+// 2026-09-23: insistenza sulla richiesta di posizione (AppViewModel.requestLocation).
+// Attesa della risposta del watch: copre i 90s massimi del suo tentativo GPS
+// (LocationRequestWorker.FIX_TIMEOUT_MS) piu' il tempo di consegna della push.
+private const val RESPONSE_TIMEOUT_MS = 120_000L
+private const val RETRY_DELAY_MS = 60_000L
+// 20 tentativi: circa un'ora di insistenza con l'app aperta.
+private const val MAX_LOCATION_ATTEMPTS = 20
+private const val CLOCK_MARGIN_MS = 10_000L

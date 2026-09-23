@@ -100,6 +100,13 @@ package com.gwatch.childtracker.phone.ui
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import com.gwatch.childtracker.phone.data.model.LocationRetry
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -191,6 +198,8 @@ fun MapScreen(
 ) {
     val children by viewModel.children.collectAsState()
     val deviceStates by viewModel.deviceStates.collectAsState()
+    // 2026-09-23: conto alla rovescia dei nuovi tentativi (AppViewModel.requestLocation).
+    val retryStates by viewModel.retryStates.collectAsState()
     val historyByChild by viewModel.historyByChild.collectAsState()
     val geofences by viewModel.geofences.collectAsState()
     val eventsByChild by viewModel.eventsByChild.collectAsState()
@@ -398,6 +407,7 @@ fun MapScreen(
                 StatusCardRow(
                     children = children,
                     deviceStates = deviceStates,
+                    retryStates = retryStates,
                     onRequestLocation = { childId, onResult -> viewModel.requestLocation(childId, onResult) },
                 )
             }
@@ -454,6 +464,7 @@ private fun SosBanner(childName: String, deactivating: Boolean, onDeactivate: ()
 private fun StatusCardRow(
     children: List<ChildInfo>,
     deviceStates: Map<String, DeviceState>,
+    retryStates: Map<String, LocationRetry>,
     onRequestLocation: (childId: String, onResult: (Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -465,6 +476,7 @@ private fun StatusCardRow(
             StatusCard(
                 childName = child.name,
                 state = deviceStates[child.id] ?: DeviceState(),
+                retry = retryStates[child.id],
                 requesting = requesting,
                 onRequestLocation = {
                     requesting = true
@@ -491,6 +503,8 @@ private fun StatusCardRow(
 private fun StatusCard(
     childName: String,
     state: DeviceState,
+    // 2026-09-23: prossimo tentativo automatico, null se nessuna attesa.
+    retry: LocationRetry?,
     requesting: Boolean,
     onRequestLocation: () -> Unit,
     modifier: Modifier = Modifier,
@@ -600,6 +614,8 @@ private fun StatusCard(
                             (state.satsAtMillis?.let { " · " + formatRelativeTime(it, nowMillis) } ?: ""),
                     )
                 }
+                // 2026-09-23: posizione non ricevuta, nuovo tentativo in arrivo.
+                retry?.let { RetryCountdown(it) }
                 state.battery?.let { battery ->
                     InfoLine(
                         label = stringResource(R.string.battery_label),
@@ -689,6 +705,51 @@ private val lastSeenAbsoluteFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getD
 //     "${formatRelativeTime(millis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
 private fun formatLastSeen(millis: Long, nowMillis: Long): String =
     "${formatRelativeTime(millis, nowMillis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
+
+/**
+ * 2026-09-23: richiesta utente — barra traslucida con "Nuovo tentativo tra
+ * Ns" che si svuota fino alla nuova richiesta automatica. Disegnata a mano
+ * (Box + fillMaxWidth(frazione)), senza LinearProgressIndicator ne'
+ * Modifier.weight (vincoli gia' incontrati in questo progetto). Ha un suo
+ * orologio a 250 ms, indipendente da quello a 30 s della StatusCard.
+ */
+@Composable
+private fun RetryCountdown(retry: LocationRetry) {
+    val now by produceState(System.currentTimeMillis(), retry) {
+        while (true) {
+            value = System.currentTimeMillis()
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    val remainingMs = (retry.nextRetryAtMillis - now).coerceAtLeast(0L)
+    val fraction = (remainingMs.toFloat() / retry.totalWaitMillis).coerceIn(0f, 1f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .height(22.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(Color.Gray.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction)
+                .background(Color(0xFF1976D2).copy(alpha = 0.30f)),
+        )
+        Text(
+            text = stringResource(
+                R.string.status_retry_countdown,
+                ((remainingMs + 999) / 1000).toInt(),
+                retry.attempt,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
 
 @Composable
 private fun InfoLine(label: String, value: String, valueColor: Color = Color.Unspecified) {

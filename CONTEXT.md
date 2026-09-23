@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.94.0
+**Versione contesto:** 0.95.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2601,3 +2601,14 @@ CHANGELOG.md  Storico versioni
   attivo (consentito da push ad alta priorita'). Limite noto: un'app in
   "Arresto forzato" non riceve push finche' non viene riaperta
   (watch-app v0.27.0) (v0.94.0).
+- 2026-09-23: Confermato dall'utente e sul backend: con l'app del watch
+  chiusa la richiesta dal telefono ha rilanciato il tracker in
+  background e la posizione e' arrivata (23:58, 14-15 m). Nuova
+  richiesta: sul telefono, se la posizione non arriva, barra traslucida
+  "nuovo tentativo tra N s" sotto la riga satelliti e richieste
+  ripetute. Scelte: esito ricavato da devices/{id} (lastSeen = successo;
+  lastStatusAt senza lastSeen o timeout 120 s = fallimento), 60 s di
+  attesa fra i tentativi, massimo 20 (~1 ora), margine di 10 s per le
+  differenze fra gli orologi; logica in AppViewModel (retryStates) per
+  coprire anche la richiesta automatica all'apertura; barra disegnata a
+  mano come quella del watch (phone-app v0.20.0) (v0.95.0).

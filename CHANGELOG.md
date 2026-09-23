@@ -7,6 +7,32 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.95.0] - 2026-09-23
+
+### Added
+- **phone-app v0.20.0: la richiesta di posizione insiste** (richiesta
+  utente). Dopo "Aggiorna posizione" (o la richiesta automatica
+  all'apertura) `AppViewModel` attende l'esito da `devices/{id}`:
+  nuova posizione = riuscita; stato batteria senza posizione (il watch
+  ha provato senza fix) oppure nessuna risposta entro 2 minuti =
+  fallita. In caso di fallimento, sotto la riga "Satelliti" compare una
+  barra traslucida che si svuota con "Posizione non ricevuta · nuovo
+  tentativo tra N s (falliti: X)"; allo scadere dei 60 secondi la
+  richiesta viene rimandata. Fino a 20 tentativi (circa un'ora con
+  l'app aperta), si ferma al primo successo; un nuovo "Aggiorna
+  posizione" riparte da capo.
+
+### Confirmed
+- Test utente con watch-app v0.27.0: app del watch chiusa, richiesta
+  dal telefono → sul watch il tracker e' ripartito in background e le
+  posizioni delle 23:58 (14-15 m) sono arrivate al backend.
+
+### Known limitations
+- L'insistenza vive nella phone-app: se l'app del telefono viene
+  chiusa, i tentativi si fermano (il watch continua comunque i propri
+  ritentativi via WorkManager).
+- Non compilata in questa sessione.
+
 ## [0.94.0] - 2026-09-23
 
 ### Fixed

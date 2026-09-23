@@ -5,6 +5,17 @@ package com.gwatch.childtracker.phone.data.model
 
 data class LatLon(val lat: Double, val lon: Double)
 
+/**
+ * 2026-09-23: attesa prima del prossimo tentativo automatico di richiesta
+ * posizione (AppViewModel.requestLocation), mostrata come barra con conto
+ * alla rovescia nella StatusCard. attempt = tentativi gia' falliti.
+ */
+data class LocationRetry(
+    val nextRetryAtMillis: Long,
+    val totalWaitMillis: Long,
+    val attempt: Int,
+)
+
 data class DeviceState(
     val lastLocation: LatLon? = null,
     val accuracy: Double? = null,
