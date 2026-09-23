@@ -142,8 +142,11 @@ android {
         // v0.30.0 (2026-09-24): stato del caricatore inviato subito al
         // collegamento/scollegamento (location/WatchStateReporter.kt v0.2.0),
         // per l'icona "in carica" sulla phone-app.
-        versionCode = 30
-        versionName = "0.30.0"
+        // v0.31.0 (2026-09-24): autonomia stimata che non compariva mai
+        // (location/BatteryInfo.kt v0.11.0: unita'/segno della corrente
+        // normalizzati + stima dall'andamento della percentuale).
+        versionCode = 31
+        versionName = "0.31.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

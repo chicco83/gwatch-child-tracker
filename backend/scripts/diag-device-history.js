@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.8.1 (2026-09-23)
+ * Versione: 0.8.2 (2026-09-24)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -38,6 +38,8 @@
  *   niente coordinate.
  * - 0.8.1 (2026-09-23): gnss.active=false stampato come "GPS non usato"
  *   invece di "null visti, null agganciati".
+ * - 0.8.2 (2026-09-24): stampa anche batteryHoursRemaining (autonomia
+ *   stimata), per capire perche' non compare mai sulla phone-app.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -93,6 +95,8 @@ async function main() {
       `  batteria: ${d.battery ?? "-"}%  temp: ${d.batteryTemp ?? "-"}  carica: ${d.charging ?? "-"}  ` +
         `alertLevel: ${d.batteryAlertLevel ?? "-"}  lastStatusAt: ${iso(toDate(d.lastStatusAt))}`,
     );
+    // v0.8.2: autonomia stimata (assente = campo mai scritto, null = watch non la calcola).
+    console.log(`  autonomia stimata: ${"batteryHoursRemaining" in d ? d.batteryHoursRemaining : "(campo assente)"}`);
     // v0.8.1. Precedente: sempre "${d.gnss.visible} visti, ${d.gnss.used} agganciati".
     const gnssText = !d.gnss
       ? "-"

@@ -7,6 +7,27 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.1] - 2026-09-24
+
+### Fixed
+- **Autonomia stimata della batteria mai comparsa sulla phone-app**
+  (segnalato dall'utente; watch-app v0.31.0, `BatteryInfo.kt` v0.11.0).
+  Con `diag-device-history.js` (v0.8.2, ora stampa anche
+  `batteryHoursRemaining`) verificato che il campo arriva al backend ma
+  sempre `null`: il watch scartava ogni valore. Cause probabili sul
+  kernel Samsung: `CURRENT_NOW` in mA invece che in µA (ore 1000 volte
+  troppo alte, oltre il limite di plausibilita' di 100 h) o con segno
+  positivo in scarica. Ora: unita' e segno normalizzati, valori grezzi
+  nel log (`adb logcat -s BatteryInfo`), e soprattutto una stima
+  dall'andamento della percentuale dallo scollegamento (almeno -2% in
+  20'), che ha la precedenza perche' non dipende dal kernel e non
+  risente del consumo istantaneo di GPS/LTE nel momento della lettura.
+
+### Known limitations
+- Dopo lo scollegamento l'autonomia puo' mancare finche' la percentuale
+  non e' scesa di 2 punti (se anche il dato hardware e' inutilizzabile).
+- watch-app non compilata in questa sessione.
+
 ## [0.100.0] - 2026-09-24
 
 ### Added
