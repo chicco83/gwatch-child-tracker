@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.4.0 (2026-09-23)
+ * Versione: 0.5.0 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -21,17 +21,22 @@
  * - 0.4.0 (2026-09-23): precisione mediana per giorno — capire se nei
  *   giorni in cui il tracking funzionava le posizioni venivano dal GPS
  *   (pochi metri) o da Wi-Fi/celle (decine di metri).
+ * - 0.5.0 (2026-09-23): opzione --all, elenca tutte le posizioni del
+ *   periodo (orario, precisione, activity), per ricostruire un tragitto
+ *   senza mostrare coordinate.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
- *   node backend/scripts/diag-device-history.js [giorni=8]
+ *   node backend/scripts/diag-device-history.js [giorni=8] [--all]
  */
 const path = require("path");
 module.paths.unshift(path.join(__dirname, "..", "node_modules"));
 const { getAdminApp } = require("../api/_lib/firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
 
-const days = Number(process.argv[2]) || 8;
+const days = Number(process.argv.slice(2).find((a) => !a.startsWith("--"))) || 8;
+// v0.5.0
+const listAll = process.argv.includes("--all");
 
 // Timestamp Firestore, Date o millisecondi -> Date (null se assente).
 function toDate(v) {
@@ -65,7 +70,7 @@ async function main() {
     locs.docs.forEach((l) => {
       const t = toDate(l.data().timestamp);
       if (!t) return;
-      times.push({ t, acc: l.data().accuracy });
+      times.push({ t, acc: l.data().accuracy, activity: l.data().activity });
       const k = t.toISOString().slice(0, 10);
       perDay[k] = (perDay[k] || 0) + 1;
       const acc = l.data().accuracy;
@@ -79,7 +84,7 @@ async function main() {
       console.log(`    ${k}: precisione mediana ${Math.round(a[Math.floor(a.length / 2)])} m, migliore ${Math.round(a[0])} m`);
     });
     console.log("  ultime posizioni (ora italiana, precisione):");
-    times.slice(0, 8).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}`));
+    (listAll ? times : times.slice(0, 8)).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}${p.activity ? "  " + p.activity : ""}`));
 
     // Eventi: orario, tipo, origine (niente coordinate/nomi).
     const evs = await dev.ref.collection("events").where("timestamp", ">=", since).get();
@@ -91,7 +96,7 @@ async function main() {
       .filter((r) => r.t)
       .sort((a, b) => b.t - a.t);
     console.log(`  eventi (${rows.length}, piu' recenti per primi):`);
-    rows.slice(0, 40).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}${r.acc != null ? "  " + Math.round(r.acc) + " m" : ""}`));
+    (listAll ? rows : rows.slice(0, 40)).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}${r.acc != null ? "  " + Math.round(r.acc) + " m" : ""}`));
     console.log("");
   }
 }

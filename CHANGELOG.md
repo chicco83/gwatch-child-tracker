@@ -25,6 +25,8 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   nella diagnostica della Ricerca GPS (`ui/GpsSearchScreen.kt` v0.7.0).
 - `watch-app/README.md`: nuova sezione "Impostazioni obbligatorie sul
   watch".
+- `backend/scripts/diag-device-history.js` v0.5.0: opzione `--all`
+  (tutte le posizioni del periodo con orario, precisione e activity).
 
 ### Known limitations
 - Il tracking da fermo resta ad alta precisione (v0.20.0), scelta presa

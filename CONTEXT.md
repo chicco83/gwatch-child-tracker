@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.88.0
+**Versione contesto:** 0.88.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2507,3 +2507,17 @@ CHANGELOG.md  Storico versioni
   riconsiderare anche le aggiunte fatte durante la diagnosi (Ricerca
   GPS, GpsAssist, reset): utili, ma nate per un'ipotesi poi rivelatasi
   non la causa (v0.88.0).
+- 2026-09-23: L'utente riferisce che nei tragitti casa-scuola all'aperto
+  di ieri e oggi il watch non avrebbe mai fatto un fix. Lo storico
+  (script v0.5.0, nuova opzione --all) dice altro: ritorno 22/9
+  13:19-13:50 = 22 punti "moving" ~1/min (7-42 m); ritorno 23/9
+  13:23-13:49 = 12 punti "moving" (12-37 m) → all'aperto in movimento il
+  GPS funziona (modalita' moving = HIGH_ACCURACY ogni minuto). Andata
+  22/9 07:20-07:38: solo 4 punti "still" (activity recognition non ha
+  rilevato il movimento → priorita' bilanciata, con "Migliora precisione"
+  spenta quasi nulla). Andata 23/9: NESSUN dato ne' evento (neanche
+  l'uscita dalla zona casa) → watch non trasmetteva (spento/scarico/
+  senza dati/servizio fermo dopo una reinstallazione?). Chiesto
+  all'utente se le posizioni del ritorno sono visibili sulla phone-app
+  (se no, problema di visualizzazione lato telefono) e com'era il watch
+  la mattina del 23 (v0.88.1).
