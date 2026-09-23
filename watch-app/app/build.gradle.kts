@@ -122,8 +122,10 @@ android {
         // (location/TrackingStatus.kt) visibile nella Ricerca GPS.
         // v0.21.0 (2026-09-23): riga "Posizione di rete (Migliora precisione)"
         // nella diagnostica della Ricerca GPS.
-        versionCode = 21
-        versionName = "0.21.0"
+        // v0.22.0 (2026-09-23): se il GPS non da' un fix, LocationRequestWorker
+        // invia comunque lo stato batteria (BackendClient.sendStatus).
+        versionCode = 22
+        versionName = "0.22.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

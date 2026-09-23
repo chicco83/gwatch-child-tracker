@@ -103,6 +103,8 @@ class DeviceRepository {
                     charging = snap.getBoolean("charging"),
                     speedMps = (snap.get("speed") as? Number)?.toDouble(),
                     batteryHoursRemaining = (snap.get("batteryHoursRemaining") as? Number)?.toDouble(),
+                    // 2026-09-23: vedi DeviceState.lastStatusMillis.
+                    lastStatusMillis = snap.getTimestamp("lastStatusAt")?.toDate()?.time,
                 ),
             )
         }

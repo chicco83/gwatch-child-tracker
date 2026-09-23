@@ -133,6 +133,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -558,12 +559,31 @@ private fun StatusCard(
                     )
                 }
             }
+            // 2026-09-23: "adesso" che avanza ogni 30s anche senza dati
+            // nuovi (prima "adesso" restava fisso per minuti, segnalato
+            // dall'utente). Precedente: formatLastSeen(it) senza nowMillis.
+            val nowMillis by produceState(System.currentTimeMillis()) {
+                while (true) {
+                    kotlinx.coroutines.delay(30_000)
+                    value = System.currentTimeMillis()
+                }
+            }
             Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
                 InfoLine(
                     label = stringResource(R.string.status_last_seen_label),
-                    value = state.lastSeenMillis?.let { formatLastSeen(it) }
+                    value = state.lastSeenMillis?.let { formatLastSeen(it, nowMillis) }
                         ?: stringResource(R.string.no_data_yet),
                 )
+                // 2026-09-23: ultimo contatto col watch anche senza
+                // posizione (stato batteria inviato quando il GPS fallisce).
+                // Mostrato solo se piu' recente dell'ultima posizione.
+                val lastStatus = state.lastStatusMillis
+                if (lastStatus != null && lastStatus > (state.lastSeenMillis ?: 0L)) {
+                    InfoLine(
+                        label = stringResource(R.string.status_last_contact_label),
+                        value = formatLastSeen(lastStatus, nowMillis),
+                    )
+                }
                 state.battery?.let { battery ->
                     InfoLine(
                         label = stringResource(R.string.battery_label),
@@ -645,8 +665,11 @@ private fun formatHoursRemaining(hours: Double): String {
  */
 private val lastSeenAbsoluteFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
 
-private fun formatLastSeen(millis: Long): String =
-    "${formatRelativeTime(millis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
+// 2026-09-23: nowMillis per l'aggiornamento periodico. Precedente:
+// private fun formatLastSeen(millis: Long): String =
+//     "${formatRelativeTime(millis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
+private fun formatLastSeen(millis: Long, nowMillis: Long): String =
+    "${formatRelativeTime(millis, nowMillis)} · ${lastSeenAbsoluteFormat.format(Date(millis))}"
 
 @Composable
 private fun InfoLine(label: String, value: String, valueColor: Color = Color.Unspecified) {

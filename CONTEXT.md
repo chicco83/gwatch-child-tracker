@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.89.0
+**Versione contesto:** 0.90.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2536,3 +2536,16 @@ CHANGELOG.md  Storico versioni
   Verifica: diagnostica v0.21.0 ("Tracking automatico", "Punti
   tracking", "Errore tracking") + `--hourly` il giorno dopo con
   "Migliora precisione" riattivata (v0.89.0).
+- 2026-09-23: Due segnalazioni utente sulla phone-app. (1) "Adesso"
+  fisso nella StatusCard: aggiunto un orologio a 30s (produceState) e
+  il parametro nowMillis a formatRelativeTime. (2) Senza fix il watch
+  non mandava nemmeno la batteria. Decisione: riusare trigger-event.js
+  con un nuovo type "status" invece di un nuovo endpoint (Vercel Hobby
+  e' limitato a 12 funzioni, gia' 11 in uso), scrivendo un campo
+  separato `lastStatusAt` e NON `lastSeen`/`lastLocation`, che restano
+  "ultima posizione" (anche la guardia di freschezza di v0.65.0 si
+  basa su lastSeen). Il watch lo manda solo quando LocationRequestWorker
+  fallisce il fix (invio manuale o "Aggiorna posizione" del genitore);
+  non ancora dal tracking periodico. Avvisi di batteria scarica non
+  collegati allo "status" (backend v0.19.0, watch-app v0.22.0,
+  phone-app v0.17.0) (v0.90.0).

@@ -7,6 +7,35 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-09-23
+
+### Fixed
+- **phone-app: "Ultima posizione: adesso" che non cambiava mai**
+  restando sulla schermata (segnalato dall'utente): il testo relativo
+  veniva ricalcolato solo all'arrivo di un dato nuovo. Ora la
+  `StatusCard` usa un orologio che si aggiorna ogni 30 secondi
+  (`formatRelativeTime(millis, nowMillis)`, `util/TimeFormat.kt`
+  v0.4.0). phone-app v0.17.0.
+- **Batteria e temperatura non aggiornate quando il watch non ottiene
+  la posizione** (segnalato dall'utente): il watch le inviava solo
+  insieme a un fix. Ora:
+  - backend `trigger-event.js` v0.19.0: nuovo type `status` senza
+    lat/lon, aggiorna solo batteria/temperatura/carica/autonomia e
+    `lastStatusAt`; non tocca l'ultima posizione, nessun evento, nessuna
+    push;
+  - watch-app v0.22.0: se `LocationRequestWorker` non ottiene il fix,
+    invia comunque lo stato batteria (`BackendClient.sendStatus`) prima
+    di ritentare;
+  - phone-app v0.17.0: nuova riga "Ultimo contatto (senza posizione)",
+    mostrata solo se piu' recente dell'ultima posizione.
+
+### Known limitations
+- Gli avvisi di batteria scarica (10/5/2%) restano legati agli invii
+  con posizione: un invio `status` non li fa scattare.
+- watch-app e phone-app non compilate in questa sessione. Il backend si
+  aggiorna con il push (deploy Vercel): una watch-app nuova con un
+  backend vecchio riceve 400 sullo `status`, senza effetti collaterali.
+
 ## [0.89.0] - 2026-09-23
 
 ### Documentazione

@@ -121,8 +121,10 @@ android {
         // potevano davvero coesistere, ma avrebbero condiviso la stessa
         // destinazione (quella dell'ultima creata). Il requestCode ora
         // e' lo stesso id univoco della notifica.
-        versionCode = 16
-        versionName = "0.16.0"
+        // v0.17.0 (2026-09-23): "Ultima posizione" che si aggiorna da sola
+        // ogni 30s; riga "Ultimo contatto (senza posizione)".
+        versionCode = 17
+        versionName = "0.17.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

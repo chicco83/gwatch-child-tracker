@@ -158,6 +158,33 @@ class BackendClient {
         return TriggerEventResult(ok = true, dnd = dnd)
     }
 
+    /**
+     * 2026-09-23: stato batteria senza posizione (trigger-event.js type
+     * "status", backend v0.19.0). Usato quando il GPS non da' un fix, cosi'
+     * la phone-app mostra comunque batteria/temperatura aggiornate e
+     * l'ora dell'ultimo contatto col watch. true se accettato.
+     */
+    suspend fun sendStatus(
+        battery: Int?,
+        batteryTemp: Double?,
+        charging: Boolean?,
+        batteryHoursRemaining: Double?,
+    ): Boolean {
+        val body = JSONObject().apply {
+            put("type", "status")
+            battery?.let { put("battery", it) }
+            batteryTemp?.let { put("batteryTemp", it) }
+            charging?.let { put("charging", it) }
+            batteryHoursRemaining?.let { put("batteryHoursRemaining", it) }
+        }
+        val request = Request.Builder()
+            .url("${BackendConfig.baseUrl}/api/trigger-event")
+            .header("X-Device-Token", BackendConfig.deviceToken)
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+        return executeForSuccess(request)
+    }
+
     /** Geofence attive configurate dal genitore. Lista vuota se la chiamata fallisce. */
     suspend fun fetchDeviceConfig(): List<GeofenceZone> {
         val request = Request.Builder()

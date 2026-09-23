@@ -27,6 +27,9 @@ data class DeviceState(
     // (vedi watch-app/.../location/BatteryInfo.kt), null mentre in
     // carica o se il dispositivo non espone il dato in modo affidabile.
     val batteryHoursRemaining: Double? = null,
+    // 2026-09-23: ultimo stato batteria ricevuto anche SENZA posizione
+    // (trigger-event.js type "status", backend v0.19.0).
+    val lastStatusMillis: Long? = null,
 )
 
 data class LocationPoint(

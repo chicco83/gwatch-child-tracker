@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.18.0
+ * Versione: 0.19.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -165,6 +165,14 @@
  *   "child-<childId>" (vedi _lib/fcmTopics.js), a cui la phone-app si
  *   iscrive solo per i propri figli (TrackerApplication.kt/
  *   AppViewModel.kt).
+ * - 0.19.0 (2026-09-23): nuovo type "status", SENZA lat/lon: segnalato
+ *   dall'utente che se il watch non ottiene la posizione la phone-app
+ *   non mostra piu' nemmeno batteria e temperatura aggiornate (il
+ *   watch le mandava solo insieme a un fix). Aggiorna solo battery/
+ *   batteryTemp/charging/batteryHoursRemaining + "lastStatusAt" su
+ *   devices/{childId}; NON tocca lastLocation/lastSeen (restano
+ *   "ultima posizione"), nessun documento evento, nessuna push. Conta
+ *   1 nella quota come gli altri tipi non-SOS.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -228,6 +236,25 @@ module.exports = wrapHandler(async (req, res) => {
   }
 
   const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp } = req.body || {};
+
+  // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
+  if (type === "status") {
+    const allowed = await checkAndConsumeQuota(db, childId);
+    if (!allowed) {
+      res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
+      return;
+    }
+    const update = { lastStatusAt: FieldValue.serverTimestamp() };
+    if (typeof battery === "number") update.battery = battery;
+    if (typeof batteryTemp === "number") update.batteryTemp = batteryTemp;
+    if (typeof charging === "boolean") update.charging = charging;
+    if (typeof batteryHoursRemaining === "number" || batteryHoursRemaining === null) {
+      update.batteryHoursRemaining = batteryHoursRemaining;
+    }
+    await db.collection("devices").doc(childId).set(update, { merge: true });
+    res.status(200).json({ ok: true });
+    return;
+  }
   if (!VALID_TYPES.has(type) || typeof lat !== "number" || typeof lon !== "number") {
     res.status(400).send("Bad Request: 'type'/'lat'/'lon' mancanti o non validi");
     return;

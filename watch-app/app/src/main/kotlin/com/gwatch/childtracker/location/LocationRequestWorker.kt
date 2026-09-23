@@ -105,6 +105,18 @@ class LocationRequestWorker(
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
             GpsAvailability.markUnavailable()
+            // 2026-09-23: senza posizione manda comunque batteria/
+            // temperatura/carica (richiesta utente: prima la phone-app non
+            // le aggiornava piu' se il GPS falliva). Best effort: l'esito
+            // non cambia il retry della posizione.
+            val snapshot = BatteryInfo.read(appContext)
+            val statusSent = BackendClient().sendStatus(
+                battery = snapshot.percent,
+                batteryTemp = snapshot.temperatureC,
+                charging = snapshot.isCharging,
+                batteryHoursRemaining = snapshot.hoursRemaining,
+            )
+            Log.i(TAG, "doWork: stato batteria senza posizione inviato=$statusSent")
             return Result.retry()
         }
         GpsAvailability.markAvailable()
