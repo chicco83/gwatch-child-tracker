@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.87.0
+**Versione contesto:** 0.87.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2478,3 +2478,13 @@ CHANGELOG.md  Storico versioni
   confermare con l'utente: con quale telefono e' associato il watch e
   se dopo il 20/9 e' ancora connesso via Bluetooth (watch-app v0.20.0)
   (v0.87.0).
+- 2026-09-23: L'utente conferma che il watch ha **sempre** funzionato
+  senza telefono collegato in Bluetooth (uso standalone LTE): ipotesi
+  "fonte = telefono associato" scartata. Con priorita' bilanciata, su un
+  watch standalone le posizioni (~21 m) venivano quindi da Wi-Fi/celle
+  (posizione di rete Google) o da GPS acceso a discrezione del sistema;
+  dopo la scarica/riavvio del 20/9 quella strada non produce piu'
+  punti, per motivi non osservabili dall'app. La correzione v0.20.0
+  (alta precisione anche da fermo) non dipende da quale fonte sia
+  sparita, quindi resta valida. Nessun nuovo punto al backend dopo le
+  22:50 (v0.20.0 non ancora installata) (v0.87.1).
