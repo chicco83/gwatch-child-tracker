@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.76.0
+**Versione contesto:** 0.77.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2278,3 +2278,13 @@ CHANGELOG.md  Storico versioni
   precedente, da una sessione parallela partita dallo stesso commit
   (entrambe avevano numerato v0.75.0: rinumerata questa a v0.76.0 in
   fase di merge) (v0.76.0).
+- 2026-09-23: Verifica richiesta dall'utente: qwen_plan.md risulta
+  implementato per intero (punti 1-13, CI, igiene). Controllato il tag
+  di attribuzione alla AI locale ("individuato da qwen3.8-27B-UD-IQ4_XS,
+  implementato da Sonnet 5") file per file sui commit delle Fasi 1-5:
+  aggiunto dove mancava (TrackerApplication.kt, MainActivity.kt della
+  phone-app, backend/test/quota.test.js). Segnalato un rischio non
+  verificabile da qui: `vercel.json` di Fase 4 ha di nuovo un pattern
+  specifico `api/cleanup.js` accanto a `api/*.js`, la stessa forma che
+  in v0.12.0 aveva rotto il build Vercel — da confermare sulla
+  dashboard Vercel (v0.77.0).

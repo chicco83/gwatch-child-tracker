@@ -82,6 +82,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: AppViewModel = viewModel(
+                // 2026-09-23, Fase 2 di qwen_plan.md (individuato da
+                // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): passa
+                // "application" per KnownChildrenCache/topic FCM per-bambino.
+                // Precedente: factory = AppViewModel.Factory(authRepository, deviceRepository),
                 factory = AppViewModel.Factory(authRepository, deviceRepository, application),
             )
             val navController = rememberNavController()

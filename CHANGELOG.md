@@ -7,6 +7,27 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-09-23
+
+### Documentazione
+- **Verifica completa di qwen_plan.md**: tutti i punti del piano
+  (sicurezza 1-2, bug 3-5, minori 6-13, CI e igiene) risultano
+  implementati nel codice. Controllato anche il tag di attribuzione
+  "individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5" in
+  ogni file di codice toccato dalle Fasi 1-5: mancava in tre file,
+  aggiunto (`phone-app/.../TrackerApplication.kt`,
+  `phone-app/.../ui/MainActivity.kt`, `backend/test/quota.test.js`).
+  `backend/vercel.json` non puo' contenere commenti (JSON): il tag del
+  punto 6 sta in `backend/api/cleanup.js`.
+
+### Known limitations
+- **Possibile regressione su `backend/vercel.json` (Fase 4, punto 6)**:
+  la voce specifica `api/cleanup.js` accanto al wildcard `api/*.js` e'
+  la stessa configurazione che in v0.12.0 aveva fatto fallire il build
+  Vercel. Da questa sessione non e' verificabile (dominio Vercel
+  bloccato dal proxy): controllare che l'ultimo deploy su Vercel sia
+  andato a buon fine; se e' fallito, togliere la voce `api/cleanup.js`.
+
 ## [0.76.0] - 2026-09-23
 
 ### Fixed

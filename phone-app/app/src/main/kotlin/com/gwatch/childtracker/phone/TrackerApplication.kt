@@ -62,7 +62,9 @@ class TrackerApplication : Application() {
         // dell'app, prima del login) non si sa ancora quale famiglia/
         // quali figli abbia l'utente.
         //
-        // v0.9.0 (2026-09-23): disiscrizione una tantum dal vecchio topic
+        // v0.9.0 (2026-09-23, Fase 2 di qwen_plan.md — individuato da
+        // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): disiscrizione
+        // una tantum dal vecchio topic
         // globale "parents" — installazioni esistenti restano iscritte
         // finche' non lo fanno esplicitamente, continuando a ricevere le
         // push cross-famiglia che la Fase 2 elimina lato backend/nuove
