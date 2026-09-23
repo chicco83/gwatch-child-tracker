@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.100.3
+**Versione contesto:** 0.100.4
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.33.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
+**v0.33.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2770,3 +2770,13 @@ CHANGELOG.md  Storico versioni
   finiscono nel canale fcm_fallback (manca default_notification_channel_id
   nel manifest, correzione proposta); nel logcat del watch non compaiono
   le righe dei nostri tag, causa non chiarita.
+- 2026-09-24: Canale di default FCM "alerts" nel manifest della phone-app
+  (v0.26.0). Analisi battery drain sui due logcat: telefono normale
+  (-15/-23 mA a schermo spento, 72→71% in 26'); watch -105 mA a schermo
+  spento (64→59% in 16'), ~50 risvegli/min da pacchetti di rete senza
+  app ("Invalid uid for waking network packet"), attribuibili al debug
+  ADB via Wi-Fi attivo durante la cattura, non alle nostre app (nessun
+  wakelock/job/GPS nostro nel log). Il watch riporta current_now in mA e
+  cc in µAh (conferma del motivo per cui la vecchia formula d'autonomia
+  veniva scartata). Per il consumo reale per app serve
+  `dumpsys batterystats` senza ADB Wi-Fi attivo.

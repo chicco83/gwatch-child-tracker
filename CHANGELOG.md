@@ -7,6 +7,21 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.4] - 2026-09-24
+
+### Fixed
+- **Notifiche push della phone-app nel canale sbagliato** (phone-app
+  v0.26.0): con l'app in background Android mostrava le push con payload
+  "notification" (zone, SOS, posizione, batteria, stato watch) nel canale
+  `fcm_fallback_notification_channel` ("Varie"), come segnalato dal
+  logcat ("Missing Default Notification Channel metadata"). Aggiunti in
+  `AndroidManifest.xml` i meta-data FCM `default_notification_channel_id`
+  = `alerts` e `default_notification_icon` = `ic_notification`.
+
+### Documentazione
+- Analisi consumo batteria dai logcat del 24/9 (vedi CONTEXT.md, log
+  decisioni): nessun segnale riconducibile alle nostre app.
+
 ## [0.100.3] - 2026-09-24
 
 ### Fixed
@@ -26,8 +41,6 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   (LocationTrackingService, BootReceiver, BatteryInfo...), neanche
   quelle che dovevano esserci per forza: da verificare con
   `adb logcat -s LocationTrackingService` direttamente.
-- Il canale delle notifiche push sulla phone-app (fcm_fallback) resta da
-  correggere, in attesa di conferma dell'utente.
 - watch-app non compilata in questa sessione.
 
 ## [0.100.2] - 2026-09-24

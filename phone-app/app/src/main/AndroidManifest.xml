@@ -38,6 +38,21 @@
             </intent-filter>
         </activity>
 
+        <!-- 2026-09-24: canale e icona predefiniti per le push con payload
+             "notification" (zone, SOS, posizione, batteria, stato watch)
+             mostrate da Android quando l'app e' in background. Senza, il
+             logcat del telefono segnalava "Missing Default Notification
+             Channel metadata" e le notifiche finivano nel canale
+             fcm_fallback_notification_channel ("Varie") con l'icona
+             dell'app, ignorando le impostazioni del canale "alerts"
+             (creato in TrackerApplication.onCreate). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="alerts" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <service
             android:name=".messaging.FcmService"
             android:exported="false">

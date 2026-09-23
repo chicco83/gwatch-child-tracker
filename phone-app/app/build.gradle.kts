@@ -140,8 +140,10 @@ android {
         // bambino nelle Impostazioni.
         // v0.25.0 (2026-09-24): icona "in carica" (🔌) accanto al nome del
         // bambino (ui/MapScreen.kt watchHeaderIcon).
-        versionCode = 25
-        versionName = "0.25.0"
+        // v0.26.0 (2026-09-24): push di sistema nel canale "alerts" con
+        // l'icona di notifica (AndroidManifest.xml, meta-data FCM).
+        versionCode = 26
+        versionName = "0.26.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai
