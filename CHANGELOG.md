@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-09-23
+
+### Fixed
+- **Chiusi i due passaggi manuali rimasti in sospeso da v0.68.0** per
+  attivare davvero l'isolamento tra famiglie: eseguita la migrazione
+  `backend/scripts/migrate-family-ids.js` (2/2 `parents`, 1/1
+  `devices`, 4/4 `geofences` migrati con `familyId`
+  `5bebbb52-eff2-4897-8ee5-718591e0fa30`) e pubblicato
+  `firestore.rules` v0.7.0 sul progetto Firebase reale
+  (`child-tracker-7a1f1`) via `firebase deploy --only
+  firestore:rules`. Fino a questo momento le regole v0.7.0 esistevano
+  solo nel repository (come già capitato in passato con le regole di
+  sicurezza, vedi v0.59.0/v0.64.0): la protezione multi-famiglia
+  descritta in v0.68.0 e il fix di query `familyId` di v0.71.0 non
+  erano quindi ancora effettivi sul progetto reale.
+
 ## [0.74.0] - 2026-09-23
 
 ### Added

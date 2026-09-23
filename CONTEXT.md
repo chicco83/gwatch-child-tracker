@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.74.0
+**Versione contesto:** 0.75.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2222,3 +2222,28 @@ CHANGELOG.md  Storico versioni
 
   **Con questa voce il piano di qwen_plan.md (5 fasi, tutte le
   priorita' 1-6 elencate nel documento) e' completato.**
+- 2026-09-23: **Eseguiti i due passaggi manuali rimasti in sospeso da
+  v0.68.0** per chiudere l'isolamento famiglie (Fase 1 di qwen_plan.md):
+  script one-time `backend/scripts/migrate-family-ids.js` (credenziali
+  service account disponibili in questo ambiente via
+  `FIREBASE_SERVICE_ACCOUNT_B64`) — assegnato il `familyId`
+  `5bebbb52-eff2-4897-8ee5-718591e0fa30` a tutti i documenti legacy
+  della famiglia esistente (2/2 `parents`, 1/1 `devices`, 4/4
+  `geofences`, tutti privi del campo) — poi `firestore.rules` v0.7.0
+  pubblicato sul progetto reale (`child-tracker-7a1f1`) via
+  `firebase deploy --only firestore:rules --non-interactive`, usando
+  la stessa service account come Application Default Credentials
+  (`GOOGLE_APPLICATION_CREDENTIALS` puntata a un file temporaneo nello
+  scratchpad, cancellato subito dopo il deploy). Deploy confermato
+  riuscito dall'output della CLI ("released rules firestore.rules to
+  cloud.firestore"). Con questo si chiude la finestra di rischio
+  descritta in v0.68.0/v0.69.0 (regole attive che richiedono
+  `familyId` senza che i documenti esistenti lo avessero ancora) e il
+  bug collaterale di v0.71.0 (query `devices`/`geofences` senza
+  `where("familyId", ...)`, che sarebbe stata rifiutata in blocco da
+  Firestore non appena le regole fossero state effettivamente attive)
+  e' ora effettivamente risolto anche lato server, non solo nel codice
+  client. **Da confermare dall'utente al prossimo avvio reale della
+  phone-app**: bambini/zone devono restare visibili come prima (nessun
+  comportamento nuovo atteso, solo la rimozione della finestra di
+  rischio silenziosa).
