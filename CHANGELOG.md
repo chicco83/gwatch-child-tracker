@@ -7,6 +7,16 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.98.1] - 2026-09-24
+
+### Documentazione
+- Preparazione alla compattazione: nuova sezione "Stato attuale
+  (2026-09-24)" in cima a CONTEXT.md (versioni correnti, fatti chiave,
+  cose da verificare, strumento di diagnostica, backlog) e "Struttura
+  repo" aggiornata. README.md: `/backend` descritto come funzioni
+  Vercel + script (diceva ancora "Cloud Functions"), Node.js 24,
+  cartella `.github/`.
+
 ## [0.98.0] - 2026-09-24
 
 ### Fixed

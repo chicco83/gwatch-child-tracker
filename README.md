@@ -13,8 +13,13 @@ Firebase (piano gratuito).
 ```
 /watch-app    Wear OS app (Kotlin) — installata sul Galaxy Watch4
 /phone-app    App Android (Kotlin) — usata dal genitore
-/backend      Firebase (Firestore rules, Cloud Functions)
+/backend      Funzioni Vercel (api/), regole/indici Firestore, script
+              (scripts/: migrazione familyId, diagnostica storico)
+.github/      Workflow: pulizia notturna storico, test backend
 ```
+
+<!-- 2026-09-24: prima diceva "/backend Firebase (Firestore rules, Cloud
+     Functions)", non piu' vero dalla migrazione a Vercel (v0.6.0). -->
 
 ## Stack
 
@@ -25,7 +30,8 @@ Firebase (piano gratuito).
   non Google Maps SDK, sostituito in v0.17.0 per evitare una
   fatturazione Google Cloud permanentemente attiva (vedi CONTEXT.md).
 - Backend: Firebase Spark (Firestore, FCM) + **Vercel Functions**
-  (Node.js/`firebase-admin`) al posto delle Cloud Functions di
+  (**Node.js 24**/`firebase-admin`; Node 20 dismesso da Vercel dal
+  01/10/2026) al posto delle Cloud Functions di
   Firebase, che richiederebbero il piano Blaze — migrato in v0.6.0
   (vedi CONTEXT.md).
 - Distribuzione: ADB via WiFi in sviluppo, Play Console Internal

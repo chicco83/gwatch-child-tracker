@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.98.0
+**Versione contesto:** 0.98.1
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -84,6 +84,70 @@ da Family Link.
   presenza. HA aggiunge solo una seconda vista/mappa e la possibilità di
   automazioni personalizzate lato utente, in parallelo a quanto l'app
   già fa nativamente.
+
+## Stato attuale (2026-09-24) — leggere per primo dopo una compattazione
+
+Fotografia sintetica dopo la lunga sessione del 23-24/9; il dettaglio e'
+nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
+
+**Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
+(e' anche quello che Vercel deploya). Versioni correnti: watch-app
+**v0.28.0**, phone-app **v0.23.0**, backend `trigger-event.js` **v0.23.0**,
+Node.js **24**. Le app Android non si compilano in queste sessioni
+(nessun SDK): build e prova le fa l'utente in Android Studio.
+
+**Fatti chiave emersi (non ripetere le indagini):**
+- **qwen_plan.md completato** (5 fasi + punto 6 via budget di tempo in
+  `cleanup.js`, niente `vercel.json`); CONTEXT.md resta un file unico
+  per scelta dell'utente. Migrazione `familyId` eseguita e
+  `firestore.rules` v0.7.0 pubblicate (23/9 sera), testate sul telefono.
+- **`vercel.json` non tollera un pattern specifico accanto a
+  `api/*.js`**: ha rotto il deploy due volte (v0.12.0 e v0.73.0).
+- **Causa del crollo dei punti dal 20/9**: sul watch "Migliora
+  precisione" (posizione di rete Google) era **spenta** dopo la scarica
+  completa del 20/9. Senza, in casa resta solo il GPS e anche le
+  geofence non funzionano. Riattivata dall'utente: punti ogni ~5' anche
+  in casa. Documentato in `watch-app/README.md` ("Impostazioni
+  obbligatorie"). Il codice non aveva regressioni sul GPS.
+- Regressione vera della Fase 2: phone-app installata prima della
+  migrazione `familyId` → nessuna iscrizione ai topic FCM per qualche
+  ora (risolto dalla migrazione).
+- Bug vero trovato: gli eventi geofence arrivavano con `battery=null`
+  (e lat/lon 0,0) e `trigger-event.js` azzerava batteria/posizione sul
+  device → ora aggiorna solo i campi presenti (v0.21.0).
+
+**Aggiunto in questa sessione (tutto verificato dall'utente salvo dove
+indicato):** Ricerca GPS con barre satelliti, diagnostica, reset dati
+GPS e iniezione A-GPS (`GpsAssist`); tracking ad alta precisione anche
+da fermo (v0.20.0, **da rivalutare per la batteria**: ora che la causa
+era "Migliora precisione" si potrebbe tornare a bilanciata — decisione
+aperta con l'utente); pulsante "Invia posizione" a colori (barra blu /
+verde / rosso); batteria anche senza fix (`status`) con avvisi di
+batteria scarica; satelliti visti/agganciati o "GPS non usato" sul
+telefono; "adesso" che avanza; verde batteria leggibile; tracking
+riavviato dopo aggiornamenti dell'app (`MY_PACKAGE_REPLACED`) e da push
+di richiesta posizione (lavoro espedito, funziona ad app chiusa);
+telefono che insiste nella richiesta di posizione con barra "in attesa"
+/ "nuovo tentativo tra N s" (fino a 20 tentativi); avvisi modalita'
+aereo / spegnimento / riaccensione con icona ✈️ ⏻ 📵 sul telefono.
+
+**Da verificare dall'utente (ultime modifiche, non ancora provate):**
+phone-app v0.23.0 (barra che sparisce all'arrivo della posizione dopo
+una riaccensione); deploy Vercel su Node 24 andato a buon fine; numero
+di satelliti visibile con un fix davvero GPS (all'aperto); batteria che
+resta dopo un evento zona; tracking continuo per un'intera giornata
+(`--hourly`).
+
+**Strumento di diagnostica sul campo** (autorizzato in modo permanente,
+vedi CLAUDE.md): `node backend/scripts/diag-device-history.js [giorni]
+[--all|--track|--hourly]` — stato del device, storico eventi, posizioni
+con precisione, distanze e riepilogo orario, ora italiana, mai
+coordinate stampate.
+
+**Aperto/backlog**: priorita' del tracking da fermo (batteria);
+satelliti/"status" non inviati dal tracking periodico, solo dai tentativi
+manuali/remoti; avvisi di stato del watch dipendono dal servizio di
+tracking attivo; backlog Fase 2/3 invariato (sotto).
 
 ## Stato implementazione
 
@@ -517,7 +581,10 @@ progetto. Da avviare solo a bug GPS/notifiche correnti chiusi.
 ```
 /watch-app    Wear OS app (Kotlin) — installata sul Galaxy Watch4
 /phone-app    App Android (Kotlin) — usata dal genitore
-/backend      Firebase (Firestore rules, Cloud Functions)
+/backend      Funzioni Vercel (api/), regole/indici Firestore, scripts/
+              (migrate-family-ids.js, diag-device-history.js)
+.github/      Workflow: pulizia notturna storico, test backend (Node 24)
+CLAUDE.md     Istruzioni per Claude (documentazione, diagnostica)
 CONTEXT.md    Questo file
 CHANGELOG.md  Storico versioni
 ```
@@ -2645,3 +2712,8 @@ CHANGELOG.md  Storico versioni
   rovescia (trigger-event v0.23.0, phone-app v0.23.0). Vercel: Node 20
   dismesso dal 01/10/2026 → backend e CI su Node 24, verificato con
   Node v24.21.0 (test, sintassi, caricamento moduli) (v0.98.0).
+- 2026-09-24: Preparazione alla compattazione su richiesta dell'utente:
+  aggiunta la sezione "Stato attuale (2026-09-24)" in cima a questo
+  file (fotografia per chi riprende), aggiornata "Struttura repo";
+  corretto README.md (backend descritto ancora come "Cloud Functions",
+  aggiunti Node 24, scripts/ e workflow) (v0.98.1).
