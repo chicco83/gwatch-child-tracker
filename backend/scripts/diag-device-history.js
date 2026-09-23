@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.2.0 (2026-09-23)
+ * Versione: 0.4.0 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -15,6 +15,12 @@
  * - 0.2.0 (2026-09-23): aggiunta la precisione (accuracy, metri) delle
  *   ultime posizioni: distingue un fix GPS (pochi metri) da una
  *   posizione da rete Wi-Fi/celle (decine-centinaia di metri).
+ * - 0.3.0 (2026-09-23): orari in ora italiana (Europe/Rome) invece che
+ *   UTC — l'utente leggeva 20:50 (UTC) per un invio delle 22:50 locali.
+ *   Precedente: iso() con toISOString() + "Z" (UTC).
+ * - 0.4.0 (2026-09-23): precisione mediana per giorno — capire se nei
+ *   giorni in cui il tracking funzionava le posizioni venivano dal GPS
+ *   (pochi metri) o da Wi-Fi/celle (decine di metri).
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -35,7 +41,9 @@ function toDate(v) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-const iso = (d) => (d ? d.toISOString().replace("T", " ").slice(0, 19) + "Z" : "-");
+// v0.3.0: ora italiana. Precedente (UTC):
+// const iso = (d) => (d ? d.toISOString().replace("T", " ").slice(0, 19) + "Z" : "-");
+const iso = (d) => (d ? d.toLocaleString("sv-SE", { timeZone: "Europe/Rome" }) : "-");
 
 async function main() {
   getAdminApp();
@@ -52,6 +60,7 @@ async function main() {
     // Posizioni: conteggio per giorno + ultime 8 (orario e precisione).
     const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();
     const perDay = {};
+    const accPerDay = {};
     const times = [];
     locs.docs.forEach((l) => {
       const t = toDate(l.data().timestamp);
@@ -59,10 +68,17 @@ async function main() {
       times.push({ t, acc: l.data().accuracy });
       const k = t.toISOString().slice(0, 10);
       perDay[k] = (perDay[k] || 0) + 1;
+      const acc = l.data().accuracy;
+      if (acc != null) (accPerDay[k] = accPerDay[k] || []).push(acc);
     });
     times.sort((a, b) => b.t - a.t);
     console.log(`  posizioni per giorno: ${JSON.stringify(perDay)}`);
-    console.log("  ultime posizioni (orario, precisione):");
+    // v0.4.0: precisione mediana (e minima) per giorno.
+    Object.keys(accPerDay).sort().forEach((k) => {
+      const a = accPerDay[k].slice().sort((x, y) => x - y);
+      console.log(`    ${k}: precisione mediana ${Math.round(a[Math.floor(a.length / 2)])} m, migliore ${Math.round(a[0])} m`);
+    });
+    console.log("  ultime posizioni (ora italiana, precisione):");
     times.slice(0, 8).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}`));
 
     // Eventi: orario, tipo, origine (niente coordinate/nomi).

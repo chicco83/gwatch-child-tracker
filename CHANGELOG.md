@@ -7,6 +7,38 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.87.0] - 2026-09-23
+
+### Fixed
+- **watch-app: tracking automatico senza punti dal 20/9** (watch-app
+  v0.20.0). Storico Firestore: posizioni automatiche 181-278/giorno il
+  18-19/9, poi 94, 0, 26, 17; precisione mediana ~21 m in tutti i
+  giorni. Stasera la posizione ottenuta da Google Maps (22:50, 8 m) e'
+  arrivata due volte: una dall'invio manuale e una dal servizio di
+  tracking, che quindi e' vivo ma da solo non otteneva posizioni. Causa:
+  da fermo il servizio chiedeva posizioni a priorita' "bilanciata", che
+  lascia ad Android la scelta della fonte (Wi-Fi, celle, telefono
+  associato) e puo' non accendere mai il GPS. Dopo la scarica completa
+  del watch del 20/9 quelle fonti non rispondono piu'. Ora da fermo la
+  richiesta e' ad alta precisione (sempre ogni 10 minuti), con i dati
+  di aiuto di `GpsAssist`.
+
+### Added
+- `location/TrackingStatus.kt` + log in `LocationTrackingService`
+  (prima nessun log): stato del servizio, priorita', punti ricevuti,
+  eta' dell'ultimo, ultimo errore — visibili anche nella diagnostica
+  della Ricerca GPS. `startForeground`/`requestLocationUpdates` in
+  try/catch con errore registrato invece di un crash silenzioso.
+- `backend/scripts/diag-device-history.js` v0.4.0: orari in ora
+  italiana (prima UTC, fonte di confusione: 20:50 UTC = 22:50 locali)
+  e precisione mediana per giorno.
+
+### Known limitations
+- Piu' consumo di batteria da fermo (GPS acceso fino a una volta ogni
+  10 minuti). Da valutare dopo qualche giorno di uso reale; se
+  eccessivo, allungare l'intervallo da fermo.
+- Non compilato in questa sessione.
+
 ## [0.86.0] - 2026-09-23
 
 ### Added

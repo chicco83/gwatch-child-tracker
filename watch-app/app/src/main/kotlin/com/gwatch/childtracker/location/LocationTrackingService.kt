@@ -5,6 +5,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -33,6 +34,14 @@ import com.gwatch.childtracker.upload.LocationUploadWorker
  * finisce nel buffer locale (PendingLocationStore); l'upload vero e
  * proprio e' un lavoro separato (LocationUploadWorker), periodico +
  * one-shot quando il buffer cresce abbastanza.
+ *
+ * 2026-09-23: aggiunti log (tag "LocationTrackingService") e
+ * TrackingStatus su avvio, richiesta, punti ricevuti ed errori — prima
+ * il servizio non scriveva nulla, e dal 20/9 i punti automatici sono
+ * crollati senza modo di capire perche'. startForeground/
+ * requestLocationUpdates ora in try/catch: un errore (es. avvio in
+ * background dopo un riavvio del watch) viene registrato invece di far
+ * morire il servizio in silenzio.
  */
 class LocationTrackingService : Service() {
 
@@ -44,6 +53,9 @@ class LocationTrackingService : Service() {
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
+            // 2026-09-23: diagnostica, vedi TrackingStatus.kt.
+            TrackingStatus.onFix()
+            Log.i(TAG, "punto ricevuto: precisione=${location.accuracy}m provider=${location.provider}")
             // v0.8.0 (2026-09-18): segnala a GpsAvailability che il GPS
             // risponde — riusa questo callback gia' esistente (tracking
             // periodico automatico), nessun polling aggiuntivo. Vedi
@@ -79,8 +91,19 @@ class LocationTrackingService : Service() {
         super.onCreate()
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
         pendingStore = PendingLocationStore(this)
-        startForeground(NOTIFICATION_ID, buildNotification())
-        registerActivityTransitions()
+        // 2026-09-23: try/catch + log. Precedente:
+        //     startForeground(NOTIFICATION_ID, buildNotification())
+        //     registerActivityTransitions()
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification())
+            TrackingStatus.serviceRunning = true
+            Log.i(TAG, "onCreate: servizio in primo piano avviato")
+        } catch (e: Exception) {
+            TrackingStatus.lastError = "startForeground: ${e.javaClass.simpleName}"
+            Log.e(TAG, "onCreate: startForeground fallito", e)
+        }
+        runCatching { registerActivityTransitions() }
+            .onFailure { Log.w(TAG, "registerActivityTransitions fallito", it) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,6 +118,8 @@ class LocationTrackingService : Service() {
     }
 
     override fun onDestroy() {
+        TrackingStatus.serviceRunning = false
+        Log.i(TAG, "onDestroy")
         super.onDestroy()
         fusedClient.removeLocationUpdates(locationCallback)
     }
@@ -105,18 +130,39 @@ class LocationTrackingService : Service() {
     private fun startLocationUpdates(intervalMillis: Long) {
         fusedClient.removeLocationUpdates(locationCallback)
 
-        val priority = if (intervalMillis == INTERVAL_MOVING_MS) {
-            Priority.PRIORITY_HIGH_ACCURACY
-        } else {
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY
-        }
+        // 2026-09-23: alta precisione anche da fermo. Lo storico Firestore
+        // mostra i punti automatici crollati dal 20/9 (giorno della scarica
+        // completa del watch) mentre il servizio restava vivo e Maps
+        // otteneva la posizione: la priorita' "bilanciata" lascia ad
+        // Android la scelta della fonte (Wi-Fi, celle, telefono associato)
+        // e puo' non accendere mai il GPS; se quelle fonti mancano, nessun
+        // punto. Con HIGH_ACCURACY ogni 10' il GPS viene acceso quando
+        // serve (con i dati di aiuto di GpsAssist). Costo: piu' batteria
+        // da fermo. Precedente (2026-09-09):
+        //     val priority = if (intervalMillis == INTERVAL_MOVING_MS) {
+        //         Priority.PRIORITY_HIGH_ACCURACY
+        //     } else {
+        //         Priority.PRIORITY_BALANCED_POWER_ACCURACY
+        //     }
+        val priority = Priority.PRIORITY_HIGH_ACCURACY
+        GpsAssist.injectAssistance(this)
 
         val request = LocationRequest.Builder(priority, intervalMillis)
             .setMinUpdateIntervalMillis(intervalMillis / 2)
             .build()
 
-        fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
-        updatesActive = true
+        // 2026-09-23: try/catch + log. Precedente:
+        //     fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
+        //     updatesActive = true
+        try {
+            fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
+            updatesActive = true
+            TrackingStatus.priorityLabel = "alta, ogni ${intervalMillis / 60000} min"
+            Log.i(TAG, "richiesta posizioni: ${TrackingStatus.priorityLabel}")
+        } catch (e: Exception) {
+            TrackingStatus.lastError = "requestLocationUpdates: ${e.javaClass.simpleName}"
+            Log.e(TAG, "requestLocationUpdates fallito", e)
+        }
     }
 
     @Suppress("MissingPermission")
@@ -165,6 +211,7 @@ class LocationTrackingService : Service() {
             .build()
 
     companion object {
+        private const val TAG = "LocationTrackingService"
         private const val NOTIFICATION_ID = 1
 
         const val EXTRA_MOVING = "moving"

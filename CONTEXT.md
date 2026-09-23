@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.86.0
+**Versione contesto:** 0.87.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2455,3 +2455,26 @@ CHANGELOG.md  Storico versioni
   reiniezione, ricerca fino a 10 min) — watch-app v0.19.0. Se neanche
   il reset funziona: riavvio completo del watch, poi valutare un
   problema hardware/firmware (fuori dal controllo dell'app) (v0.86.0).
+- 2026-09-23: L'utente riapre Maps sul watch: posizione esatta, icona
+  GPS fissa nella tendina, ma nulla di nuovo arriva al backend → "il
+  problema e' il nostro codice". Verificato con lo script (ora in ora
+  italiana: l'utente leggeva 20:50 UTC per le 22:50 locali — stesso
+  invio): la posizione delle 22:50 (8 m) compare DUE volte, la seconda
+  dal servizio di tracking → servizio vivo, riceve le posizioni
+  prodotte da altri (Maps) ma non ne ottiene di proprie. Precisione
+  mediana ~21 m in tutti i giorni (anche 18-19): non e' cambiato il
+  tipo di fonte, e' crollata la quantita'. **Decisione**: il limite e'
+  davvero nel nostro codice — da fermo il servizio chiedeva
+  PRIORITY_BALANCED_POWER_ACCURACY, che dipende da Wi-Fi/celle/telefono
+  associato e puo' non accendere mai il GPS; dopo la scarica del 20/9
+  quelle fonti non rispondono. Passato a PRIORITY_HIGH_ACCURACY anche
+  da fermo (intervallo invariato 10'), piu' iniezione GpsAssist.
+  Scartata l'alternativa "watchdog con Handler che ripiega sul GPS
+  dopo 12' senza punti": con il watch in sospensione profonda un
+  Handler puo' non scattare, mentre la richiesta al fused provider
+  sveglia il dispositivo da se'. Contropartita accettata: piu' batteria
+  da fermo, da rivalutare con l'uso reale. Aggiunti anche log e
+  TrackingStatus (servizio prima completamente muto). Ipotesi da
+  confermare con l'utente: con quale telefono e' associato il watch e
+  se dopo il 20/9 e' ancora connesso via Bluetooth (watch-app v0.20.0)
+  (v0.87.0).

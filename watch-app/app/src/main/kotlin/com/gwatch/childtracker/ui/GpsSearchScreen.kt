@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.5.0 (2026-09-23)
+// Versione: 0.6.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -60,6 +60,9 @@ package com.gwatch.childtracker.ui
 //   cancella i dati di aiuto del chip e riparte da zero; in quel caso la
 //   ricerca dura fino a RESET_SEARCH_LIMIT_S (una partenza a freddo puo'
 //   richiedere diversi minuti). Esito mostrato in diagnostica.
+// - 0.6.0 (2026-09-23): righe sul tracking automatico (TrackingStatus):
+//   servizio attivo, priorita' richiesta, punti ricevuti ed eta'
+//   dell'ultimo, ultimo errore.
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -115,6 +118,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.gwatch.childtracker.R
 import com.gwatch.childtracker.location.GpsAssist
+import com.gwatch.childtracker.location.TrackingStatus
 import kotlinx.coroutines.delay
 
 private const val TAG = "GpsSearchScreen"
@@ -333,6 +337,19 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
         },
         context.getString(R.string.gps_diag_listener_fixes, diag.listenerFixes),
         context.getString(R.string.gps_diag_fused_fixes, diag.fusedFixes),
+        // v0.6.0: tracking automatico (letto a ogni ricomposizione, cioe'
+        // almeno una volta al secondo col cronometro della ricerca).
+        context.getString(
+            R.string.gps_diag_tracking,
+            if (TrackingStatus.serviceRunning) "attivo" else "NON attivo",
+            TrackingStatus.priorityLabel ?: "?",
+        ),
+        context.getString(
+            R.string.gps_diag_tracking_fixes,
+            TrackingStatus.fixCount,
+            TrackingStatus.lastFixAgeS()?.let { "${it}s fa" } ?: "mai",
+        ),
+        context.getString(R.string.gps_diag_tracking_error, TrackingStatus.lastError ?: "nessuno"),
         context.getString(
             R.string.gps_diag_reset,
             when (diag.resetAccepted) {
