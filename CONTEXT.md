@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.80.1
+**Versione contesto:** 0.81.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2338,3 +2338,16 @@ CHANGELOG.md  Storico versioni
   "Invia posizione" resta premibile con GPS assente. Richiesta nuova in
   valutazione: mostrare dettagli della ricerca GPS (barre dei satelliti
   "stile TomTom"), non ancora avviata (v0.80.1).
+- 2026-09-23: Implementata la schermata "Ricerca GPS" richiesta
+  dall'utente (barre dei satelliti stile TomTom), watch-app v0.15.0,
+  nuovo `ui/GpsSearchScreen.kt`. Scelte: (1) si apre solo dal pulsante
+  "Invia posizione" quando il GPS risulta assente, non e' una voce di
+  menu fissa; (2) GPS acceso solo a schermata aperta e al massimo 3
+  minuti — `GnssStatus` emette dati solo con il GPS attivo, quindi la
+  schermata deve accenderlo da se' (`LocationManager.GPS_PROVIDER`,
+  non il fused provider usato altrove); (3) al primo fix riusa
+  l'invio gia' esistente (`sendLocationNow()`/LocationRequestWorker)
+  invece di un secondo percorso di invio; (4) barre disegnate con
+  Box/Row a larghezza fissa, niente `Modifier.weight` (lezione del
+  progetto). **Non compilato qui**: primo build e prova su Watch4 da
+  fare (v0.81.0).

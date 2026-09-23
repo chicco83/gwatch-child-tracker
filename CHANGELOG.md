@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-09-23
+
+### Added
+- **watch-app: schermata "Ricerca GPS" con le barre dei satelliti**
+  (stile vecchi navigatori TomTom), richiesta dall'utente. Con GPS
+  assente, toccare "GPS assente, tocca per cercare" apre la nuova
+  `ui/GpsSearchScreen.kt`: una barra per satellite (fino a 12, le piu'
+  forti) alta quanto il segnale in dB-Hz, verde se usato per la
+  posizione e grigia se solo visto, piu' "Satelliti: X visti, Y
+  usati", tempo di ricerca e un suggerimento (cielo aperto/finestra).
+  - Dati letti da Android (`GnssStatus`), nessun servizio esterno.
+  - GPS acceso solo mentre la schermata e' aperta e al massimo 3
+    minuti, poi si ferma da solo ("Riprova" per ripartire): niente
+    consumo di batteria se il watch resta dimenticato su questa
+    schermata.
+  - Al primo fix: GPS segnato disponibile, posizione inviata
+    (stesso invio del pulsante) e ritorno al menu principale.
+  - Con GPS disponibile il pulsante "Invia posizione" funziona come
+    prima (invio diretto).
+  watch-app portata a v0.15.0.
+
+### Known limitations
+- Non compilato in questa sessione (nessun SDK Android): primo build e
+  test da fare in Android Studio + Galaxy Watch4. Da verificare in
+  particolare che il Watch4 fornisca davvero lo stato dei satelliti
+  (API Android standard, ma mai usata prima in questo progetto).
+
 ## [0.80.0] - 2026-09-23
 
 ### Fixed

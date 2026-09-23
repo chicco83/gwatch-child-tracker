@@ -156,9 +156,33 @@ class MainActivity : ComponentActivity() {
                             onCancel = { screen = "main" },
                         )
                     }
+                    // v0.15.0 (2026-09-23): schermata "Ricerca GPS" con le
+                    // barre dei satelliti (richiesta utente), vedi
+                    // GpsSearchScreen.kt. Al primo fix: GPS segnato
+                    // disponibile, posizione inviata, ritorno al menu.
+                    "gpsSearch" -> {
+                        BackHandler { screen = "main" }
+                        GpsSearchScreen(
+                            onFixFound = {
+                                GpsAvailability.markAvailable()
+                                sendLocationNow()
+                                screen = "main"
+                            },
+                            onBack = { screen = "main" },
+                        )
+                    }
                     else -> MainScreen(
                         onSosClick = { screen = "sosConfirm" },
-                        onLocationClick = ::sendLocationNow,
+                        // v0.15.0 (2026-09-23): con GPS assente il tocco apre la
+                        // Ricerca GPS invece di rilanciare subito l'invio.
+                        // Precedente: onLocationClick = ::sendLocationNow,
+                        onLocationClick = {
+                            if (GpsAvailability.available.value == false) {
+                                screen = "gpsSearch"
+                            } else {
+                                sendLocationNow()
+                            }
+                        },
                         onChatClick = {
                             chatScrollToBottom = false
                             screen = "chat"

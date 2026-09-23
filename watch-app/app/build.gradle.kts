@@ -106,8 +106,10 @@ android {
         // documentata, non un bug da correggere.
         // v0.14.0 (2026-09-23): pulsante "Invia posizione" mai piu'
         // bloccato con GPS assente, vedi ui/MainActivity.kt.
-        versionCode = 14
-        versionName = "0.14.0"
+        // v0.15.0 (2026-09-23): schermata "Ricerca GPS" con barre dei
+        // satelliti, vedi ui/GpsSearchScreen.kt.
+        versionCode = 15
+        versionName = "0.15.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
