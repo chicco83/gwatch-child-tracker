@@ -95,9 +95,9 @@ Firebase (piano gratuito).
   non trova la posizione, così sul telefono restano sempre aggiornati.
   Collegando o scollegando il caricatore lo stato parte subito (appena
   c'è rete), senza aspettare la posizione successiva.
-  L'autonomia si calcola da quanto è scesa la percentuale dallo
-  scollegamento (serve un calo di almeno 2% in 20 minuti); prima di
-  allora usa la corrente letta dal sistema, se il watch la fornisce.
+  L'autonomia è la previsione di Wear OS (la stessa delle impostazioni
+  batteria), non calcolata dall'app: se il sistema non ne fornisce una
+  (o su Wear OS 3) la riga "Autonomia" sul telefono non compare.
 
 - **Avvisi di stato del watch**
 

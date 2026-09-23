@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.100.1
+**Versione contesto:** 0.100.2
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.31.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
+**v0.32.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2755,3 +2755,9 @@ CHANGELOG.md  Storico versioni
   valore iniziale. Deroga consapevole alla richiesta del 19/9 ("chiesta
   al sistema operativo"): quella strada su questo hardware non da'
   valori usabili. watch-app v0.31.0 (v0.100.1).
+- 2026-09-24: L'utente ha rifiutato la stima calcolata dall'app (v0.100.1):
+  l'autonomia va chiesta a Wear OS. Unica API pubblica per l'autonomia in
+  scarica: PowerManager.getBatteryDischargePrediction() (API 31+, lettura
+  senza permessi). Se ritorna null non si mostra nulla, nessun ripiego
+  calcolato. Da verificare sul Watch4 se Wear OS la fornisce davvero (log
+  "BatteryInfo"). watch-app v0.32.0 (v0.100.2).

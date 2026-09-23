@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 
 /**
@@ -44,6 +46,16 @@ import android.util.Log
  *    usa GPS/LTE e sottostima molto l'autonomia (es. 2h invece di 30h).
  *    La lettura hardware resta come valore iniziale finche' la
  *    percentuale non e' scesa abbastanza per una stima dall'andamento.
+ *
+ * v0.12.0 (2026-09-24): richiesta utente — "non devi calcolare la durata
+ * stimata ma chiederla a Wear OS". Tolte entrambe le stime calcolate da
+ * noi (andamento e formula hardware, lasciate sotto come commento).
+ * L'autonomia ora e' SOLO quella del sistema: PowerManager
+ * .getBatteryDischargePrediction() (API 31+, nessun permesso per
+ * leggerla), la stessa previsione che il sistema mostra nelle
+ * impostazioni della batteria. Se il sistema non ne ha una (ritorna
+ * null, o Wear OS 3 = API 30) l'autonomia non viene inviata e la riga
+ * non compare sulla phone-app: nessun valore inventato da noi.
  */
 data class BatterySnapshot(
     val percent: Int?,
@@ -54,25 +66,27 @@ data class BatterySnapshot(
 
 object BatteryInfo {
     private const val TAG = "BatteryInfo"
+    // v0.12.0 (2026-09-24): costanti della v0.11.0 non piu' usate (stime
+    // nostre tolte su richiesta dell'utente), lasciate come commento:
+    //
+    // // v0.11.0: ancoraggio per la stima dall'andamento (readTrendHours).
+    // private const val PREFS = "battery_trend"
+    // private const val KEY_ANCHOR_TIME = "anchor_time"
+    // private const val KEY_ANCHOR_PERCENT = "anchor_percent"
+    // // Serve un calo minimo per una stima sensata: la percentuale e' a
+    // // scatti di 1%, con 1 solo punto di calo l'errore sarebbe enorme.
+    // private const val MIN_TREND_DROP_PERCENT = 2
+    // private const val MIN_TREND_ELAPSED_MS = 20 * 60 * 1000L
+    //
+    // // v0.11.0: sotto questi valori il kernel sta usando mA/mAh invece di
+    // // µA/µAh (nessun watch in uso assorbe meno di 2 mA = 2000 µA, e la
+    // // batteria del Watch4 e' 247-361 mAh = 247000-361000 µAh).
+    // private const val MAX_CURRENT_IN_MA = 2_000
+    // private const val MAX_CHARGE_IN_MAH = 5_000
 
-    // v0.11.0: ancoraggio per la stima dall'andamento (readTrendHours).
-    private const val PREFS = "battery_trend"
-    private const val KEY_ANCHOR_TIME = "anchor_time"
-    private const val KEY_ANCHOR_PERCENT = "anchor_percent"
-    // Serve un calo minimo per una stima sensata: la percentuale e' a
-    // scatti di 1%, con 1 solo punto di calo l'errore sarebbe enorme.
-    private const val MIN_TREND_DROP_PERCENT = 2
-    private const val MIN_TREND_ELAPSED_MS = 20 * 60 * 1000L
-
-    // v0.11.0: sotto questi valori il kernel sta usando mA/mAh invece di
-    // µA/µAh (nessun watch in uso assorbe meno di 2 mA = 2000 µA, e la
-    // batteria del Watch4 e' 247-361 mAh = 247000-361000 µAh).
-    private const val MAX_CURRENT_IN_MA = 2_000
-    private const val MAX_CHARGE_IN_MAH = 5_000
-
-    // Intervallo di plausibilita' per le stime (vedi readHardwareHours e
-    // readTrendHours sotto; prima della v0.11.0 readHoursRemaining): scarta i valori chiaramente assurdi
-    // invece di mostrarli in app — meglio nessuna stima che una sbagliata.
+    // Intervallo di plausibilita' per l'autonomia (dalla v0.12.0 applicato
+    // alla previsione di Wear OS, readSystemPrediction): scarta i valori
+    // chiaramente assurdi invece di mostrarli in app.
     private const val MIN_PLAUSIBLE_HOURS = 0.1
     private const val MAX_PLAUSIBLE_HOURS = 100.0
 
@@ -103,14 +117,17 @@ object BatteryInfo {
         // carica si azzera l'ancoraggio (la prossima scarica riparte da zero).
         // Precedente (2026-09-19):
         // val hoursRemaining = if (isCharging == false) readHoursRemaining(context) else null
-        val hoursRemaining = when (isCharging) {
-            false -> readTrendHours(context, percent) ?: readHardwareHours(context)
-            true -> {
-                resetTrend(context)
-                null
-            }
-            null -> null
-        }
+        // v0.12.0: solo la previsione di Wear OS (vedi readSystemPrediction).
+        // Precedente (2026-09-24, v0.11.0):
+        // val hoursRemaining = when (isCharging) {
+        //     false -> readTrendHours(context, percent) ?: readHardwareHours(context)
+        //     true -> {
+        //         resetTrend(context)
+        //         null
+        //     }
+        //     null -> null
+        // }
+        val hoursRemaining = if (isCharging == false) readSystemPrediction(context) else null
 
         return BatterySnapshot(percent, temperatureC, isCharging, hoursRemaining)
     }
@@ -156,64 +173,92 @@ object BatteryInfo {
     // }
 
     /**
-     * v0.11.0: stessa idea della vecchia readHoursRemaining() (capacita'
-     * residua / corrente di scarica, dati del sistema operativo) ma
-     * tollerante ai kernel che non rispettano la documentazione: segno
-     * ignorato (siamo gia' sicuri di essere in scarica, EXTRA_PLUGGED=0),
-     * valori piccoli interpretati come mA/mAh. Resta il controllo di
-     * plausibilita': meglio nessun numero che uno sbagliato.
+     * v0.12.0: autonomia residua chiesta a Wear OS
+     * (PowerManager.getBatteryDischargePrediction, API 31). null se il
+     * sistema non ha una previsione o se e' fuori dall'intervallo di
+     * plausibilita'. Il valore (o la sua assenza) va nel log, tag
+     * "BatteryInfo", per verificarlo con adb logcat.
      */
-    private fun readHardwareHours(context: Context): Double? {
-        val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-            ?: return null
-
-        val rawCharge = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
-        val rawCurrent = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
-        Log.i(TAG, "grezzi: CHARGE_COUNTER=$rawCharge CURRENT_NOW=$rawCurrent")
-        // Int.MIN_VALUE = proprieta' non supportata; 0 = nessun dato.
-        if (rawCharge == Int.MIN_VALUE || rawCharge <= 0) return null
-        if (rawCurrent == Int.MIN_VALUE || rawCurrent == 0) return null
-
-        val chargeUAh = if (rawCharge < MAX_CHARGE_IN_MAH) rawCharge * 1000.0 else rawCharge.toDouble()
-        val absCurrent = kotlin.math.abs(rawCurrent.toLong())
-        val currentUA = if (absCurrent < MAX_CURRENT_IN_MA) absCurrent * 1000.0 else absCurrent.toDouble()
-
-        val hours = chargeUAh / currentUA
-        Log.i(TAG, "stima hardware: %.1f h".format(hours))
-        return hours.takeIf { it in MIN_PLAUSIBLE_HOURS..MAX_PLAUSIBLE_HOURS }
-    }
-
-    /**
-     * v0.11.0: autonomia dall'andamento reale della percentuale da quando
-     * il watch e' stato scollegato (media su tutto il periodo, include
-     * GPS/LTE/schermo come li usa davvero il bambino). Ancoraggio
-     * (ora, percentuale) in SharedPreferences, creato alla prima lettura
-     * in scarica e azzerato in carica o se la percentuale risale.
-     * null finche' il calo non e' almeno MIN_TREND_DROP_PERCENT in almeno
-     * MIN_TREND_ELAPSED_MS.
-     */
-    private fun readTrendHours(context: Context, percent: Int?): Double? {
-        if (percent == null) return null
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val now = System.currentTimeMillis()
-        val anchorTime = prefs.getLong(KEY_ANCHOR_TIME, 0L)
-        val anchorPercent = prefs.getInt(KEY_ANCHOR_PERCENT, -1)
-        // Nessun ancoraggio, oppure ricaricato senza che lo vedessimo.
-        if (anchorTime <= 0L || anchorPercent < 0 || percent > anchorPercent || anchorTime > now) {
-            prefs.edit().putLong(KEY_ANCHOR_TIME, now).putInt(KEY_ANCHOR_PERCENT, percent).apply()
+    private fun readSystemPrediction(context: Context): Double? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            Log.i(TAG, "previsione di sistema non disponibile (API ${Build.VERSION.SDK_INT} < 31)")
             return null
         }
-        val drop = anchorPercent - percent
-        val elapsedMs = now - anchorTime
-        if (drop < MIN_TREND_DROP_PERCENT || elapsedMs < MIN_TREND_ELAPSED_MS) return null
-
-        val percentPerHour = drop / (elapsedMs / 3_600_000.0)
-        val hours = percent / percentPerHour
-        Log.i(TAG, "stima andamento: -$drop% in ${elapsedMs / 60_000} min → %.1f h".format(hours))
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            ?: return null
+        val prediction = runCatching { powerManager.batteryDischargePrediction }
+            .onFailure { Log.w(TAG, "lettura previsione fallita", it) }
+            .getOrNull()
+        if (prediction == null) {
+            Log.i(TAG, "Wear OS non fornisce una previsione di autonomia")
+            return null
+        }
+        val hours = prediction.toMinutes() / 60.0
+        Log.i(TAG, "previsione Wear OS: %.1f h".format(hours))
         return hours.takeIf { it in MIN_PLAUSIBLE_HOURS..MAX_PLAUSIBLE_HOURS }
     }
 
-    private fun resetTrend(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
-    }
+    // Precedente (2026-09-24, v0.11.0), sostituito dalla v0.12.0 con
+    // readSystemPrediction() su richiesta dell'utente (niente stime nostre):
+    // /**
+    //  * v0.11.0: stessa idea della vecchia readHoursRemaining() (capacita'
+    //  * residua / corrente di scarica, dati del sistema operativo) ma
+    //  * tollerante ai kernel che non rispettano la documentazione: segno
+    //  * ignorato (siamo gia' sicuri di essere in scarica, EXTRA_PLUGGED=0),
+    //  * valori piccoli interpretati come mA/mAh. Resta il controllo di
+    //  * plausibilita': meglio nessun numero che uno sbagliato.
+    //  */
+    // private fun readHardwareHours(context: Context): Double? {
+    //     val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+    //         ?: return null
+    //
+    //     val rawCharge = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+    //     val rawCurrent = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+    //     Log.i(TAG, "grezzi: CHARGE_COUNTER=$rawCharge CURRENT_NOW=$rawCurrent")
+    //     // Int.MIN_VALUE = proprieta' non supportata; 0 = nessun dato.
+    //     if (rawCharge == Int.MIN_VALUE || rawCharge <= 0) return null
+    //     if (rawCurrent == Int.MIN_VALUE || rawCurrent == 0) return null
+    //
+    //     val chargeUAh = if (rawCharge < MAX_CHARGE_IN_MAH) rawCharge * 1000.0 else rawCharge.toDouble()
+    //     val absCurrent = kotlin.math.abs(rawCurrent.toLong())
+    //     val currentUA = if (absCurrent < MAX_CURRENT_IN_MA) absCurrent * 1000.0 else absCurrent.toDouble()
+    //
+    //     val hours = chargeUAh / currentUA
+    //     Log.i(TAG, "stima hardware: %.1f h".format(hours))
+    //     return hours.takeIf { it in MIN_PLAUSIBLE_HOURS..MAX_PLAUSIBLE_HOURS }
+    // }
+    //
+    // /**
+    //  * v0.11.0: autonomia dall'andamento reale della percentuale da quando
+    //  * il watch e' stato scollegato (media su tutto il periodo, include
+    //  * GPS/LTE/schermo come li usa davvero il bambino). Ancoraggio
+    //  * (ora, percentuale) in SharedPreferences, creato alla prima lettura
+    //  * in scarica e azzerato in carica o se la percentuale risale.
+    //  * null finche' il calo non e' almeno MIN_TREND_DROP_PERCENT in almeno
+    //  * MIN_TREND_ELAPSED_MS.
+    //  */
+    // private fun readTrendHours(context: Context, percent: Int?): Double? {
+    //     if (percent == null) return null
+    //     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    //     val now = System.currentTimeMillis()
+    //     val anchorTime = prefs.getLong(KEY_ANCHOR_TIME, 0L)
+    //     val anchorPercent = prefs.getInt(KEY_ANCHOR_PERCENT, -1)
+    //     // Nessun ancoraggio, oppure ricaricato senza che lo vedessimo.
+    //     if (anchorTime <= 0L || anchorPercent < 0 || percent > anchorPercent || anchorTime > now) {
+    //         prefs.edit().putLong(KEY_ANCHOR_TIME, now).putInt(KEY_ANCHOR_PERCENT, percent).apply()
+    //         return null
+    //     }
+    //     val drop = anchorPercent - percent
+    //     val elapsedMs = now - anchorTime
+    //     if (drop < MIN_TREND_DROP_PERCENT || elapsedMs < MIN_TREND_ELAPSED_MS) return null
+    //
+    //     val percentPerHour = drop / (elapsedMs / 3_600_000.0)
+    //     val hours = percent / percentPerHour
+    //     Log.i(TAG, "stima andamento: -$drop% in ${elapsedMs / 60_000} min → %.1f h".format(hours))
+    //     return hours.takeIf { it in MIN_PLAUSIBLE_HOURS..MAX_PLAUSIBLE_HOURS }
+    // }
+    //
+    // private fun resetTrend(context: Context) {
+    //     context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    // }
 }

@@ -145,8 +145,11 @@ android {
         // v0.31.0 (2026-09-24): autonomia stimata che non compariva mai
         // (location/BatteryInfo.kt v0.11.0: unita'/segno della corrente
         // normalizzati + stima dall'andamento della percentuale).
-        versionCode = 31
-        versionName = "0.31.0"
+        // v0.32.0 (2026-09-24): autonomia chiesta solo a Wear OS
+        // (PowerManager.getBatteryDischargePrediction), niente stime nostre
+        // (location/BatteryInfo.kt v0.12.0, richiesta utente).
+        versionCode = 32
+        versionName = "0.32.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

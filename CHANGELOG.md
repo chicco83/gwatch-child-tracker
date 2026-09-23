@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.2] - 2026-09-24
+
+### Changed
+- **Autonomia stimata chiesta a Wear OS** (richiesta utente: "non devi
+  calcolarla ma chiederla a Wear OS"; watch-app v0.32.0, `BatteryInfo.kt`
+  v0.12.0): tolte la stima dall'andamento della percentuale e la formula
+  CHARGE_COUNTER/CURRENT_NOW della v0.100.1 (lasciate come commento). Ora
+  si usa solo `PowerManager.getBatteryDischargePrediction()` (API 31+),
+  la previsione del sistema; il valore o la sua assenza vanno nel log
+  (`adb logcat -s BatteryInfo`).
+
+### Known limitations
+- Se Wear OS non fornisce una previsione (ritorna null) o il watch e' su
+  Wear OS 3 (API 30), l'autonomia non compare: da verificare sul Watch4.
+- watch-app non compilata in questa sessione.
+
 ## [0.100.1] - 2026-09-24
 
 ### Fixed
