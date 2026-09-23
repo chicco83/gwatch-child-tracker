@@ -104,6 +104,8 @@ Firebase (piano gratuito).
   Segnala al telefono modalità aereo attivata/disattivata, spegnimento e
   riaccensione. L'avviso immediato parte solo se c'è ancora rete; al
   rientro arriva comunque, con l'ora di inizio del periodo offline.
+  La riaccensione si segnala solo per un vero riavvio del watch, non
+  quando l'app viene riaperta dopo un arresto forzato.
 
 - **"Posizione visualizzata"**
 

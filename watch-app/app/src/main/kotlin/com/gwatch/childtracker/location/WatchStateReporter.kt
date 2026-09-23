@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -23,7 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Versione: 0.2.0 (2026-09-24)
+ * Versione: 0.3.0 (2026-09-24)
  *
  * Richiesta utente: avvisare il telefono quando il watch va in modalita'
  * aereo o si spegne (icona corrispondente sulla phone-app).
@@ -50,12 +51,26 @@ import kotlinx.coroutines.withTimeoutOrNull
  * il cambio in pochi secondi invece di aspettare il prossimo punto di
  * tracking (fino a 10'). Worker con vincolo di rete e REPLACE: conta
  * solo l'ultimo stato del caricatore.
+ *
+ * v0.3.0 (2026-09-24): bug trovato nei logcat/diagnostica dell'utente —
+ * "watch riacceso" inviato a OGNI avvio da Android Studio (00:27, 00:37,
+ * 00:45, 01:01 del 24/9), mentre il watch si era riavviato davvero solo
+ * alle 00:21. Da Android 15 (il watch e' su Android 16) un'app uscita
+ * dallo stato "arresto forzato" riceve di nuovo BOOT_COMPLETED alla
+ * riapertura, e Android Studio fa un arresto forzato a ogni Run. Ora
+ * onBoot() invia "boot" solo se il numero di avvii del sistema
+ * (Settings.Global.BOOT_COUNT) e' cambiato dall'ultimo avviso; se il
+ * contatore non e' leggibile, solo se il sistema e' acceso da meno di
+ * 10 minuti.
  */
 object WatchStateReporter {
     private const val TAG = "WatchStateReporter"
     private const val PREFS = "watch_state"
     private const val KEY_AIRPLANE_SINCE = "airplane_since"
     private const val KEY_OFF_SINCE = "off_since"
+    // v0.3.0: ultimo BOOT_COUNT gia' segnalato (vedi isRealBoot).
+    private const val KEY_LAST_BOOT_COUNT = "last_boot_count"
+    private const val FRESH_BOOT_MAX_UPTIME_MS = 10 * 60 * 1000L
     private const val IMMEDIATE_TIMEOUT_MS = 4_000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -119,6 +134,13 @@ object WatchStateReporter {
     /** Da BootReceiver: invia "boot" con l'ora dello spegnimento, se nota. */
     fun onBoot(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // v0.3.0: BOOT_COMPLETED arriva anche dopo un arresto forzato
+        // (Android 15+), non solo a una vera accensione: vedi Storico sopra.
+        // Precedente (2026-09-23): nessun controllo, "boot" sempre inviato.
+        if (!isRealBoot(context, prefs)) {
+            Log.i(TAG, "BOOT_COMPLETED senza riavvio del watch (arresto forzato dell'app): nessun avviso")
+            return
+        }
         val since = prefs.getLong(KEY_OFF_SINCE, 0L).takeIf { it > 0 }
         prefs.edit().remove(KEY_OFF_SINCE).apply()
         enqueueOnNetwork(context, "boot", System.currentTimeMillis(), since)
@@ -141,6 +163,27 @@ object WatchStateReporter {
             ExistingWorkPolicy.REPLACE,
             work,
         )
+    }
+
+    /**
+     * v0.3.0: true se il watch si e' davvero riavviato dall'ultimo avviso.
+     * BOOT_COUNT cresce di 1 a ogni accensione del sistema; lo si salva
+     * dopo averlo usato, cosi' un secondo BOOT_COMPLETED con lo stesso
+     * valore (app riaperta dopo un arresto forzato) viene ignorato.
+     */
+    private fun isRealBoot(context: Context, prefs: android.content.SharedPreferences): Boolean {
+        val bootCount = runCatching {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT)
+        }.getOrNull()
+        if (bootCount == null) {
+            return SystemClock.elapsedRealtime() < FRESH_BOOT_MAX_UPTIME_MS
+        }
+        val lastReported = prefs.getInt(KEY_LAST_BOOT_COUNT, -1)
+        prefs.edit().putInt(KEY_LAST_BOOT_COUNT, bootCount).apply()
+        // Primo avvio dopo l'installazione di questa versione: nessun valore
+        // salvato, si decide dal tempo di accensione.
+        if (lastReported == -1) return SystemClock.elapsedRealtime() < FRESH_BOOT_MAX_UPTIME_MS
+        return bootCount != lastReported
     }
 
     private fun sendImmediate(context: Context, watchState: String, stateAt: Long) {

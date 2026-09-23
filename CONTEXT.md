@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.100.2
+**Versione contesto:** 0.100.3
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.32.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
+**v0.33.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2761,3 +2761,12 @@ CHANGELOG.md  Storico versioni
   senza permessi). Se ritorna null non si mostra nulla, nessun ripiego
   calcolato. Da verificare sul Watch4 se Wear OS la fornisce davvero (log
   "BatteryInfo"). watch-app v0.32.0 (v0.100.2).
+- 2026-09-24: Logcat di telefono (motorola edge 20, Android 13) e watch
+  (SM-R895F, **Android 16 / API 36**, non Wear OS 3 come si assumeva).
+  Trovato: BOOT_COMPLETED ri-consegnato dopo ogni arresto forzato
+  (Android 15+) → falsi "watch riacceso" a ogni Run di Android Studio.
+  Filtro su Settings.Global.BOOT_COUNT salvato in prefs (v0.100.3).
+  Altri punti emersi: le push con payload "notification" sulla phone-app
+  finiscono nel canale fcm_fallback (manca default_notification_channel_id
+  nel manifest, correzione proposta); nel logcat del watch non compaiono
+  le righe dei nostri tag, causa non chiarita.

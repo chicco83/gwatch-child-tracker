@@ -7,6 +7,29 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.3] - 2026-09-24
+
+### Fixed
+- **Falso "watch riacceso" a ogni avvio da Android Studio** (trovato
+  analizzando i logcat dell'utente e la diagnostica; watch-app v0.33.0,
+  `WatchStateReporter.kt` v0.3.0). Il 24/9 lo storico ha 5 eventi
+  `watch_boot` (00:23, 00:27, 00:37, 00:45, 01:01) ma il logcat del watch
+  mostra un solo riavvio vero (00:21); gli altri coincidono con gli
+  arresti forzati di Android Studio. Da Android 15 (il watch e' su
+  Android 16) BOOT_COMPLETED viene ri-consegnato all'app quando esce
+  dall'arresto forzato. Ora "boot" parte solo se `Settings.Global.BOOT_COUNT`
+  e' cambiato dall'ultimo avviso (fallback: sistema acceso da < 10').
+  Il riavvio del tracking su quel BOOT_COMPLETED resta (utile).
+
+### Known limitations
+- Nel logcat del watch non compare nessuna riga dei nostri tag
+  (LocationTrackingService, BootReceiver, BatteryInfo...), neanche
+  quelle che dovevano esserci per forza: da verificare con
+  `adb logcat -s LocationTrackingService` direttamente.
+- Il canale delle notifiche push sulla phone-app (fcm_fallback) resta da
+  correggere, in attesa di conferma dell'utente.
+- watch-app non compilata in questa sessione.
+
 ## [0.100.2] - 2026-09-24
 
 ### Changed

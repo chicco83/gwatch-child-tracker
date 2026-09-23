@@ -148,8 +148,10 @@ android {
         // v0.32.0 (2026-09-24): autonomia chiesta solo a Wear OS
         // (PowerManager.getBatteryDischargePrediction), niente stime nostre
         // (location/BatteryInfo.kt v0.12.0, richiesta utente).
-        versionCode = 32
-        versionName = "0.32.0"
+        // v0.33.0 (2026-09-24): niente piu' falso "watch riacceso" a ogni
+        // Run da Android Studio (location/WatchStateReporter.kt v0.3.0).
+        versionCode = 33
+        versionName = "0.33.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
