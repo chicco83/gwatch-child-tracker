@@ -28,6 +28,11 @@ una compattazione o in una sessione futura, compreso lo stesso Claude.
 
 Per datare un problema sul campo (posizioni/eventi zona che smettono di
 arrivare) usare `node backend/scripts/diag-device-history.js [giorni]`:
-sola lettura, stampa solo date/conteggi/tipi di evento, mai coordinate.
+sola lettura, stampa solo date/conteggi/tipi di evento/precisione/
+distanze, mai coordinate (le usa solo per calcolare le distanze, con
+`--track`/`--hourly`; l'utente ha autorizzato la lettura delle posizioni
+il 2026-09-23). `--hourly` e' il controllo piu' rapido per vedere se il
+tracking automatico e' continuo (~10 punti/ora da fermo, di piu' in
+movimento).
 Permesso in `.claude/settings.json`. Non scrivere altri script che
 leggono dati di produzione senza chiederlo all'utente.

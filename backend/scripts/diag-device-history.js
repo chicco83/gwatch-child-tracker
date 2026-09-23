@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.5.0 (2026-09-23)
+ * Versione: 0.7.0 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -24,10 +24,19 @@
  * - 0.5.0 (2026-09-23): opzione --all, elenca tutte le posizioni del
  *   periodo (orario, precisione, activity), per ricostruire un tragitto
  *   senza mostrare coordinate.
+ * - 0.6.0 (2026-09-23): opzione --track (implica --all): per ogni
+ *   posizione la distanza dalla precedente, dalla prima del periodo e la
+ *   velocita' media dal punto precedente — per capire se i punti
+ *   descrivono un tragitto vero o la stessa posizione ripetuta. Le
+ *   coordinate servono solo al calcolo e non vengono stampate.
+ * - 0.7.0 (2026-09-23): opzione --hourly, riepilogo per ora: numero di
+ *   punti, quanti "still"/"moving", distanza min-max dal primo punto del
+ *   periodo. E' il confronto che ha mostrato il tracking continuo fino al
+ *   20/9 sera (~10 punti/ora anche di notte) e quasi nullo dopo.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
- *   node backend/scripts/diag-device-history.js [giorni=8] [--all]
+ *   node backend/scripts/diag-device-history.js [giorni=8] [--all] [--track] [--hourly]
  */
 const path = require("path");
 module.paths.unshift(path.join(__dirname, "..", "node_modules"));
@@ -36,7 +45,20 @@ const { getFirestore } = require("firebase-admin/firestore");
 
 const days = Number(process.argv.slice(2).find((a) => !a.startsWith("--"))) || 8;
 // v0.5.0
-const listAll = process.argv.includes("--all");
+// v0.7.0: --hourly usa le stesse distanze di --track.
+const hourly = process.argv.includes("--hourly");
+const track = hourly || process.argv.includes("--track");
+const listAll = track || process.argv.includes("--all");
+
+// v0.6.0: distanza in metri tra due punti (formula dell'emisenoverso).
+function distanceM(a, b) {
+  const R = 6371000;
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
 
 // Timestamp Firestore, Date o millisecondi -> Date (null se assente).
 function toDate(v) {
@@ -70,7 +92,7 @@ async function main() {
     locs.docs.forEach((l) => {
       const t = toDate(l.data().timestamp);
       if (!t) return;
-      times.push({ t, acc: l.data().accuracy, activity: l.data().activity });
+      times.push({ t, acc: l.data().accuracy, activity: l.data().activity, lat: l.data().lat, lon: l.data().lon });
       const k = t.toISOString().slice(0, 10);
       perDay[k] = (perDay[k] || 0) + 1;
       const acc = l.data().accuracy;
@@ -84,7 +106,44 @@ async function main() {
       console.log(`    ${k}: precisione mediana ${Math.round(a[Math.floor(a.length / 2)])} m, migliore ${Math.round(a[0])} m`);
     });
     console.log("  ultime posizioni (ora italiana, precisione):");
-    (listAll ? times : times.slice(0, 8)).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}${p.activity ? "  " + p.activity : ""}`));
+    // v0.6.0: con --track, distanze calcolate in ordine cronologico.
+    if (track) {
+      const chrono = times.slice().reverse();
+      chrono.forEach((p, i) => {
+        if (i === 0 || p.lat == null) return;
+        const prev = chrono[i - 1];
+        p.fromPrev = distanceM(prev, p);
+        p.fromFirst = distanceM(chrono[0], p);
+        const dtS = (p.t - prev.t) / 1000;
+        p.kmh = dtS > 0 ? (p.fromPrev / dtS) * 3.6 : null;
+      });
+    }
+    const trackInfo = (p) =>
+      track && p.fromPrev != null
+        ? `  | dal prec. ${Math.round(p.fromPrev)} m, dalla prima ${Math.round(p.fromFirst)} m${p.kmh != null ? ", " + p.kmh.toFixed(1) + " km/h" : ""}`
+        : "";
+    // v0.7.0: riepilogo orario (ora italiana).
+    if (hourly) {
+      const hours = new Map();
+      times.slice().reverse().forEach((p) => {
+        const key = iso(p.t).slice(0, 13) + ":00";
+        const h = hours.get(key) || { n: 0, still: 0, moving: 0, min: null, max: null };
+        h.n++;
+        if (p.activity === "still") h.still++;
+        if (p.activity === "moving") h.moving++;
+        const d = p.fromFirst ?? 0;
+        h.min = h.min == null ? d : Math.min(h.min, d);
+        h.max = h.max == null ? d : Math.max(h.max, d);
+        hours.set(key, h);
+      });
+      console.log("  riepilogo orario (punti, fermo/movimento, distanza dal primo punto):");
+      hours.forEach((h, k) =>
+        console.log(`    ${k}  ${String(h.n).padStart(3)} punti  fermo ${h.still} / mov. ${h.moving}  ${Math.round(h.min)}-${Math.round(h.max)} m`),
+      );
+      console.log("");
+      return;
+    }
+    (listAll ? times : times.slice(0, 8)).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}${p.activity ? "  " + p.activity : ""}${trackInfo(p)}`));
 
     // Eventi: orario, tipo, origine (niente coordinate/nomi).
     const evs = await dev.ref.collection("events").where("timestamp", ">=", since).get();

@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.89.0] - 2026-09-23
+
+### Documentazione
+- **Corretta la lettura dei tragitti di v0.88.1**: con le distanze
+  (nuove opzioni `--track`/`--hourly` dello script) i punti "moving"
+  delle 13:19-13:50 del 22 e 23/9 risultano tutti a ~2 km da casa con
+  scarti di pochi metri: bambino fermo (probabilmente a scuola), non il
+  tragitto. L'utente aveva ragione: durante i tragitti veri dopo il
+  20/9 non c'e' quasi nessun punto.
+- **Confronto orario**: dal 18/9 sera al 20/9 sera tracking continuo
+  (~10 punti/ora da fermo anche di notte, 50-60/ora in movimento,
+  tragitti completi fino a 7 km). Dopo le 19:00 del 20/9 (scarica
+  completa) mai piu' ripreso: solo raffiche isolate (22/9 alle 7 e alle
+  13, 23/9 alle 13, 15, 21-22). Dal 22/9 pomeriggio al 23/9 alle 13
+  nessun dato ne' evento zona.
+- Ipotesi aperte: (1) "Migliora precisione" spenta, che blocca sia i
+  punti da fermo sia le zone di Android (le geofence richiedono la
+  posizione di rete); (2) servizio di tracking non piu' attivo dopo il
+  riavvio del 20/9 (parte all'apertura dell'app e viene poi chiuso dal
+  sistema?) — da verificare con la diagnostica di watch-app v0.21.0.
+
+### Added
+- `backend/scripts/diag-device-history.js` v0.7.0: `--track` (distanza
+  dal punto precedente e dal primo, velocita') e `--hourly` (riepilogo
+  per ora). Le coordinate sono usate solo per i calcoli, mai stampate.
+  CLAUDE.md aggiornato di conseguenza.
+
 ## [0.88.0] - 2026-09-23
 
 ### Fixed

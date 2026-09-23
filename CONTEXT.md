@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.88.1
+**Versione contesto:** 0.89.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2521,3 +2521,18 @@ CHANGELOG.md  Storico versioni
   all'utente se le posizioni del ritorno sono visibili sulla phone-app
   (se no, problema di visualizzazione lato telefono) e com'era il watch
   la mattina del 23 (v0.88.1).
+- 2026-09-23: L'utente autorizza la lettura diretta delle posizioni.
+  Aggiunte allo script `--track` e `--hourly` (coordinate usate solo per
+  distanze, mai stampate). **Correzione della voce precedente**: i punti
+  "moving" del 22-23/9 alle 13 sono fermi a ~2 km da casa (scuola?),
+  non il tragitto; l'utente aveva ragione. Riepilogo orario: tracking
+  continuo fino al 20/9 alle 19 (10/ora da fermo anche di notte con
+  scarto 3-5 m = Wi-Fi), poi mai piu' ripreso, solo raffiche isolate;
+  22/9 pomeriggio → 23/9 13:00 nessun dato ne' evento zona. Due
+  ipotesi, entrambe compatibili: "Migliora precisione" spenta (blocca
+  punti da fermo e geofence, che richiedono la posizione di rete: gli
+  ultimi geofence_enter arrivano solo subito dopo un fix GPS) e/o
+  servizio di tracking che dopo il riavvio del 20/9 non resta attivo.
+  Verifica: diagnostica v0.21.0 ("Tracking automatico", "Punti
+  tracking", "Errore tracking") + `--hourly` il giorno dopo con
+  "Migliora precisione" riattivata (v0.89.0).
