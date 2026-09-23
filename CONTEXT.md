@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.79.0
+**Versione contesto:** 0.80.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2321,3 +2321,16 @@ CHANGELOG.md  Storico versioni
   avvio manuale dalla tab Actions): risposta con `"more": false` e
   workflow verde. Con questa voce **qwen_plan.md non ha piu' punti
   aperti** (v0.79.0).
+- 2026-09-23: Segnalato dall'utente: sul watch "Invia posizione" era
+  sostituito da "Posizione non disponibile, segnale GPS assente". Non
+  causato dalle modifiche di qwen_plan.md (LocationRequestWorker/
+  GpsAvailability/MainActivity non toccati). Difetto di disegno della
+  v0.48.0: il pulsante disabilitato dopo un fix fallito tornava attivo
+  solo con un fix del tracking automatico, quindi poteva restare
+  bloccato a lungo; reso piu' frequente dalla richiesta automatica di
+  posizione all'apertura della phone-app (v0.66.0). **Decisione**: il
+  pulsante non si disabilita piu', l'avviso GPS resta solo come testo
+  ("GPS assente, tocca per riprovare"). Cambia la scelta fatta in
+  v0.48.0 su richiesta dell'utente (pulsante disabilitato); lo scopo
+  di allora (rendere visibile l'assenza di segnale) resta rispettato.
+  watch-app v0.14.0, da ricompilare e testare sul watch (v0.80.0).

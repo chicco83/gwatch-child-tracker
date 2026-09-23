@@ -497,10 +497,19 @@ private fun MainScreen(
             colors = ChipDefaults.chipColors(backgroundColor = Color.Red, contentColor = Color.White),
             label = { CenteredChipLabel(stringResourceCompat(R.string.sos_button)) },
         )
+        // v0.14.0 (2026-09-23): bug segnalato dall'utente — il pulsante
+        // restava bloccato su "Posizione non disponibile, segnale GPS
+        // assente". Una volta disabilitato, tornava attivo solo con un
+        // fix del tracking automatico (ogni 10' da fermo, mai se il GPS
+        // continua a non agganciarsi), e il bambino non poteva nemmeno
+        // riprovare. Ora resta SEMPRE premibile: l'etichetta avvisa del
+        // GPS assente e invita a riprovare, la pressione rilancia il
+        // tentativo (LocationRequestWorker, che aggiorna di nuovo
+        // GpsAvailability). Precedente (2026-09-18):
+        //     enabled = gpsAvailable != false,
         Chip(
             onClick = onLocationClick,
             modifier = Modifier.fillMaxWidth(),
-            enabled = gpsAvailable != false,
             label = {
                 CenteredChipLabel(
                     if (gpsAvailable == false) {

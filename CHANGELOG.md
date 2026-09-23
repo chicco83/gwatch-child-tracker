@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-09-23
+
+### Fixed
+- **watch-app: "Invia posizione" bloccato su "Posizione non
+  disponibile, segnale GPS assente"** (segnalato dall'utente). Non era
+  una regressione delle modifiche di oggi: dalla v0.48.0 un solo fix
+  GPS fallito (es. al chiuso, o una richiesta automatica partita
+  dall'apertura della phone-app, v0.66.0) disabilitava il pulsante, che
+  tornava attivo solo con un fix del tracking automatico (ogni 10' da
+  fermo, mai se il GPS continua a non agganciarsi) — nel frattempo il
+  bambino non poteva nemmeno riprovare. Ora il pulsante resta sempre
+  premibile; con GPS assente l'etichetta diventa "GPS assente, tocca
+  per riprovare" e la pressione rilancia il tentativo. watch-app
+  portata a v0.14.0.
+
+### Known limitations
+- Non compilato in questa sessione (nessun SDK Android): da ricompilare
+  e installare sul watch, poi verificare che il pulsante resti
+  premibile anche con GPS assente.
+
 ## [0.79.0] - 2026-09-23
 
 ### Fixed

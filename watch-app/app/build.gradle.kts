@@ -104,8 +104,10 @@ android {
         // vigore prima di questo giro; geofence/GeofenceSyncWorker.kt
         // (remove+re-add ad ogni sync) resta una scelta deliberata gia'
         // documentata, non un bug da correggere.
-        versionCode = 13
-        versionName = "0.13.0"
+        // v0.14.0 (2026-09-23): pulsante "Invia posizione" mai piu'
+        // bloccato con GPS assente, vedi ui/MainActivity.kt.
+        versionCode = 14
+        versionName = "0.14.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

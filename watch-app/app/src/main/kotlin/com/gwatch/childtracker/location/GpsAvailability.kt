@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.asStateFlow
  * resta SEMPRE abilitato (non va mai bloccato: e' spesso proprio in
  * mancanza di segnale, es. al chiuso, che serve di piu').
  *
+ * v0.14.0 (2026-09-23): il pulsante NON viene piu' disabilitato con
+ * GPS assente (restava bloccato finche' il tracking automatico non
+ * riceveva un fix, vedi ui/MainActivity.kt): questo stato cambia solo
+ * l'etichetta ("GPS assente, tocca per riprovare").
+ *
  * `null` = non ancora determinato (nessun tentativo di fix da quando
  * l'app e' partita): il pulsante "Invia posizione" resta abilitato
  * finche' non sappiamo per certo che il GPS non risponde, per non
