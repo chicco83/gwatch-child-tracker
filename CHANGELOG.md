@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-09-23
+
+### Infrastruttura
+- Configurato l'accesso autonomo di Claude Code a Firebase per i due
+  passi rimasti manuali dopo la Fase 5 (`scripts/migrate-family-ids.js`
+  e pubblicazione di `firestore.rules` v0.7.0). Generata una nuova
+  chiave per una service account dedicata gia' esistente nel progetto
+  e impostata come variabile d'ambiente `FIREBASE_SERVICE_ACCOUNT_B64`
+  a livello di environment (Settings, mai nel repository o in chat —
+  il tentativo di elaborarla via Bash in questa sessione e' stato
+  correttamente bloccato dal classificatore di sicurezza). Nessuna
+  modifica di codice. La variabile e' letta solo dalle sessioni avviate
+  dopo averla impostata; i due passi restano quindi da eseguire alla
+  prossima sessione, nell'ordine documentato (migrazione prima delle
+  regole).
+
 ## [0.74.0] - 2026-09-23
 
 ### Added
