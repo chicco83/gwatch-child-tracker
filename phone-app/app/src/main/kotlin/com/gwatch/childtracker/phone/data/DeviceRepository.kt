@@ -110,6 +110,7 @@ class DeviceRepository {
                     satsVisible = (gnssMap?.get("visible") as? Number)?.toInt(),
                     satsUsed = (gnssMap?.get("used") as? Number)?.toInt(),
                     satsAtMillis = (gnssMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
+                    gnssActive = gnssMap?.get("active") as? Boolean,
                 ),
             )
         }

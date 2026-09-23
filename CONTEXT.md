@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.91.0
+**Versione contesto:** 0.92.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2560,3 +2560,18 @@ CHANGELOG.md  Storico versioni
   weight ne' progress indicator di Wear mai provati), verde 4s su
   invio riuscito, rosso fisso con GPS assente. Backend
   trigger-event v0.20.0, watch-app v0.24.0, phone-app v0.18.0 (v0.91.0).
+- 2026-09-23: Test utente: fix phone ok tranne i satelliti; barra
+  del watch ok. Richieste: avvisi batteria anche dallo "status", e
+  batteria a ogni aggiornamento di posizione. Indagando (script v0.8.0,
+  ora stampa anche lo stato del device senza coordinate): gnss e
+  lastStatusAt assenti perche' la posizione delle 23:43 e' arrivata dal
+  Wi-Fi senza accendere il GPS ("Migliora precisione" riattivata: punti
+  ogni 5' in casa con 11-16 m). Trovato un bug vero: gli eventi
+  geofence arrivavano con battery=null e trigger-event.js azzerava
+  batteria/temperatura/carica sul device (e con lat/lon 0,0 spostava
+  l'ultima posizione). Correzioni: aggiornamento solo dei campi
+  presenti, coordinate 0,0 ignorate per lastLocation/lastSeen, batteria
+  inviata anche dagli eventi zona, gnssActive=false mostrato come "GPS
+  non usato", checkBatteryAlerts anche sullo status (backend
+  trigger-event v0.21.0, watch-app v0.25.0, phone-app v0.19.0)
+  (v0.92.0).

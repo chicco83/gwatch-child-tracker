@@ -128,8 +128,10 @@ android {
         // tentativo di posizione (location/GnssCounter.kt).
         // v0.24.0 (2026-09-23): pulsante "Invia posizione" a stati colorati
         // (barra di progresso / verde inviato / rosso GPS assente).
-        versionCode = 24
-        versionName = "0.24.0"
+        // v0.25.0 (2026-09-23): batteria anche sugli eventi zona; segnala se la
+        // posizione e' arrivata senza GPS (gnssActive).
+        versionCode = 25
+        versionName = "0.25.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

@@ -110,6 +110,9 @@ class LocationRequestWorker(
         }
         val satsVisible = gnss.maxVisible.takeIf { gnss.received }
         val satsUsed = gnss.maxUsed.takeIf { gnss.received }
+        // 2026-09-23: false = nessun dato satelliti, cioe' posizione arrivata
+        // da Wi-Fi/rete senza accendere il GPS (mostrato sulla phone-app).
+        val gnssActive = gnss.received
         Log.i(TAG, "doWork: satelliti visti=$satsVisible agganciati=$satsUsed")
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
@@ -126,6 +129,7 @@ class LocationRequestWorker(
                 batteryHoursRemaining = snapshot.hoursRemaining,
                 satsVisible = satsVisible,
                 satsUsed = satsUsed,
+                gnssActive = gnssActive,
             )
             Log.i(TAG, "doWork: stato batteria senza posizione inviato=$statusSent")
             return Result.retry()
@@ -153,6 +157,7 @@ class LocationRequestWorker(
             batteryHoursRemaining = batterySnapshot.hoursRemaining,
             satsVisible = satsVisible,
             satsUsed = satsUsed,
+            gnssActive = gnssActive,
         )
         // 2026-09-23: conferma verde sul pulsante del watch (GpsAvailability).
         if (result.ok) GpsAvailability.markSent()

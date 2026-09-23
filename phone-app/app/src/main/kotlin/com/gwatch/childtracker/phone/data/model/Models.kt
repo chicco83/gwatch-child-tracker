@@ -35,6 +35,9 @@ data class DeviceState(
     val satsVisible: Int? = null,
     val satsUsed: Int? = null,
     val satsAtMillis: Long? = null,
+    // 2026-09-23: false = posizione arrivata da Wi-Fi/rete senza GPS
+    // (trigger-event.js v0.21.0, gnss.active).
+    val gnssActive: Boolean? = null,
 )
 
 data class LocationPoint(

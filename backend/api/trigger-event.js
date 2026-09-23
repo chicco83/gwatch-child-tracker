@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.20.0
+ * Versione: 0.21.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -178,6 +178,18 @@
  *   richiesta utente) salvati in devices/{childId}.gnss {visible, used,
  *   at} sia per "status" sia per gli altri tipi. Fuori dalla guardia di
  *   freschezza di lastSeen: descrivono l'ultimo tentativo, riuscito o no.
+ * - 0.21.0 (2026-09-23): tre correzioni.
+ *   (1) BUG: il watch manda gli eventi geofence con battery=null (e
+ *   lat/lon 0,0 se Android non fornisce la posizione dell'evento): qui
+ *   ogni campo veniva scritto comunque ("battery ?? null"), cancellando
+ *   batteria/temperatura/carica sul device a ogni ingresso/uscita zona
+ *   (la phone-app smetteva di mostrarle) e spostando "ultima posizione"
+ *   a 0,0. Ora si aggiornano solo i campi presenti; lastLocation/
+ *   lastSeen/speed solo con coordinate valide diverse da 0,0.
+ *   (2) Richiesta utente: lo "status" senza posizione fa scattare anche
+ *   gli avvisi di batteria scarica (checkBatteryAlerts).
+ *   (3) gnssActive=false dal watch (posizione ottenuta da Wi-Fi/rete
+ *   senza accendere il GPS): salvato come gnss {active:false}.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -193,9 +205,26 @@ const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location
 const EVENT_RETENTION_HOURS = 24 * 365;
 
 // v0.20.0: {visible, used, at} se il watch ha mandato i satelliti, altrimenti null.
-function gnssUpdate(satsVisible, satsUsed) {
+// v0.21.0: gnssActive=false -> GPS non usato (posizione da rete).
+// Precedente: function gnssUpdate(satsVisible, satsUsed) senza gnssActive.
+function gnssUpdate(satsVisible, satsUsed, gnssActive) {
+  if (gnssActive === false) {
+    return { active: false, visible: null, used: null, at: FieldValue.serverTimestamp() };
+  }
   if (typeof satsVisible !== "number" || typeof satsUsed !== "number") return null;
-  return { visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
+  return { active: true, visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
+}
+
+// v0.21.0: solo i campi batteria effettivamente inviati dal watch.
+function batteryFields(battery, batteryTemp, charging, batteryHoursRemaining) {
+  const out = {};
+  if (typeof battery !== "number") return out;
+  out.battery = battery;
+  if (typeof batteryTemp === "number") out.batteryTemp = batteryTemp;
+  if (typeof charging === "boolean") out.charging = charging;
+  // Con battery presente, null = stima non disponibile (es. in carica).
+  out.batteryHoursRemaining = typeof batteryHoursRemaining === "number" ? batteryHoursRemaining : null;
+  return out;
 }
 
 function buildNotification(type, childName, zoneName, source) {
@@ -246,8 +275,8 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed } = req.body || {};
-  const gnss = gnssUpdate(satsVisible, satsUsed);
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive } = req.body || {};
+  const gnss = gnssUpdate(satsVisible, satsUsed, gnssActive);
 
   // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
   if (type === "status") {
@@ -256,15 +285,14 @@ module.exports = wrapHandler(async (req, res) => {
       res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
       return;
     }
-    const update = { lastStatusAt: FieldValue.serverTimestamp() };
-    if (typeof battery === "number") update.battery = battery;
-    if (typeof batteryTemp === "number") update.batteryTemp = batteryTemp;
-    if (typeof charging === "boolean") update.charging = charging;
-    if (typeof batteryHoursRemaining === "number" || batteryHoursRemaining === null) {
-      update.batteryHoursRemaining = batteryHoursRemaining;
-    }
+    const statusRef = db.collection("devices").doc(childId);
+    const update = { lastStatusAt: FieldValue.serverTimestamp(), ...batteryFields(battery, batteryTemp, charging, batteryHoursRemaining) };
     if (gnss) update.gnss = gnss;
-    await db.collection("devices").doc(childId).set(update, { merge: true });
+    await statusRef.set(update, { merge: true });
+    // v0.21.0: avvisi di batteria scarica anche senza posizione (richiesta utente).
+    if (typeof battery === "number") {
+      await checkBatteryAlerts(db, statusRef, childId, battery, typeof charging === "boolean" ? charging : null);
+    }
     res.status(200).json({ ok: true });
     return;
   }
@@ -352,14 +380,18 @@ module.exports = wrapHandler(async (req, res) => {
     const isFresh = !currentLastSeen || ts.toMillis() > currentLastSeen.toMillis();
 
     const update = {};
+    // v0.21.0: solo i campi presenti (vedi Storico versioni). Precedente:
+    //   update.lastLocation = { lat, lon, accuracy: accuracy ?? null };
+    //   update.battery = battery ?? null; ... (tutti i campi, anche null)
+    //   update.lastSeen = ts;
+    const hasCoords = !(lat === 0 && lon === 0);
     if (isFresh) {
-      update.lastLocation = { lat, lon, accuracy: accuracy ?? null };
-      update.battery = battery ?? null;
-      update.batteryTemp = batteryTemp ?? null;
-      update.charging = charging ?? null;
-      update.speed = speed ?? null;
-      update.batteryHoursRemaining = batteryHoursRemaining ?? null;
-      update.lastSeen = ts;
+      if (hasCoords) {
+        update.lastLocation = { lat, lon, accuracy: accuracy ?? null };
+        update.speed = speed ?? null;
+        update.lastSeen = ts;
+      }
+      Object.assign(update, batteryFields(battery, batteryTemp, charging, batteryHoursRemaining));
       update.updatedAt = FieldValue.serverTimestamp();
       updatedCurrentState = true;
     }

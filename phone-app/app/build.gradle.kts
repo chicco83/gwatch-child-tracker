@@ -125,8 +125,10 @@ android {
         // ogni 30s; riga "Ultimo contatto (senza posizione)".
         // v0.18.0 (2026-09-23): riga satelliti visti/agganciati; verde della
         // batteria scurito (il verde fluo era illeggibile).
-        versionCode = 18
-        versionName = "0.18.0"
+        // v0.19.0 (2026-09-23): "Satelliti: GPS non usato" quando la posizione
+        // arriva da Wi-Fi/rete.
+        versionCode = 19
+        versionName = "0.19.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

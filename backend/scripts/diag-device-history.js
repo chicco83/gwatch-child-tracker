@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.7.0 (2026-09-23)
+ * Versione: 0.8.0 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -33,6 +33,9 @@
  *   punti, quanti "still"/"moving", distanza min-max dal primo punto del
  *   periodo. E' il confronto che ha mostrato il tracking continuo fino al
  *   20/9 sera (~10 punti/ora anche di notte) e quasi nullo dopo.
+ * - 0.8.0 (2026-09-23): stampa lo stato corrente del device (batteria,
+ *   temperatura, carica, lastStatusAt, gnss, batteryAlertLevel) —
+ *   niente coordinate.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -83,6 +86,12 @@ async function main() {
     const d = dev.data();
     console.log(`DEVICE ${dev.id}`);
     console.log(`  lastSeen: ${iso(toDate(d.lastSeen))}   sosActive: ${!!d.sosActive}`);
+    // v0.8.0: stato corrente, niente coordinate.
+    console.log(
+      `  batteria: ${d.battery ?? "-"}%  temp: ${d.batteryTemp ?? "-"}  carica: ${d.charging ?? "-"}  ` +
+        `alertLevel: ${d.batteryAlertLevel ?? "-"}  lastStatusAt: ${iso(toDate(d.lastStatusAt))}`,
+    );
+    console.log(`  gnss: ${d.gnss ? `${d.gnss.visible} visti, ${d.gnss.used} agganciati, ${iso(toDate(d.gnss.at))}` : "-"}`);
 
     // Posizioni: conteggio per giorno + ultime 8 (orario e precisione).
     const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();

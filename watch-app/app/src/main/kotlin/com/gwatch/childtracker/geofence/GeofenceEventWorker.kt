@@ -27,6 +27,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.gwatch.childtracker.dnd.DndController
+import com.gwatch.childtracker.location.BatteryInfo
 import com.gwatch.childtracker.network.BackendClient
 
 /** Invia una transizione geofence (ingresso/uscita zona) a POST /api/trigger-event. */
@@ -45,13 +46,21 @@ class GeofenceEventWorker(
         // un orario leggermente impreciso che un crash del worker.
         val timestampMillis = inputData.getLong(KEY_TIMESTAMP, System.currentTimeMillis())
 
+        // 2026-09-23: batteria anche sugli eventi zona (richiesta utente:
+        // "il valore della batteria deve arrivare a ogni aggiornamento").
+        // Prima battery = null, e il backend fino a trigger-event v0.20.0 la
+        // cancellava dal device a ogni ingresso/uscita zona.
+        val batterySnapshot = BatteryInfo.read(applicationContext)
         val result = BackendClient().triggerEvent(
             type = type,
             lat = lat,
             lon = lon,
             accuracy = null,
-            battery = null,
+            battery = batterySnapshot.percent,
             zoneId = zoneId,
+            batteryTemp = batterySnapshot.temperatureC,
+            charging = batterySnapshot.isCharging,
+            batteryHoursRemaining = batterySnapshot.hoursRemaining,
             timestampMillis = timestampMillis,
         )
         if (!result.ok) return Result.retry()

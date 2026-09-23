@@ -584,11 +584,19 @@ private fun StatusCard(
                         value = formatLastSeen(lastStatus, nowMillis),
                     )
                 }
-                // 2026-09-23: satelliti dell'ultimo tentativo (richiesta utente).
-                if (state.satsVisible != null && state.satsUsed != null) {
+                // 2026-09-23: satelliti dell'ultimo tentativo (richiesta utente);
+                // "GPS non usato" se la posizione e' arrivata da Wi-Fi/rete.
+                // Precedente: riga mostrata solo con satsVisible/satsUsed presenti.
+                val satsText = when {
+                    state.gnssActive == false -> stringResource(R.string.status_sats_not_used)
+                    state.satsVisible != null && state.satsUsed != null ->
+                        stringResource(R.string.status_sats_format, state.satsVisible, state.satsUsed)
+                    else -> null
+                }
+                if (satsText != null) {
                     InfoLine(
                         label = stringResource(R.string.status_sats_label),
-                        value = stringResource(R.string.status_sats_format, state.satsVisible, state.satsUsed) +
+                        value = satsText +
                             (state.satsAtMillis?.let { " · " + formatRelativeTime(it, nowMillis) } ?: ""),
                     )
                 }

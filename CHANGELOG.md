@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.92.0] - 2026-09-23
+
+### Fixed
+- **Batteria/temperatura/carica cancellate a ogni evento zona** (bug
+  trovato indagando la segnalazione "la batteria deve arrivare a ogni
+  aggiornamento"): il watch inviava gli eventi geofence con
+  `battery = null` e `trigger-event.js` scriveva comunque ogni campo
+  (`battery ?? null`), azzerando i valori sul device; la phone-app
+  smetteva di mostrarli fino al punto successivo. Con coordinate 0,0
+  (evento senza posizione fornita da Android) spostava anche "ultima
+  posizione" a 0,0. Backend `trigger-event.js` v0.21.0: aggiorna solo i
+  campi presenti; `lastLocation`/`lastSeen`/`speed` solo con coordinate
+  valide. watch-app v0.25.0: `GeofenceEventWorker` invia batteria,
+  temperatura, carica e autonomia.
+- **Satelliti non visibili sulla phone-app**: la posizione di stanotte
+  arrivava dal Wi-Fi in pochi secondi, senza accendere il GPS, quindi
+  non c'erano satelliti da contare e il watch non mandava nulla. Ora il
+  watch segnala `gnssActive=false` e la phone-app (v0.19.0) mostra
+  "Satelliti: GPS non usato (posizione da Wi-Fi/rete)".
+
+### Changed
+- Lo stato batteria inviato senza posizione (`status`) fa scattare
+  anche gli avvisi di batteria scarica 10/5/2% (richiesta utente).
+
+### Known limitations
+- watch-app e phone-app non compilate in questa sessione.
+
 ## [0.91.0] - 2026-09-23
 
 ### Added
