@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.92.1
+**Versione contesto:** 0.93.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2581,3 +2581,13 @@ CHANGELOG.md  Storico versioni
   (stampa "GPS non usato" invece di "null visti"). Ancora da vedere: il
   numero di satelliti con un fix davvero GPS (all'aperto) e la batteria
   che resta dopo un evento zona (v0.92.1).
+- 2026-09-23: Domanda utente: l'app sul watch si avvia da sola? Verifica:
+  si' all'accensione (BootReceiver su BOOT_COMPLETED rilancia servizio
+  e sync zone; i lavori periodici WorkManager sopravvivono da soli), no
+  dopo un aggiornamento dell'app: il processo viene fermato e il
+  servizio restava giu' fino all'apertura manuale. Con le molte
+  reinstallazioni da Android Studio dei giorni scorsi puo' aver
+  contribuito ai buchi nello storico (la causa principale resta
+  "Migliora precisione" spenta). Aggiunto MY_PACKAGE_REPLACED al
+  BootReceiver, try/catch sull'avvio, TrackingStatus.startedBy in
+  diagnostica (watch-app v0.26.0) (v0.93.0).

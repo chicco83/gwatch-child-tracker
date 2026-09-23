@@ -268,6 +268,11 @@ class MainActivity : ComponentActivity() {
             this,
             android.content.Intent(this, LocationTrackingService::class.java),
         )
+        // 2026-09-23: diagnostica (TrackingStatus.startedBy); non sovrascrive
+        // un avvio precedente da accensione/aggiornamento nello stesso processo.
+        if (com.gwatch.childtracker.location.TrackingStatus.startedBy == null) {
+            com.gwatch.childtracker.location.TrackingStatus.startedBy = "apertura app"
+        }
 
         val workManager = WorkManager.getInstance(this)
 

@@ -351,7 +351,9 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
         // almeno una volta al secondo col cronometro della ricerca).
         context.getString(
             R.string.gps_diag_tracking,
-            if (TrackingStatus.serviceRunning) "attivo" else "NON attivo",
+            // 2026-09-23: anche da cosa e' stato avviato (BootReceiver/MainActivity).
+            (if (TrackingStatus.serviceRunning) "attivo" else "NON attivo") +
+                (TrackingStatus.startedBy?.let { ", avviato da $it" } ?: ""),
             TrackingStatus.priorityLabel ?: "?",
         ),
         context.getString(

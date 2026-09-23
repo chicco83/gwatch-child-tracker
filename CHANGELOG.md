@@ -7,6 +7,23 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.93.0] - 2026-09-23
+
+### Fixed
+- **watch-app: tracking fermo dopo ogni aggiornamento dell'app**
+  (domanda utente: "la app si deve avviare in automatico, adesso lo
+  fa?"). All'accensione del watch il tracking ripartiva gia' da solo
+  (`BootReceiver`, BOOT_COMPLETED), ma dopo un aggiornamento (build da
+  Android Studio, in futuro Play Store) il sistema ferma il processo e
+  nessuno rilanciava il servizio fino all'apertura dell'app. Ora
+  `BootReceiver` risponde anche a `MY_PACKAGE_REPLACED`. Avvio in
+  try/catch con errore registrato; `TrackingStatus.startedBy`
+  ("accensione watch" / "aggiornamento app" / "apertura app") mostrato
+  nella diagnostica della Ricerca GPS. watch-app v0.26.0.
+
+### Known limitations
+- Non compilato in questa sessione.
+
 ## [0.92.0] - 2026-09-23
 
 ### Fixed

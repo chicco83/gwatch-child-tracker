@@ -130,8 +130,10 @@ android {
         // (barra di progresso / verde inviato / rosso GPS assente).
         // v0.25.0 (2026-09-23): batteria anche sugli eventi zona; segnala se la
         // posizione e' arrivata senza GPS (gnssActive).
-        versionCode = 25
-        versionName = "0.25.0"
+        // v0.26.0 (2026-09-23): tracking riavviato anche dopo ogni
+        // aggiornamento dell'app (BootReceiver + MY_PACKAGE_REPLACED).
+        versionCode = 26
+        versionName = "0.26.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

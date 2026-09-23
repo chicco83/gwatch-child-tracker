@@ -19,6 +19,8 @@ object TrackingStatus {
     @Volatile var lastFixElapsed = 0L
     @Volatile var fixCount = 0
     @Volatile var lastError: String? = null
+    // 2026-09-23: "accensione watch", "aggiornamento app" o "apertura app".
+    @Volatile var startedBy: String? = null
 
     fun onFix() {
         lastFixElapsed = SystemClock.elapsedRealtime()
