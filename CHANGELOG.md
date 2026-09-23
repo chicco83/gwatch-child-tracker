@@ -7,6 +7,23 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.94.0] - 2026-09-23
+
+### Fixed
+- **watch-app: "Aggiorna posizione" dal telefono con l'app del watch
+  chiusa** (richiesta utente). La push era gia' ad alta priorita' e
+  arrivava anche ad app chiusa, ma `FcmService` accodava
+  `LocationRequestWorker` come lavoro normale: con il watch in
+  sospensione poteva partire con minuti di ritardo. Ora e' un lavoro
+  espedito (come l'SOS) e, se il servizio di tracking non e' attivo nel
+  processo, viene rilanciato (`TrackingStatus.startedBy` = "richiesta
+  dal telefono"). watch-app v0.27.0.
+
+### Known limitations
+- Non compilato in questa sessione. Non funziona se l'app e' stata
+  forzata all'arresto dalle impostazioni ("Arresto forzato"): Android
+  non consegna push a un'app in quello stato finche' non viene riaperta.
+
 ## [0.93.0] - 2026-09-23
 
 ### Fixed

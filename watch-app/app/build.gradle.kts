@@ -132,8 +132,10 @@ android {
         // posizione e' arrivata senza GPS (gnssActive).
         // v0.26.0 (2026-09-23): tracking riavviato anche dopo ogni
         // aggiornamento dell'app (BootReceiver + MY_PACKAGE_REPLACED).
-        versionCode = 26
-        versionName = "0.26.0"
+        // v0.27.0 (2026-09-23): richiesta posizione dal telefono come lavoro
+        // espedito + riavvio del tracking se fermo (messaging/FcmService.kt).
+        versionCode = 27
+        versionName = "0.27.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

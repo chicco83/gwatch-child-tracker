@@ -21,8 +21,11 @@ import kotlinx.coroutines.tasks.await
  * posizione" sulla phone-app) — a differenza del tracking periodico
  * automatico (LocationUploadWorker). Stessa logica di SosWorker (stesso
  * evento "prioritario" lato backend, vedi trigger-event.js type
- * "location_request"), ma senza setExpedited: non e' un'emergenza, puo'
- * aspettare la coda normale di WorkManager.
+ * "location_request"). 2026-09-23: la richiesta dal telefono (FcmService) ora
+ * e' accodata come lavoro espedito, per partire subito anche ad app chiusa;
+ * il pulsante sul watch resta un lavoro normale (app gia' in primo piano).
+ * Testo precedente: "ma senza setExpedited: non e' un'emergenza, puo'
+ * aspettare la coda normale di WorkManager."
  *
  * v0.2.0 (2026-09-10): aggiunto KEY_SOURCE. Prima le due chiamate
  * (bambino/genitore) mandavano lo stesso identico evento al backend,
@@ -163,6 +166,10 @@ class LocationRequestWorker(
         if (result.ok) GpsAvailability.markSent()
         return if (result.ok) Result.success() else Result.retry()
     }
+
+    // 2026-09-23: un lavoro espedito su Android 11 (minSdk 30) richiede
+    // getForegroundInfo(); il Watch4 ha Android 12+ e su quelle versioni
+    // non viene chiamato, come gia' per SosWorker.
 
     companion object {
         private const val TAG = "LocationRequestWorker"

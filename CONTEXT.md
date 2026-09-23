@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.93.0
+**Versione contesto:** 0.94.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2591,3 +2591,13 @@ CHANGELOG.md  Storico versioni
   "Migliora precisione" spenta). Aggiunto MY_PACKAGE_REPLACED al
   BootReceiver, try/catch sull'avvio, TrackingStatus.startedBy in
   diagnostica (watch-app v0.26.0) (v0.93.0).
+- 2026-09-23: Richiesta utente: la richiesta di posizione dal telefono
+  deve funzionare con l'app del watch chiusa. Verificato: push gia' ad
+  alta priorita' (parent-command sendPushSafe, android.priority high),
+  FcmService riceve i data message anche ad app chiusa. Punto debole:
+  LocationRequestWorker accodato come lavoro normale → con il watch in
+  Doze partenza ritardata. Ora espedito (RUN_AS_NON_EXPEDITED se la
+  quota espedita e' finita) e riavvio del servizio di tracking se non
+  attivo (consentito da push ad alta priorita'). Limite noto: un'app in
+  "Arresto forzato" non riceve push finche' non viene riaperta
+  (watch-app v0.27.0) (v0.94.0).

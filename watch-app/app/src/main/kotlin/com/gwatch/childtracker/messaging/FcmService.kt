@@ -92,6 +92,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -100,6 +101,8 @@ import com.gwatch.childtracker.R
 import com.gwatch.childtracker.TrackerApplication
 import com.gwatch.childtracker.data.MessageStore
 import com.gwatch.childtracker.location.LocationRequestWorker
+import com.gwatch.childtracker.location.LocationTrackingService
+import com.gwatch.childtracker.location.TrackingStatus
 import com.gwatch.childtracker.location.SosLocationService
 import com.gwatch.childtracker.network.BackendClient
 import com.gwatch.childtracker.network.model.ChatMessage
@@ -156,9 +159,31 @@ class FcmService : FirebaseMessagingService() {
         )
     }
 
+    // 2026-09-23: richiesta utente — "Aggiorna posizione" dal telefono deve
+    // funzionare anche con l'app del watch chiusa. Due modifiche:
+    // (1) lavoro ESPEDITO come per l'SOS: un lavoro normale accodato con
+    //     l'app in background e il watch in sospensione puo' partire con
+    //     minuti di ritardo; la push e' gia' ad alta priorita' (backend
+    //     sendPushSafe), ora anche il lavoro parte subito;
+    // (2) se il servizio di tracking non gira in questo processo (app
+    //     chiusa o processo ucciso), lo rilancia: l'avvio di un servizio
+    //     in primo piano da una push ad alta priorita' e' consentito da
+    //     Android anche in background.
+    // Precedente: OneTimeWorkRequestBuilder<LocationRequestWorker>() senza
+    // setExpedited e nessun avvio del servizio.
     private fun handleLocationRequest() {
+        if (!TrackingStatus.serviceRunning) {
+            try {
+                ContextCompat.startForegroundService(this, Intent(this, LocationTrackingService::class.java))
+                TrackingStatus.startedBy = "richiesta dal telefono"
+            } catch (e: Exception) {
+                TrackingStatus.lastError = "avvio da push: ${e.javaClass.simpleName}"
+                android.util.Log.w("FcmService", "avvio tracking da push fallito", e)
+            }
+        }
         val work = OneTimeWorkRequestBuilder<LocationRequestWorker>()
             .setInputData(workDataOf(LocationRequestWorker.KEY_SOURCE to LocationRequestWorker.SOURCE_PARENT))
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
             LocationRequestWorker.WORK_NAME,
