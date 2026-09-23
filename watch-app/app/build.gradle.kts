@@ -84,8 +84,17 @@ android {
         // sbagliato se il primo invio falliva e veniva ritentato piu'
         // tardi, vedi geofence/GeofenceBroadcastReceiver.kt/
         // GeofenceEventWorker.kt).
-        versionCode = 11
-        versionName = "0.11.0"
+        // v0.12.0 (2026-09-23): Fase 3 di qwen_plan.md (individuato da
+        // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — race
+        // condition reale nell'upload posizioni: due esecuzioni
+        // concorrenti di LocationUploadWorker (periodico + one-shot,
+        // nomi di lavoro WorkManager distinti) potevano uploadare lo
+        // stesso batch e la seconda rimuovere punti piu' recenti mai
+        // uploadati. Vedi data/PendingLocationStore.kt v0.2.0
+        // (claimBatch/requeue, lock condiviso a livello di companion
+        // object) e upload/LocationUploadWorker.kt v0.2.0.
+        versionCode = 12
+        versionName = "0.12.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

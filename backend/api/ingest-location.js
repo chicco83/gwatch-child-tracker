@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.8.0
+ * Versione: 0.9.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -58,6 +58,12 @@
  *   il nuovo timestamp con l'attuale "lastSeen" salvato e salta la
  *   scrittura se non e' piu' recente — i punti storici restano scritti
  *   sempre, incondizionatamente, come prima.
+ * - 0.9.0 (2026-09-23): Fase 3 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — checkAndConsumeQuota
+ *   contava questa chiamata come "1", ma scrive fino a
+ *   MAX_POINTS_PER_REQUEST documenti "locations": la guardia di quota
+ *   sottostimava di molto le scritture Firestore reali. Ora passa
+ *   points.length come peso (vedi _lib/quota.js v0.2.0).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -104,7 +110,9 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const allowed = await checkAndConsumeQuota(db, childId);
+  // v0.9.0: peso = numero di punti del batch, non piu' sempre "1" —
+  // vedi Storico versioni sopra e _lib/quota.js.
+  const allowed = await checkAndConsumeQuota(db, childId, points.length);
   if (!allowed) {
     res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
     return;

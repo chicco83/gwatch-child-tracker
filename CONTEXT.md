@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.71.0
+**Versione contesto:** 0.72.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2145,3 +2145,28 @@ CHANGELOG.md  Storico versioni
   aggiungendo whereEqualTo("familyId", ...) a entrambe le query
   (DeviceRepository.kt v0.8.0), col familyId preso da
   AppViewModel.ownFamilyId. phone-app portata a v0.15.0 (v0.71.0).
+- 2026-09-23: Implementata la Fase 3 di qwen_plan.md (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5): due interventi.
+  (1) Race condition reale nell'upload posizioni del watch —
+  LocationUploadWorker gira sotto due nomi di lavoro WorkManager
+  distinti (periodico + one-shot), che possono eseguire in parallelo;
+  il vecchio peekBatch() (non distruttivo) + removeOldest() separato
+  lasciava una finestra in cui due esecuzioni concorrenti potevano
+  uploadare lo stesso batch e la seconda rimuovere punti piu' recenti
+  mai uploadati. Trovato qui, non dal documento di review: ogni
+  chiamante crea una propria istanza di PendingLocationStore, e
+  @Synchronized in Kotlin sincronizza sull'istanza — il vecchio lock
+  non proteggeva affatto le chiamate tra istanze diverse. Sostituiti
+  peekBatch()/removeOldest() con claimBatch() (atomico: legge e
+  rimuove insieme) + requeue() (rimette in coda se l'upload fallisce),
+  sincronizzati su un lock di companion object condiviso da tutte le
+  istanze.
+  (2) La quota giornaliera (_lib/quota.js) contava "1" per ogni
+  chiamata, ma ingest-location.js scrive fino a 100 documenti in una
+  sola chiamata: sottostimava di molto le scritture Firestore reali
+  con piu' bambini attivi. Aggiunto un parametro "weight" (default 1)
+  a checkAndConsumeQuota; ingest-location.js lo valorizza col numero
+  di punti del batch. Aggiunti test.
+  Nota: il punto 6 del piano (maxDuration di cleanup.js) resta in
+  Fase 4 come gia' concordato, non toccato in questo giro.
+  watch-app portata a v0.12.0 (v0.72.0).

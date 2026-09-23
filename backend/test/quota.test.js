@@ -40,3 +40,16 @@ test("limite superato (count > MAX): rifiutata", async () => {
   const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY + 100);
   assert.equal(await checkAndConsumeQuota(db, "figlio"), false);
 });
+
+// v0.2.0 (Fase 3 di qwen_plan.md): weight, vedi Storico versioni in _lib/quota.js.
+test("weight: batch che rientra esattamente nel margine residuo: concesso", async () => {
+  const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY - 100);
+  assert.equal(await checkAndConsumeQuota(db, "figlio", 100), true);
+  assert.equal(db.sets.length, 1);
+});
+
+test("weight: batch che supererebbe il margine residuo: rifiutato SENZA scrivere, anche se count < MAX", async () => {
+  const db = fakeDb(MAX_BACKEND_CALLS_PER_DAY - 50);
+  assert.equal(await checkAndConsumeQuota(db, "figlio", 100), false);
+  assert.equal(db.sets.length, 0);
+});

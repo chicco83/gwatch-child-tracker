@@ -9,8 +9,22 @@
  *
  * Un contatore per dispositivo per giorno (UTC), in
  * devices/{deviceId}/quota/{YYYY-MM-DD}, incrementato atomicamente ad
- * ogni chiamata a una delle 4 funzioni. Superata la soglia, l'endpoint
+ * ogni chiamata a uno degli endpoint. Superata la soglia, l'endpoint
  * risponde 429 invece di eseguire l'operazione.
+ *
+ * Storico versioni:
+ * - 0.2.0 (2026-09-23): Fase 3 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — il contatore
+ *   contava sempre "1" per chiamata, ma ingest-location.js scrive fino
+ *   a MAX_POINTS_PER_REQUEST (100) documenti "locations" in una sola
+ *   chiamata: la guardia sottostimava di molto le scritture Firestore
+ *   reali (quella che le quote gratuite Spark limitano davvero,
+ *   20.000/giorno per l'intero progetto, non per dispositivo), vanificando
+ *   in parte lo scopo della guardia con piu' bambini attivi
+ *   contemporaneamente. Aggiunto un parametro "weight" opzionale
+ *   (default 1, invariato per tutti gli endpoint che scrivono un numero
+ *   costante di documenti): ingest-location.js lo valorizza col numero
+ *   di punti del batch.
  */
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const config = require("./config.js");
@@ -33,10 +47,13 @@ function todayKey() {
 }
 
 /**
- * Ritorna true se la chiamata e' concessa (e la conta), false se il
- * limite giornaliero e' gia' stato raggiunto.
+ * Ritorna true se la chiamata e' concessa (e ne conta il peso), false
+ * se supererebbe il limite giornaliero.
+ * @param {number} [weight] scritture Firestore che questa chiamata sta
+ *   per fare (vedi Storico versioni sopra) — default 1, invariato per
+ *   gli endpoint che scrivono un numero costante di documenti.
  */
-async function checkAndConsumeQuota(db, deviceId) {
+async function checkAndConsumeQuota(db, deviceId, weight = 1) {
   const quotaRef = db
     .collection("devices")
     .doc(deviceId)
@@ -47,14 +64,14 @@ async function checkAndConsumeQuota(db, deviceId) {
     const snap = await tx.get(quotaRef);
     const count = snap.exists ? snap.data().count ?? 0 : 0;
 
-    if (count >= MAX_BACKEND_CALLS_PER_DAY) {
+    if (count + weight > MAX_BACKEND_CALLS_PER_DAY) {
       return false;
     }
 
     const expiresAt = Timestamp.fromMillis(
       Date.now() + QUOTA_DOC_RETENTION_DAYS * 24 * 60 * 60 * 1000
     );
-    tx.set(quotaRef, { count: FieldValue.increment(1), expiresAt }, { merge: true });
+    tx.set(quotaRef, { count: FieldValue.increment(weight), expiresAt }, { merge: true });
     return true;
   });
 }

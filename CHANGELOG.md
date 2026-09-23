@@ -7,6 +7,42 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-09-23
+
+### Fixed
+- **Fase 3 di qwen_plan.md — race condition nell'upload posizioni del
+  watch** (individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet
+  5). `LocationUploadWorker` gira sotto due nomi di lavoro WorkManager
+  distinti (periodico + one-shot al superamento soglia buffer), che
+  possono eseguire in parallelo. Il vecchio `peekBatch()` (non
+  distruttivo) seguito da un `removeOldest()` separato lasciava una
+  finestra in cui due esecuzioni concorrenti potevano leggere lo
+  **stesso** batch, uploadarlo entrambe con successo, e la seconda
+  `removeOldest(N)` rimuoveva N punti **più recenti mai uploadati**
+  (perdita dati silenziosa). Aggravante trovata qui, non nel documento
+  di review: ogni chiamante crea una propria istanza di
+  `PendingLocationStore` — `@Synchronized` in Kotlin sincronizza
+  sull'istanza (`this`), quindi il vecchio lock non proteggeva affatto
+  le chiamate tra istanze diverse, nemmeno per una singola operazione.
+  Sostituiti `peekBatch()`/`removeOldest()` con `claimBatch()` (legge e
+  rimuove nello stesso blocco sincronizzato: chi la riceve ha il
+  possesso esclusivo dei punti) + `requeue()` (li rimette in coda se
+  l'upload fallisce), entrambi sincronizzati su un lock condiviso a
+  livello di companion object, non più sull'istanza. watch-app portata
+  a v0.12.0.
+- **Fase 3 di qwen_plan.md — quota giornaliera contava le chiamate, non
+  le scritture** (individuato da qwen3.8-27B-UD-IQ4_XS, implementato da
+  Sonnet 5). `checkAndConsumeQuota` incrementava sempre di 1 per
+  chiamata, ma `ingest-location.js` scrive fino a 100 documenti
+  `locations` in una sola chiamata: la guardia pensata per restare
+  lontana dalle quote gratuite Firestore (20.000 scritture/giorno,
+  condivise da tutto il progetto, non per dispositivo) sottostimava di
+  molto le scritture reali con più bambini attivi. Aggiunto un
+  parametro `weight` opzionale a `checkAndConsumeQuota` (default 1,
+  invariato per gli altri endpoint); `ingest-location.js` lo valorizza
+  col numero di punti del batch. Aggiunti test in
+  `backend/test/quota.test.js`.
+
 ## [0.71.0] - 2026-09-23
 
 ### Added
