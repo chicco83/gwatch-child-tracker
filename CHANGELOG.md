@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.69.0] - 2026-09-23
+
+### Fixed
+- **Timestamp sbagliato sugli eventi geofence in caso di retry**.
+  Segnalato dall'utente: una mattina l'evento "uscito da zona casa"
+  non è mai arrivato, mentre gli eventi "entrato a scuola" dello
+  stesso giorno erano tutti concentrati dopo le 13 — indagando è
+  emerso che `GeofenceEventWorker.kt` non passava mai l'orario reale
+  della transizione a `triggerEvent()`: se il primo invio falliva
+  (rete assente) e WorkManager ritentava più tardi, l'evento veniva
+  datato al momento del retry riuscito, non del passaggio di confine
+  vero — fuorviante per capire cosa fosse successo davvero e quando.
+  `GeofenceBroadcastReceiver.kt` ora cattura l'orario al momento del
+  rilevamento e lo passa al worker (`KEY_TIMESTAMP`), che lo inoltra
+  al backend invece di lasciare il default "adesso" del client.
+
 ## [0.68.0] - 2026-09-22
 
 ### Added

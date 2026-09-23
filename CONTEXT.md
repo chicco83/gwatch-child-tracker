@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.68.0
-**Ultimo aggiornamento:** 2026-09-22
+**Versione contesto:** 0.69.0
+**Ultimo aggiornamento:** 2026-09-23
 
 ---
 
@@ -2043,3 +2043,56 @@ CHANGELOG.md  Storico versioni
   lat/lon, OkHttpClient singleton sul watch, ecc.), Fase 5 (job CI
   `npm test`). Ordine di priorita' invariato rispetto al piano
   originale in chat.
+
+- **2026-09-23 — Evento "uscito da casa" mai arrivato una mattina:
+  diagnosi e fix del timestamp sui retry geofence (v0.69.0).**
+  L'utente ha segnalato lo stesso giorno due sintomi: nessuna
+  notifica di batteria scarica (watch sceso al 9%) e nessun evento
+  geofence per tutta la mattina, poi un'improvvisa raffica di eventi
+  "entrato/uscito scuola" concentrata tra le 13:23 e le 13:49 (screenshot
+  mappa/lista eventi). Ho verificato nel codice che `checkBatteryAlerts()`
+  gira SOLO dentro una chiamata backend gia' riuscita
+  (ingest-location.js/trigger-event.js): niente avviso batteria e
+  nessun evento nello stesso arco orario sono quindi la stessa causa,
+  non due bug distinti — il watch non ha completato nessuna chiamata al
+  backend per ore, non solo il tracking periodico ma nemmeno la
+  geofence di uscita da "Casa" (confermata dall'utente come zona
+  esistente, attiva, con notifica di uscita abilitata — quindi non un
+  problema di configurazione).
+
+  Non e' stato possibile risalire alla causa ultima (nessun accesso a
+  log del watch da questa sessione, l'utente non sapeva dire se
+  l'orologio avesse connettivita' LTE stamattina): resta una fra
+  "nessuna rete per ore", "transizione non rilevata dal sistema" o
+  "invio fallito e mai davvero ritentato" — tre cause diverse con lo
+  stesso sintomo osservabile. Suggerito all'utente, per una prossima
+  occorrenza, `adb logcat` (anche via WiFi debugging) filtrato su
+  `GeofenceBroadcastReceiver|GeofenceEventWorker|LocationTrackingService`
+  per distinguerle in tempo reale.
+
+  Durante l'indagine e' emerso pero' un bug concreto e indipendente,
+  confermato e corretto: `GeofenceEventWorker.kt` non passava mai
+  l'orario della transizione a `triggerEvent()` — il default del
+  client (`System.currentTimeMillis()` al momento della CHIAMATA)
+  datava l'evento all'istante in cui un eventuale RETRY andava a buon
+  fine, non al passaggio di confine reale. Questo significa che anche
+  i tre eventi delle 13:23-13:49 di oggi potrebbero non essere avvenuti
+  esattamente a quell'ora (potrebbero essere ritentativi riusciti di
+  transizioni piu' vecchie) — motivo in piu' per il fix, che rende
+  affidabile la diagnosi la prossima volta. Fix: `GeofenceBroadcastReceiver.kt`
+  cattura `System.currentTimeMillis()` al momento del rilevamento (non
+  ha un timestamp piu' preciso a disposizione da `GeofencingEvent`) e
+  lo passa al worker tramite un nuovo campo `KEY_TIMESTAMP` nel
+  `Data` di WorkManager; il worker lo inoltra a `triggerEvent()` invece
+  di lasciare il default. watch-app portato a v0.11.0.
+
+  Attribuzione: NON taggato "qwen3.8-27B-UD-IQ4_XS" nei commenti come i
+  fix di v0.68.0 — a differenza di quelli, questo bug non viene dal
+  documento di review, e' stato trovato in questa sessione
+  diagnosticando dal vivo la segnalazione dell'utente. Una prima
+  stesura di questi commenti aveva quel tag per abitudine (la
+  convenzione chiesta dall'utente per il filone "qwen_plan.md" era
+  ancora fresca), corretta subito dopo: un tag che dice "individuato da
+  X" quando non e' vero e' esattamente il tipo di imprecisione che la
+  pulizia dei riferimenti qwen di questa stessa sessione (v0.67.0) era
+  nata per evitare.

@@ -79,8 +79,13 @@ android {
         // readHoursRemaining/BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER
         // + CURRENT_NOW), inviata al backend su ogni punto posizione/
         // evento insieme al resto dello stato batteria.
-        versionCode = 10
-        versionName = "0.10.0"
+        // v0.11.0 (2026-09-23): bug trovato diagnosticando una
+        // segnalazione dell'utente (evento geofence con orario
+        // sbagliato se il primo invio falliva e veniva ritentato piu'
+        // tardi, vedi geofence/GeofenceBroadcastReceiver.kt/
+        // GeofenceEventWorker.kt).
+        versionCode = 11
+        versionName = "0.11.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

@@ -14,6 +14,14 @@ package com.gwatch.childtracker.geofence
 // subito il cambio con DndController: e' la stessa identica chiamata
 // gia' fatta per notificare l'evento, nessuna richiesta di rete in
 // piu'.
+// v0.4.0 (2026-09-23): vedi Storico versioni in
+// GeofenceBroadcastReceiver.kt. doWork() prima non passava mai un
+// timestamp esplicito a triggerEvent(): il default del client
+// (System.currentTimeMillis() al momento della CHIAMATA) datava
+// l'evento all'istante del retry riuscito, non del passaggio di
+// confine reale, se il primo invio falliva. Ora l'orario arriva da
+// KEY_TIMESTAMP, catturato dal BroadcastReceiver al momento del vero
+// rilevamento.
 
 import android.content.Context
 import androidx.work.CoroutineWorker
@@ -32,6 +40,10 @@ class GeofenceEventWorker(
         val zoneId = inputData.getString(KEY_ZONE_ID)
         val lat = inputData.getDouble(KEY_LAT, 0.0)
         val lon = inputData.getDouble(KEY_LON, 0.0)
+        // Fallback a "adesso" solo per sicurezza (non dovrebbe mai
+        // mancare, la scrive sempre GeofenceBroadcastReceiver): meglio
+        // un orario leggermente impreciso che un crash del worker.
+        val timestampMillis = inputData.getLong(KEY_TIMESTAMP, System.currentTimeMillis())
 
         val result = BackendClient().triggerEvent(
             type = type,
@@ -40,6 +52,7 @@ class GeofenceEventWorker(
             accuracy = null,
             battery = null,
             zoneId = zoneId,
+            timestampMillis = timestampMillis,
         )
         if (!result.ok) return Result.retry()
         result.dnd?.let { DndController.setDnd(applicationContext, it) }
@@ -51,5 +64,6 @@ class GeofenceEventWorker(
         const val KEY_ZONE_ID = "zoneId"
         const val KEY_LAT = "lat"
         const val KEY_LON = "lon"
+        const val KEY_TIMESTAMP = "timestampMillis"
     }
 }
