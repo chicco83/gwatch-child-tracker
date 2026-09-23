@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.80.0
+**Versione contesto:** 0.80.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2334,3 +2334,7 @@ CHANGELOG.md  Storico versioni
   v0.48.0 su richiesta dell'utente (pulsante disabilitato); lo scopo
   di allora (rendere visibile l'assenza di segnale) resta rispettato.
   watch-app v0.14.0, da ricompilare e testare sul watch (v0.80.0).
+- 2026-09-23: Confermato dall'utente su watch reale: v0.14.0 installata,
+  "Invia posizione" resta premibile con GPS assente. Richiesta nuova in
+  valutazione: mostrare dettagli della ricerca GPS (barre dei satelliti
+  "stile TomTom"), non ancora avviata (v0.80.1).

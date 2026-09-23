@@ -26,6 +26,8 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 - Non compilato in questa sessione (nessun SDK Android): da ricompilare
   e installare sul watch, poi verificare che il pulsante resti
   premibile anche con GPS assente.
+  **Confermato dall'utente su watch reale**: il pulsante resta
+  premibile e mostra "GPS assente".
 
 ## [0.79.0] - 2026-09-23
 
