@@ -16,6 +16,7 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   `api/*.js` — stessa forma che aveva gia' rotto il build in v0.12.0.
   `cleanup.js` (v0.7.0) torna a `maxDuration:30` come le altre
   funzioni.
+  **Deploy Vercel confermato riuscito dall'utente dopo il fix.**
 
 ### Known limitations
 - Il punto 6 di qwen_plan.md (timeout di `cleanup.js` con uno storico

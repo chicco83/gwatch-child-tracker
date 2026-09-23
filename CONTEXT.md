@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.78.0
+**Versione contesto:** 0.78.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2297,3 +2297,8 @@ CHANGELOG.md  Storico versioni
   Il punto 6 di qwen_plan.md (timeout cleanup) torna aperto; eventuale
   soluzione futura senza toccare `vercel.json`: ridurre il lavoro per
   singola esecuzione in `cleanup.js` (v0.78.0).
+- 2026-09-23: Confermato dall'utente: dopo la rimozione della voce
+  `api/cleanup.js` il deploy Vercel e' tornato a buon fine. Branch
+  `claude/hopeful-cori-bqpuvm` cancellato dall'utente (era allo stesso
+  commit): da qui il branch di lavoro unico e' di nuovo
+  `claude/child-geolocation-smartwatch-dblfrv` (v0.78.1).
