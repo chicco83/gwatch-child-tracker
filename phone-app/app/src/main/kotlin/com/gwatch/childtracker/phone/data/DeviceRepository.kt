@@ -89,6 +89,8 @@ class DeviceRepository {
                 return@addSnapshotListener
             }
             val locMap = snap.get("lastLocation") as? Map<*, *>
+            // 2026-09-23: vedi DeviceState.satsVisible.
+            val gnssMap = snap.get("gnss") as? Map<*, *>
             val lat = (locMap?.get("lat") as? Number)?.toDouble()
             val lon = (locMap?.get("lon") as? Number)?.toDouble()
             trySend(
@@ -105,6 +107,9 @@ class DeviceRepository {
                     batteryHoursRemaining = (snap.get("batteryHoursRemaining") as? Number)?.toDouble(),
                     // 2026-09-23: vedi DeviceState.lastStatusMillis.
                     lastStatusMillis = snap.getTimestamp("lastStatusAt")?.toDate()?.time,
+                    satsVisible = (gnssMap?.get("visible") as? Number)?.toInt(),
+                    satsUsed = (gnssMap?.get("used") as? Number)?.toInt(),
+                    satsAtMillis = (gnssMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
                 ),
             )
         }

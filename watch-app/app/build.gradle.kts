@@ -124,8 +124,12 @@ android {
         // nella diagnostica della Ricerca GPS.
         // v0.22.0 (2026-09-23): se il GPS non da' un fix, LocationRequestWorker
         // invia comunque lo stato batteria (BackendClient.sendStatus).
-        versionCode = 22
-        versionName = "0.22.0"
+        // v0.23.0 (2026-09-23): satelliti visti/agganciati inviati col
+        // tentativo di posizione (location/GnssCounter.kt).
+        // v0.24.0 (2026-09-23): pulsante "Invia posizione" a stati colorati
+        // (barra di progresso / verde inviato / rosso GPS assente).
+        versionCode = 24
+        versionName = "0.24.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

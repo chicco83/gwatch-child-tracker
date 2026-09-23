@@ -127,6 +127,9 @@ class BackendClient {
         speedMps: Float? = null,
         batteryHoursRemaining: Double? = null,
         timestampMillis: Long = System.currentTimeMillis(),
+        // 2026-09-23: satelliti del tentativo (GnssCounter), mostrati sulla phone-app.
+        satsVisible: Int? = null,
+        satsUsed: Int? = null,
     ): TriggerEventResult {
         val body = JSONObject().apply {
             put("type", type)
@@ -141,6 +144,8 @@ class BackendClient {
             speedMps?.let { put("speed", it.toDouble()) }
             batteryHoursRemaining?.let { put("batteryHoursRemaining", it) }
             put("timestamp", timestampMillis)
+            satsVisible?.let { put("satsVisible", it) }
+            satsUsed?.let { put("satsUsed", it) }
         }
         val request = Request.Builder()
             .url("${BackendConfig.baseUrl}/api/trigger-event")
@@ -169,9 +174,13 @@ class BackendClient {
         batteryTemp: Double?,
         charging: Boolean?,
         batteryHoursRemaining: Double?,
+        satsVisible: Int? = null,
+        satsUsed: Int? = null,
     ): Boolean {
         val body = JSONObject().apply {
             put("type", "status")
+            satsVisible?.let { put("satsVisible", it) }
+            satsUsed?.let { put("satsUsed", it) }
             battery?.let { put("battery", it) }
             batteryTemp?.let { put("batteryTemp", it) }
             charging?.let { put("charging", it) }

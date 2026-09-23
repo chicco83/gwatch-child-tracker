@@ -584,13 +584,24 @@ private fun StatusCard(
                         value = formatLastSeen(lastStatus, nowMillis),
                     )
                 }
+                // 2026-09-23: satelliti dell'ultimo tentativo (richiesta utente).
+                if (state.satsVisible != null && state.satsUsed != null) {
+                    InfoLine(
+                        label = stringResource(R.string.status_sats_label),
+                        value = stringResource(R.string.status_sats_format, state.satsVisible, state.satsUsed) +
+                            (state.satsAtMillis?.let { " · " + formatRelativeTime(it, nowMillis) } ?: ""),
+                    )
+                }
                 state.battery?.let { battery ->
                     InfoLine(
                         label = stringResource(R.string.battery_label),
                         value = stringResource(R.string.battery_format, battery) +
                             if (state.charging == true) " ⚡" else "",
+                        // 2026-09-23: verde scuro al posto di Color.Green
+                        // (verde fluo illeggibile, segnalato dall'utente).
+                        // Precedente: battery > 50 -> Color.Green
                         valueColor = when {
-                            battery > 50 -> Color.Green
+                            battery > 50 -> Color(0xFF2E7D32)
                             battery > 25 -> Color(0xFFFFA000)
                             else -> Color.Red
                         },

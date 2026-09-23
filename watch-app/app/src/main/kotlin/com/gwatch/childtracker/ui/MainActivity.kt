@@ -31,6 +31,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -537,21 +544,15 @@ private fun MainScreen(
         // tentativo (LocationRequestWorker, che aggiorna di nuovo
         // GpsAvailability). Precedente (2026-09-18):
         //     enabled = gpsAvailable != false,
-        Chip(
+        // v0.24.0 (2026-09-23): richiesta utente — durante l'invio il pulsante
+        // diventa una barra di progresso, poi verde per qualche secondo se
+        // l'invio e' riuscito, rosso fisso se non c'e' segnale GPS.
+        // Precedente: un solo Chip con l'etichetta che cambiava
+        // (sending / gpsAvailable == false / location_button).
+        LocationButton(
+            sending = sending,
+            gpsAvailable = gpsAvailable,
             onClick = onLocationClick,
-            modifier = Modifier.fillMaxWidth(),
-            label = {
-                CenteredChipLabel(
-                    // v0.18.0 (2026-09-23): prima lo stato "in corso", poi
-                    // "GPS assente" se l'ultimo tentativo e' fallito.
-                    // Precedente: if (gpsAvailable == false) ... else location_button
-                    when {
-                        sending -> stringResourceCompat(R.string.location_sending)
-                        gpsAvailable == false -> stringResourceCompat(R.string.location_gps_unavailable)
-                        else -> stringResourceCompat(R.string.location_button)
-                    },
-                )
-            },
         )
         Chip(
             onClick = onChatClick,
@@ -560,6 +561,85 @@ private fun MainScreen(
         )
     }
 }
+
+/**
+ * v0.24.0 (2026-09-23): pulsante "Invia posizione" a stati colorati.
+ * - invio in corso: barra blu che si riempie in FIX_TIMEOUT_MS (tempo
+ *   massimo del tentativo GPS in LocationRequestWorker);
+ * - invio riuscito: verde per SUCCESS_SHOW_MS con "Posizione inviata";
+ * - GPS assente: rosso fisso finche' un invio non riesce.
+ * La barra e' disegnata a mano (Box + fillMaxWidth(frazione)), niente
+ * Modifier.weight ne' componenti progress di Wear mai provati nel
+ * progetto; Box/clip/background sono gia' usati in ChatScreen.kt.
+ */
+@Composable
+private fun LocationButton(sending: Boolean, gpsAvailable: Boolean?, onClick: () -> Unit) {
+    val sendingSince by GpsAvailability.sendingSince.collectAsState()
+    val lastSentAt by GpsAvailability.lastSentAt.collectAsState()
+
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(sending) {
+        while (sending) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(500)
+        }
+    }
+    var showSuccess by remember { mutableStateOf(false) }
+    LaunchedEffect(lastSentAt) {
+        val sentAt = lastSentAt ?: return@LaunchedEffect
+        if (System.currentTimeMillis() - sentAt < SUCCESS_SHOW_MS) {
+            showSuccess = true
+            kotlinx.coroutines.delay(SUCCESS_SHOW_MS)
+            showSuccess = false
+        }
+    }
+
+    if (sending) {
+        val start = sendingSince ?: now
+        val progress = ((now - start).toFloat() / LocationRequestWorker.FIX_TIMEOUT_MS).coerceIn(0.03f, 1f)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color(0xFF263238))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(Color(0xFF1976D2)),
+            )
+            Text(
+                text = stringResourceCompat(R.string.location_sending),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                textAlign = TextAlign.Center,
+                color = Color.White,
+            )
+        }
+        return
+    }
+
+    val (background, label) = when {
+        showSuccess -> Color(0xFF2E7D32) to stringResourceCompat(R.string.location_sent)
+        gpsAvailable == false -> Color(0xFFC62828) to stringResourceCompat(R.string.location_gps_unavailable)
+        else -> null to stringResourceCompat(R.string.location_button)
+    }
+    Chip(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (background != null) {
+            ChipDefaults.chipColors(backgroundColor = background, contentColor = Color.White)
+        } else {
+            ChipDefaults.primaryChipColors()
+        },
+        label = { CenteredChipLabel(label) },
+    )
+}
+
+private const val SUCCESS_SHOW_MS = 4000L
 
 /**
  * Schermo di conferma mostrato prima di attivare l'SOS (v0.4.0):

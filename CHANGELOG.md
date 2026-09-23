@@ -7,6 +7,32 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.91.0] - 2026-09-23
+
+### Added
+- **Satelliti visti/agganciati sulla phone-app** (richiesta utente):
+  - watch-app v0.23.0: nuovo `location/GnssCounter.kt`, ascolta
+    `GnssStatus` solo durante il tentativo di `LocationRequestWorker`
+    (GPS gia' acceso: nessun consumo in piu') e ne tiene il massimo;
+    inviato con la posizione o con lo stato batteria;
+  - backend `trigger-event.js` v0.20.0: campi `satsVisible`/`satsUsed`
+    salvati in `devices/{id}.gnss {visible, used, at}`;
+  - phone-app v0.18.0: riga "Satelliti (ultimo tentativo): X visti, Y
+    agganciati · N min fa".
+- **watch-app v0.24.0: pulsante "Invia posizione" a stati colorati**
+  (richiesta utente): durante l'invio diventa una barra blu che si
+  riempie nei 90 secondi massimi del tentativo; se l'invio riesce resta
+  verde per 4 secondi con "Posizione inviata"; senza segnale GPS resta
+  rosso fisso con "GPS assente, tocca per cercare". Stato in
+  `GpsAvailability` (`sendingSince`, `lastSentAt`).
+
+### Changed
+- phone-app: verde della batteria scurito (`#2E7D32` al posto di
+  `Color.Green`, illeggibile).
+
+### Known limitations
+- watch-app e phone-app non compilate in questa sessione.
+
 ## [0.90.0] - 2026-09-23
 
 ### Fixed

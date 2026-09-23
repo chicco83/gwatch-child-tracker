@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.19.0
+ * Versione: 0.20.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -173,6 +173,11 @@
  *   devices/{childId}; NON tocca lastLocation/lastSeen (restano
  *   "ultima posizione"), nessun documento evento, nessuna push. Conta
  *   1 nella quota come gli altri tipi non-SOS.
+ * - 0.20.0 (2026-09-23): campi opzionali satsVisible/satsUsed (satelliti
+ *   visti/agganciati durante il tentativo di posizione del watch,
+ *   richiesta utente) salvati in devices/{childId}.gnss {visible, used,
+ *   at} sia per "status" sia per gli altri tipi. Fuori dalla guardia di
+ *   freschezza di lastSeen: descrivono l'ultimo tentativo, riuscito o no.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -186,6 +191,12 @@ const { childTopic } = require("./_lib/fcmTopics.js");
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
 // Retention eventi, stesso valore di HISTORY_RETENTION_HOURS in ingest-location.js.
 const EVENT_RETENTION_HOURS = 24 * 365;
+
+// v0.20.0: {visible, used, at} se il watch ha mandato i satelliti, altrimenti null.
+function gnssUpdate(satsVisible, satsUsed) {
+  if (typeof satsVisible !== "number" || typeof satsUsed !== "number") return null;
+  return { visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
+}
 
 function buildNotification(type, childName, zoneName, source) {
   if (type === "sos") {
@@ -235,7 +246,8 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed } = req.body || {};
+  const gnss = gnssUpdate(satsVisible, satsUsed);
 
   // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
   if (type === "status") {
@@ -251,6 +263,7 @@ module.exports = wrapHandler(async (req, res) => {
     if (typeof batteryHoursRemaining === "number" || batteryHoursRemaining === null) {
       update.batteryHoursRemaining = batteryHoursRemaining;
     }
+    if (gnss) update.gnss = gnss;
     await db.collection("devices").doc(childId).set(update, { merge: true });
     res.status(200).json({ ok: true });
     return;
@@ -357,6 +370,8 @@ module.exports = wrapHandler(async (req, res) => {
       tx.set(deviceRef, update, { merge: true });
     }
   });
+  // v0.20.0: satelliti dell'ultimo tentativo, fuori dalla guardia di freschezza.
+  if (gnss) await deviceRef.set({ gnss }, { merge: true });
 
   if (typeof battery === "number" && updatedCurrentState) {
     await checkBatteryAlerts(db, deviceRef, childId, battery, charging ?? null, deviceSnapBefore.data());

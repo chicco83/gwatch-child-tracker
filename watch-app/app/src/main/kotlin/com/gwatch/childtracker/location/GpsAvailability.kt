@@ -55,7 +55,25 @@ object GpsAvailability {
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
+    // v0.24.0 (2026-09-23): istante di inizio dell'invio (per la barra di
+    // progresso del pulsante) e istante dell'ultimo invio riuscito (per il
+    // verde di conferma). Richiesta utente. Precedente:
+    //     fun markSending(value: Boolean) { _sending.value = value }
+    private val _sendingSince = MutableStateFlow<Long?>(null)
+    val sendingSince: StateFlow<Long?> = _sendingSince.asStateFlow()
+
+    private val _lastSentAt = MutableStateFlow<Long?>(null)
+    val lastSentAt: StateFlow<Long?> = _lastSentAt.asStateFlow()
+
     fun markSending(value: Boolean) {
+        // Il tocco e il worker chiamano entrambi markSending(true): si tiene
+        // l'inizio del primo, cosi' la barra non riparte da zero.
+        if (value && !_sending.value) _sendingSince.value = System.currentTimeMillis()
+        if (!value) _sendingSince.value = null
         _sending.value = value
+    }
+
+    fun markSent() {
+        _lastSentAt.value = System.currentTimeMillis()
     }
 }

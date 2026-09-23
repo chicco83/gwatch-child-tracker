@@ -30,6 +30,11 @@ data class DeviceState(
     // 2026-09-23: ultimo stato batteria ricevuto anche SENZA posizione
     // (trigger-event.js type "status", backend v0.19.0).
     val lastStatusMillis: Long? = null,
+    // 2026-09-23: satelliti visti/agganciati nell'ultimo tentativo di
+    // posizione del watch (devices/{id}.gnss, trigger-event.js v0.20.0).
+    val satsVisible: Int? = null,
+    val satsUsed: Int? = null,
+    val satsAtMillis: Long? = null,
 )
 
 data class LocationPoint(

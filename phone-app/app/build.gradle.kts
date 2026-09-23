@@ -123,8 +123,10 @@ android {
         // e' lo stesso id univoco della notifica.
         // v0.17.0 (2026-09-23): "Ultima posizione" che si aggiorna da sola
         // ogni 30s; riga "Ultimo contatto (senza posizione)".
-        versionCode = 17
-        versionName = "0.17.0"
+        // v0.18.0 (2026-09-23): riga satelliti visti/agganciati; verde della
+        // batteria scurito (il verde fluo era illeggibile).
+        versionCode = 18
+        versionName = "0.18.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

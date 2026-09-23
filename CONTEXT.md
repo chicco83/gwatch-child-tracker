@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.90.0
+**Versione contesto:** 0.91.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2549,3 +2549,14 @@ CHANGELOG.md  Storico versioni
   non ancora dal tracking periodico. Avvisi di batteria scarica non
   collegati allo "status" (backend v0.19.0, watch-app v0.22.0,
   phone-app v0.17.0) (v0.90.0).
+- 2026-09-23: Tre richieste utente. (1) Satelliti visti/agganciati
+  sulla phone-app "se non consuma": si', GnssStatus ascoltato solo
+  durante il tentativo di LocationRequestWorker (il GPS e' gia' acceso),
+  valore massimo del tentativo, salvato in devices/{id}.gnss fuori dalla
+  guardia di freschezza (descrive l'ultimo tentativo, riuscito o no).
+  Non inviato dal tracking periodico. (2) Verde fluo della batteria
+  illeggibile → #2E7D32. (3) Pulsante del watch a stati colorati: barra
+  di progresso disegnata a mano (Box + fillMaxWidth(frazione), niente
+  weight ne' progress indicator di Wear mai provati), verde 4s su
+  invio riuscito, rosso fisso con GPS assente. Backend
+  trigger-event v0.20.0, watch-app v0.24.0, phone-app v0.18.0 (v0.91.0).

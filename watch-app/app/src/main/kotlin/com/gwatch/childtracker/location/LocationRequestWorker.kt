@@ -88,6 +88,10 @@ class LocationRequestWorker(
     @SuppressLint("MissingPermission")
     private suspend fun sendCurrentLocation(source: String): Result {
         GpsAssist.injectAssistance(appContext)
+        // 2026-09-23: satelliti visti/agganciati durante il tentativo, inviati
+        // alla phone-app (richiesta utente). Nessun consumo in piu': ascolta
+        // solo mentre il GPS e' gia' acceso per questa richiesta.
+        val gnss = GnssCounter(appContext).also { it.start() }
         val location = try {
             LocationServices.getFusedLocationProviderClient(appContext)
                 .getCurrentLocation(
@@ -101,7 +105,12 @@ class LocationRequestWorker(
         } catch (e: Exception) {
             Log.w(TAG, "doWork: fix GPS fallito", e)
             null
+        } finally {
+            gnss.stop()
         }
+        val satsVisible = gnss.maxVisible.takeIf { gnss.received }
+        val satsUsed = gnss.maxUsed.takeIf { gnss.received }
+        Log.i(TAG, "doWork: satelliti visti=$satsVisible agganciati=$satsUsed")
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")
             GpsAvailability.markUnavailable()
@@ -115,6 +124,8 @@ class LocationRequestWorker(
                 batteryTemp = snapshot.temperatureC,
                 charging = snapshot.isCharging,
                 batteryHoursRemaining = snapshot.hoursRemaining,
+                satsVisible = satsVisible,
+                satsUsed = satsUsed,
             )
             Log.i(TAG, "doWork: stato batteria senza posizione inviato=$statusSent")
             return Result.retry()
@@ -140,7 +151,11 @@ class LocationRequestWorker(
             charging = batterySnapshot.isCharging,
             speedMps = if (location.hasSpeed()) location.speed else null,
             batteryHoursRemaining = batterySnapshot.hoursRemaining,
+            satsVisible = satsVisible,
+            satsUsed = satsUsed,
         )
+        // 2026-09-23: conferma verde sul pulsante del watch (GpsAvailability).
+        if (result.ok) GpsAvailability.markSent()
         return if (result.ok) Result.success() else Result.retry()
     }
 
@@ -148,7 +163,8 @@ class LocationRequestWorker(
         private const val TAG = "LocationRequestWorker"
         // v0.18.0: tempo massimo per un fix (GPS a freddo), ben sotto i
         // 10 minuti concessi da WorkManager a un worker.
-        private const val FIX_TIMEOUT_MS = 90_000L
+        // 2026-09-23: pubblica, la usa anche la barra di progresso in MainActivity.
+        const val FIX_TIMEOUT_MS = 90_000L
         const val WORK_NAME = "location-request"
         const val KEY_SOURCE = "source"
         const val SOURCE_CHILD = "child"
