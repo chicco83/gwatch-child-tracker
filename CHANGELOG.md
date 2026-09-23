@@ -7,6 +7,15 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.78.2] - 2026-09-23
+
+### Confirmed
+- **Test su telefono reale riuscito** (confermato dall'utente): dopo la
+  migrazione `familyId` e la pubblicazione di `firestore.rules` v0.7.0
+  (v0.76.0), la phone-app mostra correttamente bambini, zone e tutte
+  le modifiche delle Fasi 1-5 di qwen_plan.md. Chiuso il "da
+  confermare" lasciato in v0.76.0.
+
 ## [0.78.0] - 2026-09-23
 
 ### Fixed

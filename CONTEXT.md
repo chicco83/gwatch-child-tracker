@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.78.1
+**Versione contesto:** 0.78.2
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2302,3 +2302,10 @@ CHANGELOG.md  Storico versioni
   `claude/hopeful-cori-bqpuvm` cancellato dall'utente (era allo stesso
   commit): da qui il branch di lavoro unico e' di nuovo
   `claude/child-geolocation-smartwatch-dblfrv` (v0.78.1).
+- 2026-09-23: **Test su telefono reale riuscito** (confermato
+  dall'utente): con regole v0.7.0 attive e documenti migrati, la
+  phone-app mostra bambini/zone e tutte le modifiche di qwen_plan.md
+  funzionano. Isolamento famiglie chiuso anche sul campo. Restano
+  aperti: timeout di `cleanup.js` con storico molto grande (punto 6 del
+  piano, riaperto in v0.78.0) e l'eventuale suddivisione di CONTEXT.md
+  (decisione dell'utente) (v0.78.2).
