@@ -359,6 +359,9 @@ class MainActivity : ComponentActivity() {
     // v0.7.0 (2026-09-18): vedi il commento su sendSos() sopra — stessa
     // ragione, stesso spostamento della conferma su observeWorkOutcomes().
     private fun sendLocationNow() {
+        // v0.18.0 (2026-09-23): il pulsante passa subito a "Invio posizione
+        // in corso…" (richiesta utente), senza aspettare l'avvio del worker.
+        GpsAvailability.markSending(true)
         val work = OneTimeWorkRequestBuilder<LocationRequestWorker>()
             .setInputData(workDataOf(LocationRequestWorker.KEY_SOURCE to LocationRequestWorker.SOURCE_CHILD))
             .build()
@@ -367,7 +370,8 @@ class MainActivity : ComponentActivity() {
             ExistingWorkPolicy.REPLACE,
             work,
         )
-        Toast.makeText(this, getString(R.string.location_sending), Toast.LENGTH_SHORT).show()
+        // v0.18.0 (2026-09-23): Toast tolto, ora lo dice il pulsante stesso.
+        // Precedente: Toast.makeText(this, getString(R.string.location_sending), Toast.LENGTH_SHORT).show()
     }
 
     // v0.7.0 (2026-09-18): osservatore unico, registrato una sola volta
@@ -492,6 +496,8 @@ private fun MainScreen(
     // lasciare il pulsante premibile a vuoto. SOS resta SEMPRE
     // abilitato, a prescindere da questo stato — non va mai bloccato.
     val gpsAvailable by GpsAvailability.available.collectAsState()
+    // v0.18.0 (2026-09-23): "Invio posizione in corso…" durante il tentativo.
+    val sending by GpsAvailability.sending.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -536,10 +542,13 @@ private fun MainScreen(
             modifier = Modifier.fillMaxWidth(),
             label = {
                 CenteredChipLabel(
-                    if (gpsAvailable == false) {
-                        stringResourceCompat(R.string.location_gps_unavailable)
-                    } else {
-                        stringResourceCompat(R.string.location_button)
+                    // v0.18.0 (2026-09-23): prima lo stato "in corso", poi
+                    // "GPS assente" se l'ultimo tentativo e' fallito.
+                    // Precedente: if (gpsAvailable == false) ... else location_button
+                    when {
+                        sending -> stringResourceCompat(R.string.location_sending)
+                        gpsAvailable == false -> stringResourceCompat(R.string.location_gps_unavailable)
+                        else -> stringResourceCompat(R.string.location_button)
                     },
                 )
             },

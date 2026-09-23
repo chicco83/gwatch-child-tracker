@@ -7,6 +7,38 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.84.0] - 2026-09-23
+
+### Fixed
+- **watch-app: GPS di sistema che non produceva posizioni** (causa del
+  problema aperto dal 18/9 "fix GPS non disponibile"). Terzo test su
+  Watch4: permessi, AppOps e posizione fittizia a posto, ma "ultima
+  posizione GPS di sistema: nessuna" con 10 satelliti usati; **aprendo
+  Google Maps il fix e' arrivato subito anche alla nostra app**. Maps
+  passa dai servizi Google con una richiesta continua e fornisce al chip
+  i dati di aiuto (ora esatta, effemeridi); le nostre richieste no.
+  - Nuovo `location/GpsAssist.kt`: prima di ogni ricerca chiede al
+    sistema di iniettare ora ed effemeridi scaricate dalla rete (A-GPS,
+    PSDS/XTRA), al massimo una volta ogni 10 minuti (usa dati LTE),
+    sempre quando e' l'utente ad aprire la Ricerca GPS. Nuovo permesso
+    `ACCESS_LOCATION_EXTRA_COMMANDS` (normale, nessuna richiesta
+    all'utente).
+  - `LocationRequestWorker` e `SosWorker`: iniezione + durata esplicita
+    del tentativo (90s) invece del timeout interno del fused provider.
+  - `ui/GpsSearchScreen.kt` v0.4.0: oltre al GPS diretto, richiesta
+    continua anche tramite servizi Google (stessa strada di Maps); la
+    diagnostica conta a parte "Fix GPS diretto" e "Fix servizi Google".
+
+### Changed
+- **watch-app: il pulsante mostra lo stato dell'invio** (richiesta
+  utente): al tocco diventa "Invio posizione in corso…" e, se il
+  tentativo fallisce, "GPS assente, tocca per cercare". Tolto il Toast
+  "Invio posizione in corso", ora ridondante. watch-app v0.18.0.
+
+### Known limitations
+- Non compilato in questa sessione. Da verificare sul Watch4 senza
+  aprire Maps: il fix deve arrivare da solo (all'aperto).
+
 ## [0.83.0] - 2026-09-23
 
 ### Added

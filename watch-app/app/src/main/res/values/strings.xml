@@ -46,7 +46,10 @@
     <string name="gps_diag_provider">Provider GPS: %1$s</string>
     <string name="gps_diag_register_ok">Registrazione app: OK</string>
     <string name="gps_diag_register_error">Registrazione app: errore %1$s</string>
-    <string name="gps_diag_listener_fixes">Fix arrivati all\'app: %1$d</string>
+    <!-- v0.18.0 (2026-09-23): distinti GPS diretto / servizi Google.
+         Precedente: "Fix arrivati all'app: %1$d" -->
+    <string name="gps_diag_listener_fixes">Fix GPS diretto: %1$d</string>
+    <string name="gps_diag_fused_fixes">Fix servizi Google: %1$d</string>
     <string name="gps_diag_last_known_none">Ultima posizione GPS di sistema: nessuna</string>
     <string name="gps_diag_last_known_age">Ultima posizione GPS di sistema: %1$ds fa</string>
     <!-- v0.17.0 (2026-09-23): diagnostica permessi della Ricerca GPS -->

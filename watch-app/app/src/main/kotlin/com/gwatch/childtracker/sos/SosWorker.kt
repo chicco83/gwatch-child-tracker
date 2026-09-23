@@ -12,6 +12,7 @@ import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.gwatch.childtracker.location.BatteryInfo
+import com.gwatch.childtracker.location.GpsAssist
 import com.gwatch.childtracker.location.GpsAvailability
 import com.gwatch.childtracker.network.BackendClient
 import kotlinx.coroutines.tasks.await
@@ -49,11 +50,17 @@ class SosWorker(
             return Result.failure()
         }
 
+        // v0.7.0 (2026-09-23): stesso fix di LocationRequestWorker.kt
+        // v0.18.0 — iniezione ora/effemeridi (GpsAssist) + durata esplicita
+        // del tentativo. Precedente (2026-09-18): Builder senza
+        // setDurationMillis e nessuna iniezione.
+        GpsAssist.injectAssistance(appContext)
         val location = try {
             LocationServices.getFusedLocationProviderClient(appContext)
                 .getCurrentLocation(
                     CurrentLocationRequest.Builder()
                         .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                        .setDurationMillis(FIX_TIMEOUT_MS)
                         .build(),
                     null,
                 )
@@ -93,6 +100,9 @@ class SosWorker(
 
     companion object {
         private const val TAG = "SosWorker"
+        // v0.7.0: tempo massimo per un fix (GPS a freddo); se scade,
+        // WorkManager ritenta (lavoro espedito, vedi sopra).
+        private const val FIX_TIMEOUT_MS = 90_000L
         const val WORK_NAME = "sos"
     }
 }

@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.3.0 (2026-09-23)
+// Versione: 0.4.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -47,6 +47,15 @@ package com.gwatch.childtracker.ui
 //   e se l'ultima posizione di sistema risulta fittizia (mock: con le
 //   Opzioni sviluppatore attive un'app di posizione fittizia sostituisce
 //   il GPS vero).
+// - 0.4.0 (2026-09-23): terzo test — permessi, AppOps e mock tutti a
+//   posto, ma "ultima posizione GPS di sistema: nessuna" con 10 satelliti
+//   usati; aprendo Google Maps il fix e' arrivato SUBITO anche alla nostra
+//   app. Quindi il GPS di sistema non produceva posizioni per nessuno
+//   finche' Maps non ha fornito i suoi dati di aiuto. Ora all'avvio della
+//   ricerca: (1) GpsAssist inietta ora + effemeridi (force=true, e'
+//   un'azione esplicita dell'utente); (2) oltre al GPS diretto, richiesta
+//   continua anche tramite servizi Google (fused provider), la stessa
+//   strada di Maps. La diagnostica conta a parte i fix delle due strade.
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -95,7 +104,13 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.gwatch.childtracker.R
+import com.gwatch.childtracker.location.GpsAssist
 import kotlinx.coroutines.delay
 
 private const val TAG = "GpsSearchScreen"
@@ -120,6 +135,8 @@ private data class GpsDiagnostics(
     val gpsProviderEnabled: Boolean? = null,
     val registerError: String? = null,
     val listenerFixes: Int = 0,
+    // v0.4.0: fix arrivati tramite servizi Google (fused provider).
+    val fusedFixes: Int = 0,
     val lastKnownAgeS: Long? = null,
     // v0.3.0
     val fineGranted: Boolean? = null,
@@ -165,6 +182,10 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                 onListenerFix = {
                     diag = diag.copy(listenerFixes = diag.listenerFixes + 1)
                     handleFix("listener GPS")
+                },
+                onFusedFix = {
+                    diag = diag.copy(fusedFixes = diag.fusedFixes + 1)
+                    handleFix("servizi Google")
                 },
             )
             onDispose { stop() }
@@ -275,6 +296,7 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
             context.getString(R.string.gps_diag_register_error, diag.registerError)
         },
         context.getString(R.string.gps_diag_listener_fixes, diag.listenerFixes),
+        context.getString(R.string.gps_diag_fused_fixes, diag.fusedFixes),
         if (diag.lastKnownAgeS == null) {
             context.getString(R.string.gps_diag_last_known_none)
         } else {
@@ -386,7 +408,10 @@ private fun startGpsSearch(
     onSatellites: (List<Satellite>) -> Unit,
     onRegisterResult: (String?) -> Unit,
     onListenerFix: () -> Unit,
+    onFusedFix: () -> Unit,
 ): () -> Unit {
+    // v0.4.0: ora + effemeridi nel chip prima di tutto (vedi GpsAssist.kt).
+    GpsAssist.injectAssistance(context, force = true)
     val locationManager = context.getSystemService(LocationManager::class.java)
     val gnssCallback = object : GnssStatus.Callback() {
         override fun onSatelliteStatusChanged(status: GnssStatus) {
@@ -417,10 +442,28 @@ private fun startGpsSearch(
         Log.w(TAG, "startGpsSearch: requestLocationUpdates fallita", e)
         errors += "posizione: ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
     }
+    // v0.4.0: stessa richiesta continua che fa Google Maps.
+    val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+    val fusedCallback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            if (result.lastLocation != null) onFusedFix()
+        }
+    }
+    try {
+        fusedClient.requestLocationUpdates(
+            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L).build(),
+            fusedCallback,
+            Looper.getMainLooper(),
+        )
+    } catch (e: Exception) {
+        Log.w(TAG, "startGpsSearch: fused requestLocationUpdates fallita", e)
+        errors += "servizi Google: ${e.javaClass.simpleName}"
+    }
     onRegisterResult(errors.takeIf { it.isNotEmpty() }?.joinToString("; "))
     return {
         runCatching { locationManager.unregisterGnssStatusCallback(gnssCallback) }
         runCatching { locationManager.removeUpdates(locationListener) }
+        runCatching { fusedClient.removeLocationUpdates(fusedCallback) }
     }
 }
 

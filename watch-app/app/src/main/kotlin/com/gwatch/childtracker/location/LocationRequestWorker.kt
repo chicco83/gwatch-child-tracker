@@ -65,11 +65,35 @@ class LocationRequestWorker(
 
         val source = inputData.getString(KEY_SOURCE) ?: SOURCE_CHILD
 
+        // v0.18.0 (2026-09-23): stato "invio in corso" per il pulsante,
+        // chiuso in ogni caso dal finally (vedi GpsAvailability.sending).
+        GpsAvailability.markSending(true)
+        try {
+            return sendCurrentLocation(source)
+        } finally {
+            GpsAvailability.markSending(false)
+        }
+    }
+
+    // v0.18.0 (2026-09-23): test su Watch4 reale — con 10-14 satelliti
+    // usati il GPS di sistema non produceva nessuna posizione finche' non
+    // si apriva Google Maps. Due correzioni: (1) GpsAssist inietta ora ed
+    // effemeridi nel chip prima della richiesta, come fa Maps via servizi
+    // Google; (2) durata esplicita FIX_TIMEOUT_MS invece di lasciare al
+    // fused provider il suo timeout interno, breve per un GPS a freddo.
+    // Precedente (2026-09-18):
+    //     CurrentLocationRequest.Builder()
+    //         .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+    //         .build(),
+    @SuppressLint("MissingPermission")
+    private suspend fun sendCurrentLocation(source: String): Result {
+        GpsAssist.injectAssistance(appContext)
         val location = try {
             LocationServices.getFusedLocationProviderClient(appContext)
                 .getCurrentLocation(
                     CurrentLocationRequest.Builder()
                         .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                        .setDurationMillis(FIX_TIMEOUT_MS)
                         .build(),
                     null,
                 )
@@ -110,6 +134,9 @@ class LocationRequestWorker(
 
     companion object {
         private const val TAG = "LocationRequestWorker"
+        // v0.18.0: tempo massimo per un fix (GPS a freddo), ben sotto i
+        // 10 minuti concessi da WorkManager a un worker.
+        private const val FIX_TIMEOUT_MS = 90_000L
         const val WORK_NAME = "location-request"
         const val KEY_SOURCE = "source"
         const val SOURCE_CHILD = "child"

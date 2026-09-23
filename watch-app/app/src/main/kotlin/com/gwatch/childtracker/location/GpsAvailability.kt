@@ -47,4 +47,15 @@ object GpsAvailability {
     fun markUnavailable() {
         _available.value = false
     }
+
+    // v0.18.0 (2026-09-23): richiesta utente — durante il tentativo il
+    // pulsante deve dire "Invio posizione in corso…" (prima c'era solo un
+    // Toast e il testo non cambiava). true dal tocco (MainActivity) fino
+    // all'esito di LocationRequestWorker.
+    private val _sending = MutableStateFlow(false)
+    val sending: StateFlow<Boolean> = _sending.asStateFlow()
+
+    fun markSending(value: Boolean) {
+        _sending.value = value
+    }
 }

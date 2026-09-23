@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.83.0
+**Versione contesto:** 0.84.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2383,3 +2383,22 @@ CHANGELOG.md  Storico versioni
   Aggiunte le righe di diagnostica corrispondenti (watch-app v0.17.0).
   Riga "ultima posizione GPS di sistema" del test non ancora riportata
   dall'utente (v0.83.0).
+- 2026-09-23: **Individuata la causa del "fix GPS non disponibile"
+  aperto dal 18/9.** Diagnostica v0.17.0 sul Watch4: posizione precisa
+  ON, background ON, AppOps "consentito", provider passive/network/
+  fused/gps, nessuna posizione fittizia — ma "ultima posizione GPS di
+  sistema: nessuna" con 10 satelliti usati. Aprendo Google Maps il fix
+  e' arrivato istantaneamente e la nostra app ha inviato subito la
+  posizione (il worker stava ritentando). Conclusione: non un problema
+  di permessi ne' di ricezione, ma di come chiediamo la posizione — il
+  GPS del Watch4 non chiude il fix senza i dati di aiuto (ora,
+  effemeridi) che Maps fornisce via servizi Google, e la nostra
+  getCurrentLocation si arrendeva prima. Fix (watch-app v0.18.0):
+  `GpsAssist` inietta ora/effemeridi (sendExtraCommand, comandi di
+  sistema standard) prima di ogni ricerca, durata esplicita 90s in
+  LocationRequestWorker/SosWorker, Ricerca GPS anche via fused
+  provider. Rivista quindi la valutazione di v0.82.0 sulle effemeridi:
+  la domanda dell'utente era pertinente. Su richiesta utente il
+  pulsante ora mostra "Invio posizione in corso…" durante il tentativo
+  (`GpsAvailability.sending`). **Da verificare**: fix senza aprire Maps
+  (v0.84.0).

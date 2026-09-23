@@ -112,8 +112,11 @@ android {
         // recupero da getLastKnownLocation, vedi ui/GpsSearchScreen.kt 0.2.0.
         // v0.17.0 (2026-09-23): diagnostica permessi/AppOps/mock nella
         // Ricerca GPS, vedi ui/GpsSearchScreen.kt 0.3.0.
-        versionCode = 17
-        versionName = "0.17.0"
+        // v0.18.0 (2026-09-23): iniezione ora/effemeridi (location/GpsAssist.kt),
+        // durata esplicita del fix in LocationRequestWorker/SosWorker, Ricerca
+        // GPS anche via servizi Google, pulsante "Invio posizione in corso…".
+        versionCode = 18
+        versionName = "0.18.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
