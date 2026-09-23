@@ -198,6 +198,10 @@ in `api/_lib/quota.js`, contatore in `devices/{id}/quota/{YYYY-MM-DD}`.
    `.github/workflows/cleanup-cron.yml` gira poi da solo una volta al
    giorno (avviabile anche a mano dalla tab *Actions* del repo, per
    testarlo subito senza aspettare).
+   Ogni chiamata a `/api/cleanup` lavora al massimo ~20s (sotto il
+   limite di 30s di Vercel) e risponde `"more": true` se resta storico
+   scaduto: il workflow la ripete finche' `more` non e' false, al
+   massimo 10 volte per notte.
 
 ## Sviluppo locale
 

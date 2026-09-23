@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.7.0
+ * Versione: 0.8.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -68,6 +68,16 @@
  *   successivo senza danni ai dati.
  *   Precedente voce in vercel.json (2026-09-23, rimossa):
  *     "api/cleanup.js": { "memory": 128, "maxDuration": 60 }
+ * - 0.8.0 (2026-09-23): chiuso il punto 6 di qwen_plan.md (individuato
+ *   da qwen3.8-27B-UD-IQ4_XS, implementato da Opus 5.5) SENZA toccare
+ *   vercel.json. Invece di alzare il limite di 30s, ogni esecuzione
+ *   lavora al massimo TIME_BUDGET_MS (20s): scaduto il budget non
+ *   avvia nuovi cicli query+commit e risponde con "more": true se e'
+ *   rimasto dello storico scaduto da cancellare. Il workflow GitHub
+ *   (cleanup-cron.yml v0.2.0) richiama l'endpoint finche' "more" non
+ *   torna false (max 10 chiamate per notte). I 10s di margine coprono
+ *   il ciclo gia' in volo allo scadere del budget (una query + un
+ *   commit da 500 delete, tipicamente 1-3s).
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -76,30 +86,39 @@ const { getAdminApp } = require("./_lib/firebase-admin");
 const { timingSafeEquals } = require("./_lib/auth");
 
 const BATCH_SIZE = 500;
-const MAX_BATCHES_PER_RUN = 10; // tetto di sicurezza: max 5.000 delete/esecuzione
+const MAX_BATCHES_PER_RUN = 10; // tetto di sicurezza: max 5.000 delete/collezione/esecuzione
+// v0.8.0: budget di tempo per esecuzione, ben sotto il maxDuration:30
+// di vercel.json (vedi Storico versioni).
+const TIME_BUDGET_MS = 20000;
 
-async function purgeExpired(db, collectionGroupName) {
-  let totalDeleted = 0;
+// v0.8.0: "deadline" (ms epoch) interrompe il ciclo prima del timeout
+// Vercel. Ritorna { deleted, more }: more=true se l'ultimo blocco era
+// pieno e ci si e' fermati per tempo o per MAX_BATCHES_PER_RUN, cioe'
+// probabilmente resta altro da cancellare.
+async function purgeExpired(db, collectionGroupName, deadline) {
+  let deleted = 0;
   for (let i = 0; i < MAX_BATCHES_PER_RUN; i++) {
+    if (Date.now() >= deadline) return { deleted, more: true };
+
     const snap = await db
       .collectionGroup(collectionGroupName)
       .where("expiresAt", "<=", Timestamp.now())
       .limit(BATCH_SIZE)
       .get();
 
-    if (snap.empty) break;
+    if (snap.empty) return { deleted, more: false };
 
     const batch = db.batch();
     snap.docs.forEach((doc) => batch.delete(doc.ref));
     await batch.commit();
-    totalDeleted += snap.size;
+    deleted += snap.size;
 
-    if (snap.size < BATCH_SIZE) break;
+    if (snap.size < BATCH_SIZE) return { deleted, more: false };
   }
-  return totalDeleted;
+  return { deleted, more: true };
 }
 
-module.exports = wrapHandler(async (req, res) => {
+const handler = wrapHandler(async (req, res) => {
   // timingSafeEquals al posto di !==.
   const authHeader = req.headers["authorization"] || "";
   if (!process.env.CRON_SECRET || !timingSafeEquals(authHeader, `Bearer ${process.env.CRON_SECRET}`)) {
@@ -109,14 +128,74 @@ module.exports = wrapHandler(async (req, res) => {
 
   getAdminApp();
   const db = getFirestore();
+  const deadline = Date.now() + TIME_BUDGET_MS;
 
   // Include "events" (vedi trigger-event.js).
-  const [locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted] = await Promise.all([
-    purgeExpired(db, "locations"),
-    purgeExpired(db, "quota"),
-    purgeExpired(db, "messages"),
-    purgeExpired(db, "events"),
+  const [locations, quota, messages, events] = await Promise.all([
+    purgeExpired(db, "locations", deadline),
+    purgeExpired(db, "quota", deadline),
+    purgeExpired(db, "messages", deadline),
+    purgeExpired(db, "events", deadline),
   ]);
 
-  res.status(200).json({ ok: true, locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted });
+  // Stessi campi di prima (compatibilita' con chi legge la risposta) +
+  // "more" per il workflow GitHub.
+  res.status(200).json({
+    ok: true,
+    locationsDeleted: locations.deleted,
+    quotaDeleted: quota.deleted,
+    messagesDeleted: messages.deleted,
+    eventsDeleted: events.deleted,
+    more: locations.more || quota.more || messages.more || events.more,
+  });
 });
+
+module.exports = handler;
+module.exports.purgeExpired = purgeExpired;
+
+// --- Versione precedente (fino a 0.7.0, sostituita il 2026-09-23) ---
+// const BATCH_SIZE = 500;
+// const MAX_BATCHES_PER_RUN = 10; // tetto di sicurezza: max 5.000 delete/esecuzione
+//
+// async function purgeExpired(db, collectionGroupName) {
+//   let totalDeleted = 0;
+//   for (let i = 0; i < MAX_BATCHES_PER_RUN; i++) {
+//     const snap = await db
+//       .collectionGroup(collectionGroupName)
+//       .where("expiresAt", "<=", Timestamp.now())
+//       .limit(BATCH_SIZE)
+//       .get();
+//
+//     if (snap.empty) break;
+//
+//     const batch = db.batch();
+//     snap.docs.forEach((doc) => batch.delete(doc.ref));
+//     await batch.commit();
+//     totalDeleted += snap.size;
+//
+//     if (snap.size < BATCH_SIZE) break;
+//   }
+//   return totalDeleted;
+// }
+//
+// module.exports = wrapHandler(async (req, res) => {
+//   // timingSafeEquals al posto di !==.
+//   const authHeader = req.headers["authorization"] || "";
+//   if (!process.env.CRON_SECRET || !timingSafeEquals(authHeader, `Bearer ${process.env.CRON_SECRET}`)) {
+//     res.status(401).send("Unauthorized");
+//     return;
+//   }
+//
+//   getAdminApp();
+//   const db = getFirestore();
+//
+//   // Include "events" (vedi trigger-event.js).
+//   const [locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted] = await Promise.all([
+//     purgeExpired(db, "locations"),
+//     purgeExpired(db, "quota"),
+//     purgeExpired(db, "messages"),
+//     purgeExpired(db, "events"),
+//   ]);
+//
+//   res.status(200).json({ ok: true, locationsDeleted, quotaDeleted, messagesDeleted, eventsDeleted });
+// });

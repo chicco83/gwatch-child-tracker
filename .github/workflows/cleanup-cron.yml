@@ -1,4 +1,6 @@
 # Pulizia programmata dello storico scaduto (vedi backend/api/cleanup.js).
+# Versione: 0.2.0 (2026-09-23)
+#
 # Sostituisce sia la TTL policy nativa di Firestore (richiede Blaze anche
 # per uso gratuito) sia i Cron Job di Vercel (il piano Hobby ha bloccato
 # il deploy con crons in vercel.json) — GitHub Actions e' gratuito per
@@ -6,6 +8,14 @@
 #
 # Richiede il secret CRON_SECRET nel repository (Settings -> Secrets and
 # variables -> Actions), stesso valore impostato su Vercel.
+#
+# Storico versioni:
+# - 0.1.0: una sola chiamata a /api/cleanup per notte.
+# - 0.2.0 (2026-09-23): punto 6 di qwen_plan.md (individuato da
+#   qwen3.8-27B-UD-IQ4_XS, implementato da Opus 5.5). cleanup.js v0.8.0
+#   lavora al massimo ~20s per chiamata (resta sotto i 30s di Vercel) e
+#   risponde "more": true se resta storico scaduto: qui si richiama
+#   l'endpoint finche' "more" non e' false, al massimo 10 volte per notte.
 name: Pulizia storico backend
 
 on:
@@ -19,12 +29,32 @@ jobs:
     steps:
       - name: Chiama /api/cleanup
         run: |
-          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://gwatch-child-tracker.vercel.app/api/cleanup)
-          echo "HTTP $status"
-          cat /tmp/response.json
-          if [ "$status" != "200" ]; then
-            echo "Chiamata fallita (HTTP $status)"
-            exit 1
-          fi
+          # v0.2.0: ciclo su "more" (jq e' preinstallato su ubuntu-latest).
+          for i in $(seq 1 10); do
+            status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              https://gwatch-child-tracker.vercel.app/api/cleanup)
+            echo "Chiamata $i: HTTP $status"
+            cat /tmp/response.json; echo
+            if [ "$status" != "200" ]; then
+              echo "Chiamata fallita (HTTP $status)"
+              exit 1
+            fi
+            if [ "$(jq -r '.more' /tmp/response.json)" != "true" ]; then
+              echo "Pulizia completata."
+              exit 0
+            fi
+          done
+          echo "Raggiunto il massimo di 10 chiamate: il resto al giro di domani."
+
+        # Versione precedente (0.1.0, sostituita il 2026-09-23):
+        # run: |
+        #   status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+        #     -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+        #     https://gwatch-child-tracker.vercel.app/api/cleanup)
+        #   echo "HTTP $status"
+        #   cat /tmp/response.json
+        #   if [ "$status" != "200" ]; then
+        #     echo "Chiamata fallita (HTTP $status)"
+        #     exit 1
+        #   fi

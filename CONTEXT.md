@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.78.2
+**Versione contesto:** 0.79.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2309,3 +2309,15 @@ CHANGELOG.md  Storico versioni
   aperti: timeout di `cleanup.js` con storico molto grande (punto 6 del
   piano, riaperto in v0.78.0) e l'eventuale suddivisione di CONTEXT.md
   (decisione dell'utente) (v0.78.2).
+- 2026-09-23: L'utente ha scelto di **mantenere CONTEXT.md intero** (non
+  spezzarlo per componente): voce di igiene di qwen_plan.md chiusa come
+  "non si fa". Chiuso anche il punto 6 (timeout di `cleanup.js`) senza
+  toccare `vercel.json`: budget di 20s per esecuzione + campo `more`
+  nella risposta, e il workflow GitHub richiama l'endpoint finche'
+  `more` e' true (max 10 volte/notte). Scelta rispetto ad alternative:
+  ridurre solo `MAX_BATCHES_PER_RUN` avrebbe rallentato lo smaltimento
+  anche quando c'e' tempo; un budget di tempo si adatta alla velocita'
+  reale di Firestore. **Da confermare** al primo giro notturno (o
+  avvio manuale dalla tab Actions): risposta con `"more": false` e
+  workflow verde. Con questa voce **qwen_plan.md non ha piu' punti
+  aperti** (v0.79.0).

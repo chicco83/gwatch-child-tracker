@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-09-23
+
+### Fixed
+- **Punto 6 di qwen_plan.md chiuso senza toccare `vercel.json`**
+  (individuato da qwen3.8-27B-UD-IQ4_XS, implementato da Opus 5.5).
+  Rischio: con uno storico molto grande `cleanup.js` poteva superare i
+  30s di Vercel e morire a meta'. La strada di v0.73.0 (60s solo per
+  `api/cleanup.js` in `vercel.json`) rompeva il deploy ed e' stata
+  annullata in v0.78.0. Ora:
+  - `backend/api/cleanup.js` v0.8.0: budget di 20s per esecuzione; a
+    budget scaduto non avvia nuovi cicli e risponde con il nuovo campo
+    `"more": true` se resta da cancellare (i campi `*Deleted` restano
+    invariati).
+  - `.github/workflows/cleanup-cron.yml` v0.2.0: richiama l'endpoint
+    finche' `more` non e' false, massimo 10 chiamate per notte.
+  - Nuovo `backend/test/cleanup.test.js` (4 test su `purgeExpired`:
+    niente da fare, un solo blocco, tetto di 10 blocchi, budget
+    scaduto). 16/16 test verdi.
+  - Sezione pulizia di `backend/README.md` aggiornata.
+
 ## [0.78.2] - 2026-09-23
 
 ### Confirmed
