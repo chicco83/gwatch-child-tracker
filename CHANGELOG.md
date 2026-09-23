@@ -7,6 +7,31 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-09-23
+
+### Fixed
+- **Trovata la causa del crollo dei punti dal 20/9**: sul watch
+  l'impostazione **"Migliora precisione"** (posizione di rete Google da
+  Wi-Fi e celle) era **spenta**, probabilmente dalla scarica completa
+  del 20/9. Con lei spenta Android disattiva la posizione di rete: in
+  casa resta solo il GPS, che al chiuso chiude il fix di rado (per
+  questo "GPS assente" alternato a fix occasionali, es. 23:24 con
+  11 m). Il 18-19/9 i punti (~20 m) venivano quasi certamente dal
+  Wi-Fi. Maps funzionava perche' tiene il GPS acceso di continuo.
+  Correzione lato utente: riattivare "Migliora precisione".
+
+### Added
+- watch-app v0.21.0: riga "Posizione di rete (Migliora precisione)"
+  nella diagnostica della Ricerca GPS (`ui/GpsSearchScreen.kt` v0.7.0).
+- `watch-app/README.md`: nuova sezione "Impostazioni obbligatorie sul
+  watch".
+
+### Known limitations
+- Il tracking da fermo resta ad alta precisione (v0.20.0), scelta presa
+  prima di trovare la causa: piu' robusto, ma consuma di piu'. Da
+  decidere con l'utente se tornare alla priorita' bilanciata ora che la
+  causa e' nota.
+
 ## [0.87.0] - 2026-09-23
 
 ### Fixed

@@ -121,6 +121,17 @@ la chat usa solo FCM, niente login Google sul watch.
    separato — richiesto da Android). Concedili tutti perché il
    tracking funzioni anche ad app chiusa.
 
+## Impostazioni obbligatorie sul watch
+
+- **Impostazioni → Posizione → "Migliora precisione" ATTIVA.** È la
+  posizione di rete di Google (Wi-Fi e celle). Se è spenta, in casa e
+  al chiuso resta solo il GPS, che lì aggancia la posizione di rado:
+  il tracking automatico produce pochissimi punti e "Invia posizione"
+  risponde spesso "GPS assente". È successo davvero dopo la scarica
+  completa del watch del 20/9/2026 (vedi CONTEXT.md). La diagnostica
+  della Ricerca GPS mostra lo stato nella riga "Posizione di rete
+  (Migliora precisione)".
+
 ## Cosa NON è ancora stato testato
 
 - Comportamento su hardware reale (sampling adattivo, geofence,

@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.87.1
+**Versione contesto:** 0.88.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2488,3 +2488,22 @@ CHANGELOG.md  Storico versioni
   (alta precisione anche da fermo) non dipende da quale fonte sia
   sparita, quindi resta valida. Nessun nuovo punto al backend dopo le
   22:50 (v0.20.0 non ancora installata) (v0.87.1).
+- 2026-09-23: **Causa trovata.** Dopo un fix GPS occasionale (23:24,
+  11 m) e nuovi "GPS assente" con 16 satelliti usati, l'utente (in
+  casa) verifica le impostazioni del watch: Wi-Fi acceso (serve per il
+  debug via WiFi), **"Migliora precisione" SPENTA**. E' la posizione di
+  rete Google (Wi-Fi/celle): spenta, Android disattiva il provider
+  "network" e in casa resta solo il GPS, che al chiuso chiude il fix
+  di rado. Spiega tutto: crollo dei punti automatici dal 20/9 (il
+  tracking a priorita' bilanciata si appoggiava al Wi-Fi), "GPS
+  assente" alternato a fix occasionali, Maps che "ce la fa" (GPS acceso
+  di continuo), precisione ~20 m del 18-19/9 (Wi-Fi). Probabile
+  spegnimento con la scarica/riavvio del 20/9. Nessuna regressione nel
+  codice. Aggiunta la riga diagnostica corrispondente (watch-app
+  v0.21.0) e la sezione "Impostazioni obbligatorie" in
+  watch-app/README.md. **Da decidere con l'utente**: se riportare il
+  tracking da fermo a priorita' bilanciata (v0.20.0 l'aveva alzata ad
+  alta prima di conoscere la causa: piu' robusto, piu' batteria). Da
+  riconsiderare anche le aggiunte fatte durante la diagnosi (Ricerca
+  GPS, GpsAssist, reset): utili, ma nate per un'ipotesi poi rivelatasi
+  non la causa (v0.88.0).

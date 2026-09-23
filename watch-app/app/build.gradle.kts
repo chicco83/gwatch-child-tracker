@@ -120,8 +120,10 @@ android {
         // v0.20.0 (2026-09-23): tracking automatico ad alta precisione anche
         // da fermo (LocationTrackingService), log + stato del tracking
         // (location/TrackingStatus.kt) visibile nella Ricerca GPS.
-        versionCode = 20
-        versionName = "0.20.0"
+        // v0.21.0 (2026-09-23): riga "Posizione di rete (Migliora precisione)"
+        // nella diagnostica della Ricerca GPS.
+        versionCode = 21
+        versionName = "0.21.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

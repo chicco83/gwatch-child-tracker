@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.6.0 (2026-09-23)
+// Versione: 0.7.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -63,6 +63,12 @@ package com.gwatch.childtracker.ui
 // - 0.6.0 (2026-09-23): righe sul tracking automatico (TrackingStatus):
 //   servizio attivo, priorita' richiesta, punti ricevuti ed eta'
 //   dell'ultimo, ultimo errore.
+// - 0.7.0 (2026-09-23): riga "Posizione di rete (Migliora precisione)".
+//   Causa trovata del crollo dei punti dal 20/9: sul watch l'impostazione
+//   "Migliora precisione" (posizione di rete Google da Wi-Fi/celle) era
+//   spenta. Con lei spenta Android disattiva il provider "network": in
+//   casa resta solo il GPS, che al chiuso chiude il fix di rado. La riga
+//   rende visibile subito il caso se si ripresentasse.
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -144,6 +150,8 @@ private data class Satellite(val cn0: Float, val usedInFix: Boolean)
 private data class GpsDiagnostics(
     val locationEnabled: Boolean? = null,
     val gpsProviderEnabled: Boolean? = null,
+    // v0.7.0: provider "network" = "Migliora precisione" attiva.
+    val networkProviderEnabled: Boolean? = null,
     val registerError: String? = null,
     val listenerFixes: Int = 0,
     // v0.4.0: fix arrivati tramite servizi Google (fused provider).
@@ -222,6 +230,7 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                 diag = diag.copy(
                     locationEnabled = snapshot.locationEnabled,
                     gpsProviderEnabled = snapshot.gpsProviderEnabled,
+                    networkProviderEnabled = snapshot.networkProviderEnabled,
                     lastKnownAgeS = snapshot.lastKnownAgeS,
                     fineGranted = snapshot.fineGranted,
                     backgroundGranted = snapshot.backgroundGranted,
@@ -330,6 +339,7 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
     val lines = listOf(
         context.getString(R.string.gps_diag_location, onOff(diag.locationEnabled)),
         context.getString(R.string.gps_diag_provider, onOff(diag.gpsProviderEnabled)),
+        context.getString(R.string.gps_diag_network, onOff(diag.networkProviderEnabled)),
         if (diag.registerError == null) {
             context.getString(R.string.gps_diag_register_ok)
         } else {
@@ -411,6 +421,7 @@ private fun SatelliteBars(satellites: List<Satellite>) {
 private data class SystemGpsState(
     val locationEnabled: Boolean?,
     val gpsProviderEnabled: Boolean?,
+    val networkProviderEnabled: Boolean?,
     val lastKnownAgeS: Long?,
     val fineGranted: Boolean?,
     val backgroundGranted: Boolean?,
@@ -426,6 +437,8 @@ private fun readSystemGpsState(context: Context): SystemGpsState {
     val locationManager = context.getSystemService(LocationManager::class.java)
     val locationEnabled = runCatching { locationManager.isLocationEnabled }.getOrNull()
     val gpsEnabled = runCatching { locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrNull()
+    // v0.7.0: vedi Storico versioni ("Migliora precisione").
+    val networkEnabled = runCatching { locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) }.getOrNull()
     val lastKnown = runCatching { locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
     val ageS = lastKnown?.let { (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000L }
     // v0.3.0: isFromMockProvider e' deprecato da API 31 ma disponibile
@@ -455,7 +468,7 @@ private fun readSystemGpsState(context: Context): SystemGpsState {
         }
     }.getOrNull()
     val providers = runCatching { locationManager.allProviders.joinToString(", ") }.getOrNull()
-    return SystemGpsState(locationEnabled, gpsEnabled, ageS, fine, background, appOp, providers, mock)
+    return SystemGpsState(locationEnabled, gpsEnabled, networkEnabled, ageS, fine, background, appOp, providers, mock)
 }
 
 // Avvia GPS + ascolto satelliti; ritorna la funzione che li ferma.
