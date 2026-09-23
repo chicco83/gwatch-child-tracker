@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node backend/scripts/diag-device-history.js)",
+      "Bash(node backend/scripts/diag-device-history.js:*)"
+    ]
+  }
+}

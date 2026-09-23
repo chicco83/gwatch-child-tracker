@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+/**
+ * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
+ * Versione: 0.1.0 (2026-09-23)
+ *
+ * Serve a datare un problema ("da quando non arrivano piu' posizioni /
+ * eventi zona?") senza aprire la Firebase Console. Autorizzata
+ * dall'utente in modo permanente il 2026-09-23.
+ *
+ * Privacy: stampa solo date, conteggi e tipi di evento — MAI
+ * coordinate, nomi o testi dei messaggi.
+ * Sicurezza: nessuna scrittura (solo get()).
+ *
+ * Uso (stesse credenziali del backend, gia' nell'ambiente):
+ *   node backend/scripts/diag-device-history.js [giorni=8]
+ */
+const path = require("path");
+module.paths.unshift(path.join(__dirname, "..", "node_modules"));
+const { getAdminApp } = require("../api/_lib/firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
+
+const days = Number(process.argv[2]) || 8;
+
+// Timestamp Firestore, Date o millisecondi -> Date (null se assente).
+function toDate(v) {
+  if (!v) return null;
+  if (typeof v.toDate === "function") return v.toDate();
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const iso = (d) => (d ? d.toISOString().replace("T", " ").slice(0, 19) + "Z" : "-");
+
+async function main() {
+  getAdminApp();
+  const db = getFirestore();
+  const since = new Date(Date.now() - days * 864e5);
+  console.log(`Storico dal ${iso(since)} (ultimi ${days} giorni)\n`);
+
+  const devices = await db.collection("devices").get();
+  for (const dev of devices.docs) {
+    const d = dev.data();
+    console.log(`DEVICE ${dev.id}`);
+    console.log(`  lastSeen: ${iso(toDate(d.lastSeen))}   sosActive: ${!!d.sosActive}`);
+
+    // Posizioni: conteggio per giorno + ultime 3 (solo orari).
+    const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();
+    const perDay = {};
+    const times = [];
+    locs.docs.forEach((l) => {
+      const t = toDate(l.data().timestamp);
+      if (!t) return;
+      times.push(t);
+      const k = t.toISOString().slice(0, 10);
+      perDay[k] = (perDay[k] || 0) + 1;
+    });
+    times.sort((a, b) => b - a);
+    console.log(`  posizioni per giorno: ${JSON.stringify(perDay)}`);
+    console.log(`  ultime posizioni: ${times.slice(0, 3).map(iso).join(", ") || "-"}`);
+
+    // Eventi: orario, tipo, origine (niente coordinate/nomi).
+    const evs = await dev.ref.collection("events").where("timestamp", ">=", since).get();
+    const rows = evs.docs
+      .map((e) => {
+        const v = e.data();
+        return { t: toDate(v.timestamp), type: v.type, source: v.source || "" };
+      })
+      .filter((r) => r.t)
+      .sort((a, b) => b.t - a.t);
+    console.log(`  eventi (${rows.length}, piu' recenti per primi):`);
+    rows.slice(0, 40).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}`));
+    console.log("");
+  }
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("Diagnostica fallita:", err);
+    process.exit(1);
+  });

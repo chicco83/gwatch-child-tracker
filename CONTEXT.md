@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.84.1
+**Versione contesto:** 0.85.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2427,3 +2427,16 @@ CHANGELOG.md  Storico versioni
   eventi per datare l'inizio del problema: bloccata dal controllo di
   sicurezza della sessione (dati di produzione), non aggirata — da
   decidere con l'utente (v0.84.1).
+- 2026-09-23: L'utente ha autorizzato in modo permanente la lettura da
+  Firebase. Creato `backend/scripts/diag-device-history.js` (sola
+  lettura, niente coordinate) + regola in `.claude/settings.json` +
+  nota in CLAUDE.md. Risultato: posizioni automatiche 18/9 181, 19/9
+  278, 20/9 94, 21/9 0, 22/9 26, 23/9 16; eventi zona regolari fino a
+  oggi (ultimi geofence_enter 23/9 19:50-20:50Z), nessun evento il
+  21/9. Il calo del tracking automatico precede ogni modifica al
+  codice del watch (identico dal 19/9 21:15 al 23/9) → causa esterna al
+  codice (watch spento/non indossato il 21, poi GPS di sistema senza
+  dati di aiuto come visto nei test di oggi; da chiedere all'utente se
+  il watch si e' riavviato/aggiornato o e' stato in risparmio
+  energetico in quei giorni). Le notifiche zona mancanti sul telefono
+  restano spiegate dalla finestra Fase 2 senza `familyId` (v0.85.0).

@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-09-23
+
+### Added
+- `backend/scripts/diag-device-history.js`: diagnostica di sola lettura
+  dello storico dispositivi (posizioni per giorno, ultime posizioni,
+  eventi con orario/tipo/origine — mai coordinate). Autorizzata
+  dall'utente in modo permanente: regola in `.claude/settings.json`,
+  nota in `CLAUDE.md`.
+
+### Documentazione
+- **Datato il calo delle posizioni automatiche**: 18/9 181, 19/9 278,
+  20/9 94, 21/9 0, 22/9 26, 23/9 16. Il calo inizia il 20-21/9, con
+  codice del watch identico a quello del 19/9 sera (l'unica modifica
+  del 22/9 e' un commento; le modifiche del piano qwen sono del 23/9):
+  non e' una regressione del codice del watch. Il 21/9 nessun evento
+  di alcun tipo (watch spento o non indossato?). Gli eventi zona
+  continuano ad arrivare al backend anche oggi: il watch le rileva, le
+  notifiche mancanti sul telefono sono la finestra Fase 2 senza
+  `familyId` (v0.84.0).
+
 ## [0.84.0] - 2026-09-23
 
 ### Fixed

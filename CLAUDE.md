@@ -23,3 +23,11 @@ Motivo: un riassunto automatico di conversazione perde i dettagli fini
 (bug trovati durante il test, decisioni prese lì per lì) — questi tre
 file sono l'unica fonte affidabile per chi riprende il progetto dopo
 una compattazione o in una sessione futura, compreso lo stesso Claude.
+
+## Diagnostica dati reali (autorizzata dall'utente, 2026-09-23)
+
+Per datare un problema sul campo (posizioni/eventi zona che smettono di
+arrivare) usare `node backend/scripts/diag-device-history.js [giorni]`:
+sola lettura, stampa solo date/conteggi/tipi di evento, mai coordinate.
+Permesso in `.claude/settings.json`. Non scrivere altri script che
+leggono dati di produzione senza chiederlo all'utente.
