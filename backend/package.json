@@ -2,7 +2,7 @@
   "name": "gwatch-child-tracker-backend",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "test": "node --test test/*.test.js"

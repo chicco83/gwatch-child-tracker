@@ -133,8 +133,11 @@ android {
         // richiesta, invece di 2 minuti senza nulla a schermo.
         // v0.22.0 (2026-09-23): icona e riga "Stato watch" (modalita' aereo /
         // spento / non raggiungibile), nuovi eventi nello storico.
-        versionCode = 22
-        versionName = "0.22.0"
+        // v0.23.0 (2026-09-24): la barra dei tentativi sparisce appena arriva
+        // una posizione; gli avvisi di riaccensione/modalita' aereo non
+        // contano piu' come tentativo fallito (lastNoFixAt).
+        versionCode = 23
+        versionName = "0.23.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

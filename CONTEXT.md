@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.97.0
-**Ultimo aggiornamento:** 2026-09-23
+**Versione contesto:** 0.98.0
+**Ultimo aggiornamento:** 2026-09-24
 
 ---
 
@@ -2633,3 +2633,15 @@ CHANGELOG.md  Storico versioni
   arriva altro dal watch (margine 60 s, perche' lo stesso invio aggiorna
   lastStatusAt con l'ora del server). Backend trigger-event v0.22.0,
   watch-app v0.28.0, phone-app v0.22.0 (v0.97.0).
+- 2026-09-24: Confermate dall'utente tutte le notifiche di stato del
+  watch (aereo on/off, spegnimento, riaccensione). Bug: alla
+  riaccensione la barra dei tentativi restava con la posizione gia'
+  arrivata. Ricostruito dallo storico: 00:23:10 "watch_boot" (status
+  senza posizione) → il telefono lo ha letto come fix fallito → conto
+  alla rovescia, durante il quale non guardava le posizioni; 00:23:20
+  posizione arrivata. Correzione: nuovo campo lastNoFixAt (solo status
+  senza watchState = tentativo fallito) usato al posto di lastStatusAt,
+  e controllo delle posizioni in arrivo anche durante il conto alla
+  rovescia (trigger-event v0.23.0, phone-app v0.23.0). Vercel: Node 20
+  dismesso dal 01/10/2026 → backend e CI su Node 24, verificato con
+  Node v24.21.0 (test, sintassi, caricamento moduli) (v0.98.0).

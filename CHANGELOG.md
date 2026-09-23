@@ -7,6 +7,33 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.98.0] - 2026-09-24
+
+### Fixed
+- **phone-app v0.23.0: la barra dei tentativi restava a schermo con la
+  posizione gia' ricevuta** (test utente alla riaccensione del watch).
+  Due cause: (1) l'avviso "riacceso" (uno `status` senza posizione)
+  veniva scambiato per un tentativo di fix fallito, perche' il telefono
+  guardava `lastStatusAt`; (2) durante il conto alla rovescia di 60 s il
+  telefono non controllava le posizioni in arrivo. Ora il backend
+  (`trigger-event.js` v0.23.0) scrive `lastNoFixAt` solo per i tentativi
+  senza fix, il telefono usa quello, e durante il conto alla rovescia
+  chiude la barra appena arriva una posizione. Anche la riga "Ultimo
+  contatto (senza posizione)" usa ora `lastNoFixAt`.
+
+### Changed
+- **Backend su Node.js 24** (avviso Vercel: Node 20 dismesso dal
+  01/10/2026): `engines.node` "24.x" in `backend/package.json` e nel
+  lockfile, `node-version` "24.x" nel workflow
+  `.github/workflows/backend-test.yml`. Verificato in questa sessione
+  con Node v24.21.0: 16/16 test verdi, sintassi e caricamento dei moduli
+  (`firebase-admin` 12.7.0 richiede Node >= 14).
+
+### Confirmed
+- Test utente (watch-app v0.28.0, phone-app v0.22.0): arrivano tutte le
+  notifiche — modalita' aereo attivata/disattivata, spegnimento,
+  riaccensione — e gli eventi `watch_*` sono nello storico.
+
 ## [0.97.0] - 2026-09-23
 
 ### Added

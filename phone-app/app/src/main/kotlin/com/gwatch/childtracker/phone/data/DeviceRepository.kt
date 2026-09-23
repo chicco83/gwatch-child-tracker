@@ -109,6 +109,7 @@ class DeviceRepository {
                     batteryHoursRemaining = (snap.get("batteryHoursRemaining") as? Number)?.toDouble(),
                     // 2026-09-23: vedi DeviceState.lastStatusMillis.
                     lastStatusMillis = snap.getTimestamp("lastStatusAt")?.toDate()?.time,
+                    lastNoFixMillis = snap.getTimestamp("lastNoFixAt")?.toDate()?.time,
                     satsVisible = (gnssMap?.get("visible") as? Number)?.toInt(),
                     satsUsed = (gnssMap?.get("used") as? Number)?.toInt(),
                     satsAtMillis = (gnssMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,

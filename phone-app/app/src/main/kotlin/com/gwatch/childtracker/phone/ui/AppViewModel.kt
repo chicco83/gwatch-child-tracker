@@ -380,8 +380,18 @@ class AppViewModel(
                         attempt = attempt,
                     )
                 )
-                delay(RETRY_DELAY_MS)
+                // 2026-09-24: durante il conto alla rovescia si continua a
+                // guardare se arriva una posizione (es. dal tracking dopo la
+                // riaccensione del watch): se arriva, stop. Prima un semplice
+                // delay(RETRY_DELAY_MS) lasciava la barra a schermo anche con
+                // la posizione gia' ricevuta (segnalato dall'utente).
+                val arrived = withTimeoutOrNull(RETRY_DELAY_MS) {
+                    deviceStates.first { states ->
+                        (states[childId]?.lastSeenMillis ?: 0L) > requestedAt - CLOCK_MARGIN_MS
+                    }
+                } != null
                 _retryStates.value = _retryStates.value - childId
+                if (arrived) break
                 attempt++
             }
             _retryStates.value = _retryStates.value - childId
@@ -404,7 +414,9 @@ class AppViewModel(
         val state = withTimeoutOrNull(RESPONSE_TIMEOUT_MS) {
             deviceStates.first { states ->
                 val s = states[childId] ?: return@first false
-                (s.lastSeenMillis ?: 0L) > threshold || (s.lastStatusMillis ?: 0L) > threshold
+                // 2026-09-24: lastNoFixMillis al posto di lastStatusMillis
+                // (vedi DeviceState.lastNoFixMillis).
+                (s.lastSeenMillis ?: 0L) > threshold || (s.lastNoFixMillis ?: 0L) > threshold
             }[childId]
         } ?: return false
         return (state.lastSeenMillis ?: 0L) > threshold

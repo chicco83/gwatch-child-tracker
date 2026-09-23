@@ -598,7 +598,10 @@ private fun StatusCard(
                 // 2026-09-23: ultimo contatto col watch anche senza
                 // posizione (stato batteria inviato quando il GPS fallisce).
                 // Mostrato solo se piu' recente dell'ultima posizione.
-                val lastStatus = state.lastStatusMillis
+                // 2026-09-24: solo i tentativi senza fix, non gli avvisi di
+                // modalita' aereo/riaccensione (hanno la riga "Stato watch").
+                // Precedente: val lastStatus = state.lastStatusMillis
+                val lastStatus = state.lastNoFixMillis
                 if (lastStatus != null && lastStatus > (state.lastSeenMillis ?: 0L)) {
                     InfoLine(
                         label = stringResource(R.string.status_last_contact_label),

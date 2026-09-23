@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.22.0
+ * Versione: 0.23.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -201,6 +201,13 @@
  *   perde la rete quasi subito, quindi "airplane_on"/"shutdown" arrivano
  *   solo se partono in tempo; "airplane_off"/"boot" arrivano al rientro
  *   e ricostruiscono comunque il periodo offline.
+ * - 0.23.0 (2026-09-24): nuovo campo lastNoFixAt, scritto solo da uno
+ *   "status" SENZA watchState (= il watch ha tentato il fix e non l'ha
+ *   ottenuto, LocationRequestWorker). La phone-app lo usa per capire che
+ *   una richiesta di posizione e' fallita; prima usava lastStatusAt, che
+ *   si aggiorna anche con gli avvisi di modalita' aereo/riaccensione: al
+ *   riavvio del watch l'avviso "boot" veniva scambiato per un tentativo
+ *   fallito mentre la posizione stava arrivando (segnalato dall'utente).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -334,6 +341,9 @@ module.exports = wrapHandler(async (req, res) => {
     const sinceTs = typeof since === "number" ? Timestamp.fromMillis(since) : null;
     if (hasWatchState) {
       update.watchState = { state: WATCH_STATES[watchState], event: watchState, at: stateTs, since: sinceTs };
+    } else {
+      // v0.23.0: tentativo di fix non riuscito (vedi Storico versioni).
+      update.lastNoFixAt = FieldValue.serverTimestamp();
     }
     await statusRef.set(update, { merge: true });
     if (hasWatchState) {
