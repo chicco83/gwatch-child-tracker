@@ -18,6 +18,11 @@ questi tre file perché riflettano lo stato reale del progetto:
   comunque ad ogni giro: è rimasto disallineato per diverse versioni
   in passato (parlava ancora di Google Maps SDK e Cloud Functions
   molto dopo la migrazione a osmdroid/Vercel).
+  **Regola aggiunta il 2026-09-24 (richiesta utente):** ogni **nuova
+  funzione** (o modifica visibile di una esistente) va scritta nella
+  sezione **"Funzioni"** del README.md, sotto Watch / Telefono /
+  Backend, con una spiegazione breve: cosa fa, come si usa, limiti
+  principali. Nello stesso commit della funzione, non "dopo".
 
 Motivo: un riassunto automatico di conversazione perde i dettagli fini
 (bug trovati durante il test, decisioni prese lì per lì) — questi tre

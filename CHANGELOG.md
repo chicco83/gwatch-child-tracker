@@ -7,6 +7,14 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.99.1] - 2026-09-24
+
+### Documentazione
+- Nuova sezione **"Funzioni"** in README.md (watch, telefono, backend)
+  con tutte le funzioni attuali e una spiegazione breve per ciascuna.
+- CLAUDE.md: nuova regola (richiesta utente) — ogni nuova funzione va
+  descritta nella sezione "Funzioni" del README.md nello stesso commit.
+
 ## [0.99.0] - 2026-09-24
 
 ### Changed

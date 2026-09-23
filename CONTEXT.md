@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.99.0
+**Versione contesto:** 0.99.1
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -2730,3 +2730,7 @@ CHANGELOG.md  Storico versioni
   chiamata a device-config falliva (lista vuota = errore); ora ritenta.
   watch-app v0.29.0, phone-app v0.24.0, parent-command/device-config
   v0.5.0 (v0.99.0).
+- 2026-09-24: Richiesta utente, viste le molte funzioni aggiunte: ogni
+  nuova funzione va documentata con spiegazione nel README.md. Regola
+  scritta in CLAUDE.md; creata la sezione "Funzioni" del README con
+  l'elenco completo attuale (watch/telefono/backend) (v0.99.1).
