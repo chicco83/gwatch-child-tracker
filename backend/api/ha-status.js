@@ -1,6 +1,6 @@
 /**
  * GET /api/ha-status
- * Versione: 0.3.0
+ * Versione: 0.4.0
  *
  * Endpoint di sola lettura per il polling di Home Assistant
  * (piattaforma `rest`). Livello aggiuntivo opzionale (vedi
@@ -26,6 +26,13 @@
  * - 0.3.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
  *   ora facoltativo via query string per supportare N bambini, con lo
  *   stesso default di prima quando non specificato.
+ * - 0.4.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — la quota veniva
+ *   consumata PRIMA di verificare che il device esistesse: un polling
+ *   HA mal configurato (childId sbagliato/refuso) consumava comunque
+ *   quota ad ogni giro, per poi rispondere 404. Spostato il get() del
+ *   device prima della guardia di quota: un childId inesistente ora
+ *   risponde 404 senza consumare nulla.
  */
 const { getFirestore } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -52,15 +59,18 @@ module.exports = wrapHandler(async (req, res) => {
   getAdminApp();
   const db = getFirestore();
 
-  const allowed = await checkAndConsumeQuota(db, childId);
-  if (!allowed) {
-    res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
-    return;
-  }
-
+  // v0.4.0: il get() del device viene PRIMA della guardia di quota
+  // (vedi Storico versioni sopra) — un childId inesistente non deve
+  // consumare quota per poi rispondere comunque 404.
   const doc = await db.collection("devices").doc(childId).get();
   if (!doc.exists) {
     res.status(404).json({ error: "device non trovato" });
+    return;
+  }
+
+  const allowed = await checkAndConsumeQuota(db, childId);
+  if (!allowed) {
+    res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
     return;
   }
 

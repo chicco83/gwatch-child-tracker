@@ -15,6 +15,17 @@ package com.gwatch.childtracker.network
 // del device sbagliato in local.properties/BuildConfig) da un altro
 // errore del backend. Aggiunto Log.w in executeForBody, stesso stile
 // del client phone-app.
+// v0.6.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+// qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — ogni worker
+// (GeofenceEventWorker, LocationUploadWorker, SosWorker, ecc.) crea la
+// propria istanza di BackendClient ad ogni esecuzione, e "http" era una
+// proprieta' di ISTANZA: un OkHttpClient (con relativo pool di
+// connessioni/thread pool del Dispatcher) nuovo ad ogni chiamata,
+// invece di essere riusato — sprecato su LTE, dove aprire/chiudere
+// connessioni costa piu' batteria che tenerle vive nel pool. Spostato
+// in companion object: un solo OkHttpClient condiviso da tutte le
+// istanze per l'intero processo, come raccomandato dalla documentazione
+// OkHttp stessa.
 
 import android.util.Log
 import com.gwatch.childtracker.config.BackendConfig
@@ -44,11 +55,8 @@ import kotlin.coroutines.resume
 class BackendClient {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
-        .build()
+    // v0.6.0: condiviso da tutte le istanze, vedi Storico versioni sopra.
+    private val http = HTTP_CLIENT
 
     /** true se il batch e' stato accettato (HTTP 2xx). */
     suspend fun ingestLocation(points: List<LocationPoint>): Boolean {
@@ -287,6 +295,14 @@ class BackendClient {
 
     companion object {
         private const val TAG = "BackendClient"
+
+        // v0.6.0: un solo OkHttpClient per l'intero processo (vedi
+        // Storico versioni sopra), non uno per istanza/chiamata.
+        private val HTTP_CLIENT = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .build()
     }
 }
 

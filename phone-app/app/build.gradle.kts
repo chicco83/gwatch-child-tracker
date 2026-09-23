@@ -109,8 +109,20 @@ android {
         // per-bambino al posto del topic globale "parents" — SOS/
         // geofence/chat/batteria di un bambino non arrivano piu' a
         // telefoni di altre famiglie iscritti allo stesso topic.
-        versionCode = 15
-        versionName = "0.15.0"
+        // v0.16.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+        // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) —
+        // FcmService.postNotification() usava
+        // System.currentTimeMillis().toInt() come id: due notifiche
+        // arrivate nello stesso millisecondo si sovrascrivevano invece
+        // di comparire entrambe. Sostituito con un contatore atomico
+        // monotono. Aggravante trovata qui, non dal documento di
+        // review: il PendingIntent di apertura usava sempre lo stesso
+        // requestCode fisso — col nuovo id univoco due notifiche
+        // potevano davvero coesistere, ma avrebbero condiviso la stessa
+        // destinazione (quella dell'ultima creata). Il requestCode ora
+        // e' lo stesso id univoco della notifica.
+        versionCode = 16
+        versionName = "0.16.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

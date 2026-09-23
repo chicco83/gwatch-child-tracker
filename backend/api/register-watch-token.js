@@ -1,6 +1,6 @@
 /**
  * POST /api/register-watch-token
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Registra/aggiorna il token FCM del watch, usato da parent-command.js
  * per svegliarlo con la push quando il genitore scrive. Un solo token
@@ -16,24 +16,18 @@
  * - 0.1.0 (2026-09-10): versione iniziale.
  * - 0.2.0 (2026-09-11): rimosso il "DEVICE_ID" hardcoded ("figlio") —
  *   ora supporta N bambini, il childId si risolve dal token.
+ * - 0.3.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — validateConfig()
+ *   spostato dentro wrapHandler (vedi _lib/errors.js v0.2.0), rimosso
+ *   da qui: girava solo su 3 endpoint su 9, ora su tutti.
  */
 const { getFirestore } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
-const { validateConfig } = require("./_lib/config.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
 module.exports = wrapHandler(async (req, res) => {
-  try {
-    validateConfig();
-  } catch (err) {
-    console.error("Config validation failed:", err.message);
-    res.status(500).send("Internal server error: configuration");
-    return;
-  }
-
-
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;

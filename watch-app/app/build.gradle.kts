@@ -93,8 +93,19 @@ android {
         // uploadati. Vedi data/PendingLocationStore.kt v0.2.0
         // (claimBatch/requeue, lock condiviso a livello di companion
         // object) e upload/LocationUploadWorker.kt v0.2.0.
-        versionCode = 12
-        versionName = "0.12.0"
+        // v0.13.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+        // qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — ogni worker
+        // creava un nuovo OkHttpClient ad ogni chiamata (pool di
+        // connessioni sprecato su LTE), vedi network/BackendClient.kt
+        // v0.6.0: ora un solo client condiviso per l'intero processo.
+        // Verificato anche (nessuna modifica necessaria): sos/SosWorker.kt
+        // e' gia' accodato come lavoro espedito (setExpedited) — il
+        // retry aggressivo suggerito dal piano per l'SOS era gia' in
+        // vigore prima di questo giro; geofence/GeofenceSyncWorker.kt
+        // (remove+re-add ad ogni sync) resta una scelta deliberata gia'
+        // documentata, non un bug da correggere.
+        versionCode = 13
+        versionName = "0.13.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

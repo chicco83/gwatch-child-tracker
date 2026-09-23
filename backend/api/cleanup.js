@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.5.0
+ * Versione: 0.6.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -45,6 +45,19 @@
  *   (Console o "firebase deploy --only firestore:indexes"), il file
  *   nel repo da solo non basta, stessa classe di problema gia' vista
  *   con le regole di sicurezza (vedi CONTEXT.md).
+ * - 0.6.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — vercel.json
+ *   applicava maxDuration:30 a TUTTE le funzioni, questa inclusa: le
+ *   quattro purgeExpired() sopra girano in parallelo (Promise.all) ma
+ *   ciascuna puo' fare fino a MAX_BATCHES_PER_RUN (10) cicli di
+ *   query+commit da 500 documenti — con uno storico grande (locations
+ *   e' la collezione piu' voluminosa) puo' avvicinarsi o superare i
+ *   30s, la funzione muore a meta', il cron GitHub fallisce con 500 e
+ *   la pulizia resta parziale (nessun danno ai dati, solo pulizia
+ *   posticipata al giro successivo, ma va comunque evitato). Aggiunta
+ *   una voce specifica "api/cleanup.js" in vercel.json con
+ *   maxDuration:60 — il massimo consentito sul piano Vercel Hobby (le
+ *   altre funzioni, tutte rapide, restano a 30 tramite "api/*.js").
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");

@@ -56,6 +56,22 @@ package com.gwatch.childtracker.phone.messaging
 //   nel caso restasse una sottoscrizione residua a un topic non piu'
 //   proprio (es. cambio famiglia, nessuna funzione di rimozione oggi,
 //   ma meglio non fare affidamento solo sul topic).
+// v0.8.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+//   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) —
+//   postNotification() usava System.currentTimeMillis().toInt() come
+//   id: due notifiche arrivate nello stesso millisecondo (es. un
+//   messaggio di chat e un evento geofence quasi simultanei, con piu'
+//   bambini ora possibile, vedi Fase 2) si sovrascrivevano a vicenda
+//   invece di comparire entrambe. Sostituito con un contatore atomico
+//   monotono (NEXT_NOTIFICATION_ID). Aggravante trovata qui, non dal
+//   documento di review: il PendingIntent di apertura usava sempre lo
+//   stesso requestCode fisso (0) con FLAG_UPDATE_CURRENT — con l'id
+//   univoco ora due notifiche possono davvero coesistere in tray, ma
+//   condividevano lo stesso PendingIntent "aggiornato" dall'ultima
+//   creata: toccare una notifica piu' vecchia avrebbe aperto la
+//   destinazione di quella piu' recente. Il requestCode ora e' lo
+//   stesso id univoco della notifica, cosi' ognuna ha il proprio
+//   PendingIntent indipendente.
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -74,6 +90,7 @@ import com.gwatch.childtracker.phone.data.IncomingMessageStore
 import com.gwatch.childtracker.phone.data.KnownChildrenCache
 import com.gwatch.childtracker.phone.data.model.ChatMessage
 import com.gwatch.childtracker.phone.ui.MainActivity
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -140,13 +157,17 @@ class FcmService : FirebaseMessagingService() {
     }
 
     private fun postNotification(title: String, text: String, openChat: Boolean = false) {
+        // v0.8.0: id univoco e monotono, vedi Storico versioni sopra —
+        // anche requestCode del PendingIntent, cosi' ogni notifica ha la
+        // propria destinazione indipendente invece di condividerla.
+        val notificationId = NEXT_NOTIFICATION_ID.getAndIncrement()
         val contentIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             if (openChat) putExtra(MainActivity.EXTRA_OPEN_CHAT, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            notificationId,
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -159,6 +180,12 @@ class FcmService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-        manager.notify(System.currentTimeMillis().toInt(), builder.build())
+        manager.notify(notificationId, builder.build())
+    }
+
+    companion object {
+        // v0.8.0: condiviso da tutte le istanze (companion object), non
+        // per-istanza — vedi Storico versioni sopra.
+        private val NEXT_NOTIFICATION_ID = AtomicInteger(1)
     }
 }

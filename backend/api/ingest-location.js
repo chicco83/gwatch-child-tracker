@@ -1,6 +1,6 @@
 /**
  * POST /api/ingest-location
- * Versione: 0.9.0
+ * Versione: 0.10.0
  *
  * Riceve dal watch un batch di punti posizione accumulati (risparmio
  * batteria: un solo invio di rete per piu' punti, vedi CONTEXT.md) e
@@ -64,28 +64,41 @@
  *   MAX_POINTS_PER_REQUEST documenti "locations": la guardia di quota
  *   sottostimava di molto le scritture Firestore reali. Ora passa
  *   points.length come peso (vedi _lib/quota.js v0.2.0).
+ * - 0.10.0 (2026-09-23): Fase 4 di qwen_plan.md (individuato da
+ *   qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — tre difetti
+ *   minori. (1) "received" nella risposta era sempre points.length,
+ *   anche contando i punti scartati dal "continue" per lat/lon
+ *   mancanti: il chiamante non poteva sapere quanti fossero DAVVERO
+ *   stati scritti. (2) Nessun range-check su lat/lon (es. un bug lato
+ *   watch che mandasse lat=9999 veniva scritto cosi' com'e', nessuna
+ *   guardia lo fermava) — aggiunta isValidPoint() (numeri finiti,
+ *   |lat|<=90, |lon|<=180); il peso della quota (v0.9.0) ora usa il
+ *   conteggio dei punti VALIDI, non quello grezzo del body. Un batch
+ *   senza nessun punto valido e' ora un 400 invece di un 200 silenzioso
+ *   con "received" fuorviante. (3) validateConfig() spostato dentro
+ *   wrapHandler (vedi _lib/errors.js v0.2.0) — rimosso da qui, girava
+ *   solo su 3 endpoint su 9, ora su tutti.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
-const { validateConfig } = require("./_lib/config.js");
 const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
 
 const HISTORY_RETENTION_HOURS = 24 * 365; // 12 mesi, vedi nota sopra
 const MAX_POINTS_PER_REQUEST = 100; // limite difensivo per singola chiamata
 
+// v0.10.0: coordinate valide (vedi Storico versioni sopra). Number.isFinite
+// esclude anche NaN/Infinity, non solo i valori fuori range.
+function isValidPoint(p) {
+  return (
+    Number.isFinite(p?.lat) && p.lat >= -90 && p.lat <= 90 &&
+    Number.isFinite(p?.lon) && p.lon >= -180 && p.lon <= 180
+  );
+}
+
 module.exports = wrapHandler(async (req, res) => {
-  try {
-    validateConfig();
-  } catch (err) {
-    console.error("Config validation failed:", err.message);
-    res.status(500).send("Internal server error: configuration");
-    return;
-  }
-
-
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
     return;
@@ -110,9 +123,17 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  // v0.9.0: peso = numero di punti del batch, non piu' sempre "1" —
-  // vedi Storico versioni sopra e _lib/quota.js.
-  const allowed = await checkAndConsumeQuota(db, childId, points.length);
+  // v0.10.0: filtra i punti validi PRIMA della guardia di quota, cosi'
+  // il peso (v0.9.0) riflette le scritture Firestore reali che questa
+  // chiamata sta per fare, non il conteggio grezzo del body (vedi
+  // Storico versioni sopra).
+  const validPoints = points.filter(isValidPoint);
+  if (validPoints.length === 0) {
+    res.status(400).send("Bad Request: nessun punto valido nel batch (lat/lon mancanti o fuori range)");
+    return;
+  }
+
+  const allowed = await checkAndConsumeQuota(db, childId, validPoints.length);
   if (!allowed) {
     res.status(429).send("Too Many Requests: limite giornaliero di sicurezza raggiunto");
     return;
@@ -122,9 +143,7 @@ module.exports = wrapHandler(async (req, res) => {
   const batch = db.batch();
   let last = null;
 
-  for (const p of points) {
-    if (typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-
+  for (const p of validPoints) {
     const ts = p.timestamp ? Timestamp.fromMillis(p.timestamp) : Timestamp.now();
     const expiresAt = Timestamp.fromMillis(
       ts.toMillis() + HISTORY_RETENTION_HOURS * 60 * 60 * 1000
@@ -200,5 +219,5 @@ module.exports = wrapHandler(async (req, res) => {
     await checkBatteryAlerts(db, deviceRef, childId, last.battery ?? null, last.charging ?? null);
   }
 
-  successResponse(res, { received: points.length });
+  successResponse(res, { received: validPoints.length });
 });

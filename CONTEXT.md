@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.72.0
+**Versione contesto:** 0.73.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2170,3 +2170,30 @@ CHANGELOG.md  Storico versioni
   Nota: il punto 6 del piano (maxDuration di cleanup.js) resta in
   Fase 4 come gia' concordato, non toccato in questo giro.
   watch-app portata a v0.12.0 (v0.72.0).
+- 2026-09-23: Implementata la Fase 4 di qwen_plan.md (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5) — sei fix minori di
+  robustezza dalla tabella "🟡 Minori":
+  (6) vercel.json: maxDuration:60 specifico per api/cleanup.js (era
+  30 come tutte le altre funzioni, rischiava di far morire il cron su
+  uno storico grande).
+  (7) ingest-location.js: range-check lat/lon (isValidPoint) + peso
+  quota e "received" ora sul conteggio dei punti VALIDI, non quello
+  grezzo del body; un batch senza punti validi e' ora 400.
+  (8) ha-status.js: get() del device spostato PRIMA della guardia di
+  quota — un childId inesistente non la consuma piu' per poi
+  rispondere comunque 404.
+  (9) phone-app FcmService.postNotification(): id notifica da
+  System.currentTimeMillis().toInt() (collisioni nello stesso ms) a
+  contatore atomico. Aggravante trovata qui, non dal piano: il
+  PendingIntent condivideva un requestCode fisso — col nuovo id
+  univoco, due notifiche coesistenti avrebbero aperto la destinazione
+  sbagliata; corretto usando lo stesso id come requestCode.
+  (10) watch-app BackendClient.kt: OkHttpClient spostato da proprieta'
+  di istanza (nuovo pool ad ogni worker) a companion object condiviso.
+  (11) _lib/errors.js: validateConfig() spostato dentro wrapHandler
+  (girava solo su 3 endpoint su 9 con lo stesso blocco duplicato).
+  Verificato senza modifiche: (12) SosWorker.kt e' gia' lavoro espedito
+  (setExpedited), il retry aggressivo del piano per l'SOS era gia' in
+  vigore; (13) GeofenceSyncWorker.kt resta una scelta deliberata gia'
+  documentata (remove+re-add ad ogni sync), non un bug.
+  watch-app a v0.13.0, phone-app a v0.16.0 (v0.73.0).

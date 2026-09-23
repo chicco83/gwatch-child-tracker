@@ -7,6 +7,51 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.73.0] - 2026-09-23
+
+### Fixed
+- **Fase 4 di qwen_plan.md — fix minori di robustezza** (individuato da
+  qwen3.8-27B-UD-IQ4_XS, implementato da Sonnet 5), sei interventi:
+  - `backend/vercel.json`: `maxDuration:30` valeva per tutte le
+    funzioni, `cleanup.js` incluso — con uno storico grande le quattro
+    `purgeExpired()` (fino a 10 cicli query+commit da 500 documenti
+    ciascuna) potevano avvicinarsi/superare i 30s e far fallire il cron
+    a meta'. Aggiunta una voce specifica `api/cleanup.js` con
+    `maxDuration:60` (il massimo sul piano Vercel Hobby).
+  - `ingest-location.js`: `received` nella risposta contava anche i
+    punti scartati per lat/lon mancanti, e non c'era alcun range-check
+    sulle coordinate. Aggiunta `isValidPoint()` (numeri finiti,
+    |lat|≤90, |lon|≤180); il peso della quota (v0.9.0) ora usa il
+    conteggio dei punti validi, non quello grezzo del body; un batch
+    senza nessun punto valido è ora un 400 invece di un 200 silenzioso.
+  - `ha-status.js`: la quota veniva consumata PRIMA di verificare che
+    il device esistesse — un polling HA con `childId` sbagliato
+    consumava quota ad ogni giro per poi rispondere comunque 404.
+    Invertito l'ordine.
+  - `_lib/errors.js`: `validateConfig()` era richiamato a mano (stesso
+    blocco try/catch duplicato) solo in 3 endpoint su 9. Spostato
+    dentro `wrapHandler`: ora gira per tutti, un solo posto da
+    mantenere.
+  - phone-app `FcmService.postNotification()`: l'id notifica era
+    `System.currentTimeMillis().toInt()` — due notifiche nello stesso
+    millisecondo si sovrascrivevano. Sostituito con un contatore
+    atomico monotono. Trovato lavorando su questo, non dal documento
+    di review: il `PendingIntent` di apertura condivideva sempre lo
+    stesso `requestCode` fisso — col nuovo id univoco due notifiche
+    potevano davvero coesistere, ma avrebbero aperto la destinazione
+    dell'ultima creata; il `requestCode` ora coincide con l'id univoco
+    della notifica. phone-app portata a v0.16.0.
+  - watch-app `network/BackendClient.kt`: ogni worker creava un nuovo
+    `OkHttpClient` (pool di connessioni/thread proprio) ad ogni
+    chiamata invece di riusarne uno, sprecato su LTE. Spostato in
+    companion object: un solo client condiviso per l'intero processo.
+    watch-app portata a v0.13.0.
+  - Verificato (nessuna modifica necessaria): `sos/SosWorker.kt` è già
+    accodato come lavoro espedito (`setExpedited`), il retry
+    aggressivo suggerito dal piano per l'SOS era già in vigore;
+    `geofence/GeofenceSyncWorker.kt` (remove+re-add ad ogni sync) resta
+    una scelta deliberata già documentata, non un bug.
+
 ## [0.72.0] - 2026-09-23
 
 ### Fixed
