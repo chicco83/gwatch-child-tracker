@@ -21,8 +21,9 @@ questi tre file perché riflettano lo stato reale del progetto:
   **Regola aggiunta il 2026-09-24 (richiesta utente):** ogni **nuova
   funzione** (o modifica visibile di una esistente) va scritta nella
   sezione **"Funzioni"** del README.md, sotto Watch / Telefono /
-  Backend, con una spiegazione breve: cosa fa, come si usa, limiti
-  principali. Nello stesso commit della funzione, non "dopo".
+  Backend, nel formato gia' in uso: **nome della funzione in elenco
+  puntato**, seguito da **due o tre righe di dettaglio** (cosa fa, come
+  si usa, limiti principali). Nello stesso commit della funzione, non "dopo".
 
 Motivo: un riassunto automatico di conversazione perde i dettagli fini
 (bug trovati durante il test, decisioni prese lì per lì) — questi tre

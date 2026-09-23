@@ -39,89 +39,154 @@ Firebase (piano gratuito).
 
 ## Funzioni
 
-<!-- 2026-09-24: sezione creata su richiesta dell'utente. Regola in
-     CLAUDE.md: ogni nuova funzione va aggiunta qui con una spiegazione
-     breve (cosa fa, come si usa, eventuali limiti). -->
+<!-- 2026-09-24: sezione creata su richiesta dell'utente; formato
+     aggiornato lo stesso giorno (nome in elenco puntato + 2-3 righe di
+     dettaglio). Regola in CLAUDE.md: ogni nuova funzione va aggiunta qui
+     in questo formato. -->
 
 ### Watch (Galaxy Watch4, app Wear OS)
 
-- **Tracking automatico della posizione** — servizio sempre attivo che
-  registra la posizione e la invia al backend a gruppi (ogni 15 minuti o
-  prima se ci sono molti punti). Da fermo ogni 10 minuti a priorità
-  *bilanciata* (Wi-Fi e rete, poca batteria); in movimento ogni minuto
-  con GPS. L'alta precisione anche da fermo si attiva dal telefono.
-  Richiede sul watch *Impostazioni → Posizione → "Migliora precisione"*
-  attiva (vedi `watch-app/README.md`).
-- **Avvio automatico** — il tracking riparte da solo all'accensione del
-  watch, dopo ogni aggiornamento dell'app e quando arriva una richiesta
-  di posizione dal telefono, anche con l'app chiusa.
-- **Invia posizione** — pulsante che invia subito la posizione. Diventa
-  una barra blu durante il tentativo (max 90 s), verde per qualche
-  secondo se l'invio riesce, rosso fisso "GPS assente, tocca per cercare"
-  se non c'è segnale.
-- **Ricerca GPS** — si apre dal pulsante rosso: barre dei satelliti
-  (verde = usato per la posizione), conteggio visti/usati, diagnostica
-  (permessi, posizione di rete, stato del tracking e da cosa è partito) e
-  pulsante "Reset dati GPS" (cancella e riscarica ora ed effemeridi,
-  come il reset A-GPS dei vecchi navigatori).
-- **SOS** — pulsante rosso con conferma; invia la posizione ogni 30
-  secondi finché il genitore non lo disattiva dal telefono; banner "SOS
-  ATTIVO" sul watch.
-- **Zone (geofence)** — rilevamento di ingresso/uscita dalle zone create
-  sul telefono, anche con l'app chiusa; con l'opzione della zona attiva,
-  "Non disturbare" automatico dentro la zona.
-- **Chat** — messaggi con il genitore: risposte rapide e dettatura
-  vocale, notifica all'arrivo di un messaggio.
-- **Batteria** — percentuale, temperatura, carica e autonomia stimata
-  inviate con ogni posizione, con ogni evento zona e anche quando il GPS
-  non trova la posizione.
-- **Avvisi di stato** — modalità aereo attivata/disattivata, spegnimento
-  e riaccensione: avviso immediato se c'è ancora rete, altrimenti
-  inviato al rientro con l'ora di inizio del periodo offline.
-- **"Posizione visualizzata"** — notifica sul watch quando il genitore
-  ha visto una posizione inviata dal bambino.
+- **Tracking automatico della posizione**
+
+  Registra la posizione e la invia al backend a gruppi, ogni 15 minuti
+  o prima se ci sono molti punti. Da fermo ogni 10 minuti usando Wi-Fi
+  e rete (poca batteria), in movimento ogni minuto con il GPS.
+  Richiede sul watch "Migliora precisione" attiva (Impostazioni → Posizione).
+
+- **Avvio automatico**
+
+  Il tracking riparte da solo all'accensione del watch, dopo ogni
+  aggiornamento dell'app e quando arriva una richiesta di posizione dal
+  telefono, anche con l'app chiusa (ma non dopo un "Arresto forzato").
+
+- **Invia posizione**
+
+  Pulsante che invia subito la posizione al telefono. Durante il
+  tentativo diventa una barra blu (max 90 s), poi verde per qualche
+  secondo se l'invio riesce, rosso fisso "GPS assente" se non c'è segnale.
+
+- **Ricerca GPS**
+
+  Si apre toccando il pulsante rosso "GPS assente". Mostra una barra per
+  satellite (verde = usato per la posizione), i satelliti visti/usati e
+  una diagnostica; il pulsante "Reset dati GPS" riscarica ora ed effemeridi.
+
+- **SOS**
+
+  Pulsante rosso con richiesta di conferma, per evitare attivazioni per
+  sbaglio. Invia la posizione ogni 30 secondi finché il genitore non lo
+  disattiva dal telefono; sul watch compare il banner "SOS ATTIVO".
+
+- **Zone (geofence)**
+
+  Rileva ingresso e uscita dalle zone create sul telefono, anche con
+  l'app chiusa. Se la zona lo prevede, attiva il "Non disturbare" del
+  watch all'ingresso e lo disattiva all'uscita.
+
+- **Chat**
+
+  Messaggi con il genitore tramite risposte rapide o dettatura vocale,
+  senza tastiera. I messaggi in arrivo mostrano una notifica sul watch.
+
+- **Batteria**
+
+  Percentuale, temperatura, stato di carica e autonomia stimata vengono
+  inviati con ogni posizione, con ogni evento zona e anche quando il GPS
+  non trova la posizione, così sul telefono restano sempre aggiornati.
+
+- **Avvisi di stato del watch**
+
+  Segnala al telefono modalità aereo attivata/disattivata, spegnimento e
+  riaccensione. L'avviso immediato parte solo se c'è ancora rete; al
+  rientro arriva comunque, con l'ora di inizio del periodo offline.
+
+- **"Posizione visualizzata"**
+
+  Quando il genitore apre sul telefono una posizione inviata dal
+  bambino (SOS o "Invia posizione"), sul watch arriva una notifica.
 
 ### Telefono (app Android del genitore)
 
-- **Accesso** — login Google, solo per genitori autorizzati; più
+- **Accesso e famiglie**
+
+  Login con l'account Google, solo per i genitori autorizzati. Più
   genitori per famiglia (codice invito dalle Impostazioni); famiglie
   diverse sullo stesso sistema non vedono i dati l'una dell'altra.
-- **Mappa** — OpenStreetMap con un segnaposto per ogni bambino, zone
-  disegnate come cerchi, interruttore "Percorso 24h" per lo storico.
-- **Scheda del bambino** — ultima posizione (tempo relativo che si
-  aggiorna da solo + data e ora), batteria colorata, temperatura,
-  carica, velocità, autonomia residua, satelliti dell'ultimo tentativo
-  (o "GPS non usato" se la posizione viene dal Wi-Fi), ultimo contatto
-  senza posizione, stato del watch con icona: ✈️ modalità aereo,
-  ⏻ spento, 📵 non raggiungibile (nessuna notizia da oltre 30 minuti).
-- **Aggiorna posizione** — chiede la posizione al watch (anche
-  automaticamente all'apertura dell'app). Barra "In attesa della
-  posizione dal watch…"; se non arriva, barra "nuovo tentativo tra N s"
-  e nuova richiesta, fino a 20 tentativi (circa un'ora, con l'app aperta).
-- **Zone** — creazione e modifica toccando la mappa o cercando un
-  indirizzo, raggio da 20 a 2000 m, notifica di ingresso e/o uscita,
-  allarme sonoro all'uscita, "Non disturbare" del watch nella zona.
-- **Notifiche** — SOS (allarme che suona anche in silenzioso),
-  ingresso/uscita zone, messaggi, batteria scarica (10%, 5%, 2%; al 2%
-  richiesta di posizione e messaggio automatico al watch), stato del
-  watch (modalità aereo, spegnimento, riaccensione).
-- **Chat** — con selettore del bambino se ce n'è più di uno.
-- **Impostazioni** — proprio nickname, nickname dei bambini, aggiunta
-  di un bambino, invito di un secondo genitore, interruttore **"Alta
-  precisione da fermo"** per bambino (GPS ogni 10 minuti anche da fermo,
-  più affidabile senza Wi-Fi ma consuma più batteria).
+
+- **Mappa**
+
+  Mappa OpenStreetMap con un segnaposto per ogni bambino e le zone
+  disegnate come cerchi. L'interruttore "Percorso 24h" mostra il
+  tragitto delle ultime 24 ore.
+
+- **Scheda del bambino**
+
+  Ultima posizione (tempo che si aggiorna da solo, più data e ora),
+  batteria colorata, temperatura, velocità, autonomia e satelliti
+  dell'ultimo tentativo ("GPS non usato" se la posizione viene dal Wi-Fi).
+
+- **Stato del watch**
+
+  Icona accanto al nome: ✈️ modalità aereo, ⏻ spento, 📵 non
+  raggiungibile (nessuna notizia da oltre 30 minuti). Sotto, la riga
+  "Stato watch" dice da quando.
+
+- **Aggiorna posizione**
+
+  Chiede la posizione al watch, anche in automatico all'apertura
+  dell'app. Mostra "In attesa della posizione dal watch…" e, se non
+  arriva, "nuovo tentativo tra N s": riprova fino a 20 volte (circa un'ora).
+
+- **Zone**
+
+  Si creano toccando la mappa o cercando un indirizzo, con raggio da 20
+  a 2000 m. Per ogni zona: notifica di ingresso e/o uscita, allarme
+  sonoro all'uscita, "Non disturbare" del watch dentro la zona.
+
+- **Notifiche**
+
+  SOS con allarme che suona anche in silenzioso, ingresso/uscita zone,
+  messaggi, batteria scarica (10%, 5%, 2%: al 2% anche richiesta di
+  posizione e messaggio al watch) e stato del watch.
+
+- **Chat**
+
+  Messaggi con il watch; se ci sono più bambini, un selettore permette
+  di scegliere a chi scrivere.
+
+- **Impostazioni**
+
+  Proprio nickname, nickname dei bambini, aggiunta di un bambino e
+  invito di un secondo genitore. Per ogni bambino, l'interruttore "Alta
+  precisione da fermo": GPS ogni 10 minuti anche da fermo, più batteria.
 
 ### Backend (Vercel + Firestore)
 
-- **Endpoint** in `backend/api/` per posizioni, eventi, stato del watch,
-  comandi del genitore, chat, configurazione del watch.
-- **Pulizia notturna** dello storico scaduto (workflow GitHub Actions,
-  ripetuto finché c'è da cancellare, ogni chiamata entro i limiti di
-  Vercel).
-- **Limite giornaliero di sicurezza** sulle scritture per restare nel
-  piano gratuito (l'SOS ne è esente).
-- **Home Assistant** (opzionale) — `/api/ha-status` con token statico
-  per mostrare posizione e batteria anche in Home Assistant.
-- **Diagnostica** — `node backend/scripts/diag-device-history.js`
-  (sola lettura, mai coordinate stampate): stato del watch, eventi,
-  posizioni con precisione, riepilogo orario (`--hourly`).
+- **Endpoint**
+
+  Funzioni in `backend/api/` per posizioni, eventi, stato del watch,
+  comandi del genitore, chat e configurazione del watch. Ogni chiamata
+  è autenticata (token del watch o login del genitore).
+
+- **Pulizia notturna**
+
+  Un workflow GitHub Actions cancella ogni notte lo storico scaduto.
+  Ogni chiamata resta entro i limiti di tempo di Vercel e viene ripetuta
+  finché non c'è più niente da cancellare.
+
+- **Limite giornaliero di sicurezza**
+
+  Tetto alle scritture per dispositivo, per restare nel piano gratuito
+  di Firebase. L'SOS ne è esente.
+
+- **Home Assistant (opzionale)**
+
+  L'endpoint `/api/ha-status`, protetto da token, espone posizione e
+  batteria per mostrarle anche in Home Assistant. L'app funziona
+  comunque anche senza.
+
+- **Diagnostica**
+
+  `node backend/scripts/diag-device-history.js` (sola lettura, mai
+  coordinate stampate) mostra stato del watch, eventi, posizioni con
+  precisione e, con `--hourly`, il riepilogo orario del tracking.

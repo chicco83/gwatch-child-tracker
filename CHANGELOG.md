@@ -14,6 +14,9 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   con tutte le funzioni attuali e una spiegazione breve per ciascuna.
 - CLAUDE.md: nuova regola (richiesta utente) — ogni nuova funzione va
   descritta nella sezione "Funzioni" del README.md nello stesso commit.
+- Formato della sezione "Funzioni" rivisto su richiesta dell'utente:
+  nome della funzione in elenco puntato, seguito da due o tre righe di
+  dettaglio. Formato fissato anche nella regola di CLAUDE.md.
 
 ## [0.99.0] - 2026-09-24
 
