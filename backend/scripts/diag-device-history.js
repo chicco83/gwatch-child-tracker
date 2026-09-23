@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.8.0 (2026-09-23)
+ * Versione: 0.8.1 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -36,6 +36,8 @@
  * - 0.8.0 (2026-09-23): stampa lo stato corrente del device (batteria,
  *   temperatura, carica, lastStatusAt, gnss, batteryAlertLevel) —
  *   niente coordinate.
+ * - 0.8.1 (2026-09-23): gnss.active=false stampato come "GPS non usato"
+ *   invece di "null visti, null agganciati".
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -91,7 +93,13 @@ async function main() {
       `  batteria: ${d.battery ?? "-"}%  temp: ${d.batteryTemp ?? "-"}  carica: ${d.charging ?? "-"}  ` +
         `alertLevel: ${d.batteryAlertLevel ?? "-"}  lastStatusAt: ${iso(toDate(d.lastStatusAt))}`,
     );
-    console.log(`  gnss: ${d.gnss ? `${d.gnss.visible} visti, ${d.gnss.used} agganciati, ${iso(toDate(d.gnss.at))}` : "-"}`);
+    // v0.8.1. Precedente: sempre "${d.gnss.visible} visti, ${d.gnss.used} agganciati".
+    const gnssText = !d.gnss
+      ? "-"
+      : d.gnss.active === false
+        ? `GPS non usato (posizione da Wi-Fi/rete), ${iso(toDate(d.gnss.at))}`
+        : `${d.gnss.visible} visti, ${d.gnss.used} agganciati, ${iso(toDate(d.gnss.at))}`;
+    console.log(`  gnss: ${gnssText}`);
 
     // Posizioni: conteggio per giorno + ultime 8 (orario e precisione).
     const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();

@@ -31,6 +31,12 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 - Lo stato batteria inviato senza posizione (`status`) fa scattare
   anche gli avvisi di batteria scarica 10/5/2% (richiesta utente).
 
+### Confirmed
+- Test utente (watch-app v0.25.0, phone-app v0.19.0): all'apertura
+  della phone-app la posizione e' stata richiesta e ricevuta, riga
+  satelliti "GPS non usato"; backend: `gnss.active=false` e batteria
+  70% / 28,4 °C salvati alle 23:53.
+
 ### Known limitations
 - watch-app e phone-app non compilate in questa sessione.
 

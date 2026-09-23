@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.92.0
+**Versione contesto:** 0.92.1
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2575,3 +2575,9 @@ CHANGELOG.md  Storico versioni
   non usato", checkBatteryAlerts anche sullo status (backend
   trigger-event v0.21.0, watch-app v0.25.0, phone-app v0.19.0)
   (v0.92.0).
+- 2026-09-23: Confermato dall'utente e sul backend: all'apertura della
+  phone-app posizione richiesta e ricevuta, "GPS non usato" (posizione
+  da Wi-Fi), batteria/temperatura presenti. Script diagnostico 0.8.1
+  (stampa "GPS non usato" invece di "null visti"). Ancora da vedere: il
+  numero di satelliti con un fix davvero GPS (all'aperto) e la batteria
+  che resta dopo un evento zona (v0.92.1).
