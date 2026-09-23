@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.81.0
+**Versione contesto:** 0.82.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2351,3 +2351,23 @@ CHANGELOG.md  Storico versioni
   Box/Row a larghezza fissa, niente `Modifier.weight` (lezione del
   progetto). **Non compilato qui**: primo build e prova su Watch4 da
   fare (v0.81.0).
+- 2026-09-23: Primo test della Ricerca GPS su Watch4 reale (build ok):
+  le prime due pressioni di "Invia posizione" hanno mostrato "invio in
+  corso" senza arrivare al backend (LocationRequestWorker: fused
+  getCurrentLocation null, poi retry silenzioso — comportamento
+  previsto), alla terza il pulsante e' passato a "GPS assente" e la
+  schermata ha mostrato le barre. **Dato chiave: 25 satelliti visti,
+  14 usati, ma nessun fix arrivato all'app.** Quindi il problema aperto
+  dal 18/9 ("fix GPS non disponibile") NON e' di ricezione satellitare:
+  il chip calcola la posizione ma questa non raggiunge l'app, ne' via
+  fused provider ne' via LocationManager/GPS_PROVIDER. Ipotesi da
+  verificare con la diagnostica: posizione di sistema o provider GPS
+  disattivati/limitati dalle impostazioni Samsung, restrizioni di
+  risparmio batteria sull'app, errore nella registrazione del listener.
+  Aggiunti in GpsSearchScreen.kt v0.2.0 diagnostica a schermo e
+  recupero da getLastKnownLocation (watch-app v0.16.0).
+  Domanda utente sulle effemeridi (A-GPS) per accelerare il fix:
+  valutata ma non implementata ora — Android le scarica gia' in
+  automatico via rete, e con 14 satelliti usati il fix c'e' gia': non
+  e' la causa di questo problema. Riconsiderare solo se, risolta la
+  consegna, il primo fix risultasse lento (v0.82.0).

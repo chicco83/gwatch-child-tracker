@@ -108,8 +108,10 @@ android {
         // bloccato con GPS assente, vedi ui/MainActivity.kt.
         // v0.15.0 (2026-09-23): schermata "Ricerca GPS" con barre dei
         // satelliti, vedi ui/GpsSearchScreen.kt.
-        versionCode = 15
-        versionName = "0.15.0"
+        // v0.16.0 (2026-09-23): Ricerca GPS con diagnostica a schermo e
+        // recupero da getLastKnownLocation, vedi ui/GpsSearchScreen.kt 0.2.0.
+        versionCode = 16
+        versionName = "0.16.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

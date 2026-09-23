@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.82.0] - 2026-09-23
+
+### Fixed
+- **watch-app: Ricerca GPS non riceveva mai il fix** (primo test su
+  Watch4 reale): con 25 satelliti visti e 14 usati (posizione quindi
+  calcolata dal chip GPS) la schermata restava sulle barre, e
+  "Invia posizione" non inviava nulla. Stesso sintomo gia' visto il
+  18/9 con il fused provider ("fix GPS non disponibile (null)" per
+  ore): la ricezione funziona, si blocca la consegna della posizione
+  all'app. Causa non ancora identificata; `ui/GpsSearchScreen.kt`
+  v0.2.0 aggiunge:
+  - diagnostica a schermo (scorrendo in giu'): posizione di sistema,
+    provider GPS, esito della registrazione dell'app, fix arrivati
+    all'app, eta' dell'ultima posizione GPS nota al sistema;
+  - recupero alternativo: se il sistema ha una posizione GPS di al
+    massimo 15s, vale come fix anche se l'app non e' stata avvisata;
+  - invio della posizione una sola volta anche se i due percorsi
+    scattano insieme.
+  watch-app portata a v0.16.0.
+
+### Known limitations
+- Non compilato in questa sessione. Prossimo test: aprire la Ricerca
+  GPS all'aperto e riportare le righe di diagnostica.
+
 ## [0.81.0] - 2026-09-23
 
 ### Added

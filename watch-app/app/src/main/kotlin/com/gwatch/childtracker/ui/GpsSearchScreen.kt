@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.1.0 (2026-09-23)
+// Versione: 0.2.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -21,6 +21,22 @@ package com.gwatch.childtracker.ui
 //
 // Storico versioni:
 // - 0.1.0 (2026-09-23): prima versione.
+// - 0.2.0 (2026-09-23): primo test su Watch4 reale — con 25 satelliti
+//   visti e 14 USATI (quindi il chip GPS la posizione l'aveva calcolata)
+//   la schermata non riceveva mai il fix e restava sulle barre. Stesso
+//   sintomo gia' visto il 18/9 con il fused provider di
+//   LocationRequestWorker ("fix GPS non disponibile (null)" per ore): la
+//   ricezione funziona, e' la CONSEGNA della posizione all'app che si
+//   blocca da qualche parte. Aggiunti:
+//   (1) diagnostica a schermo, per capire dove senza Logcat: posizione di
+//       sistema ON/OFF, provider GPS ON/OFF, esito della registrazione
+//       (prima un errore finiva solo in Logcat), numero di fix arrivati
+//       al listener, eta' dell'ultima posizione GPS nota al sistema;
+//   (2) recupero alternativo: ogni secondo si legge
+//       getLastKnownLocation(GPS_PROVIDER); se e' recente (<= FRESH_FIX_S)
+//       vale come fix anche se il listener non e' mai stato chiamato;
+//   (3) onFixFound chiamato una sola volta anche se listener e recupero
+//       scattano insieme.
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -35,6 +51,7 @@ import android.location.GnssStatus
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -81,7 +98,19 @@ private const val MAX_BARS = 12
 // Scala delle barre: ~45 dB-Hz e' gia' un segnale ottimo a cielo aperto.
 private const val CN0_FULL_SCALE = 45f
 
+// v0.2.0: eta' massima di getLastKnownLocation(GPS) per valere come fix.
+private const val FRESH_FIX_S = 15L
+
 private data class Satellite(val cn0: Float, val usedInFix: Boolean)
+
+// v0.2.0: dati mostrati nel blocco di diagnostica (null = non ancora letto).
+private data class GpsDiagnostics(
+    val locationEnabled: Boolean? = null,
+    val gpsProviderEnabled: Boolean? = null,
+    val registerError: String? = null,
+    val listenerFixes: Int = 0,
+    val lastKnownAgeS: Long? = null,
+)
 
 @Composable
 fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
@@ -96,15 +125,29 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
     var running by remember { mutableStateOf(true) }
     var seconds by remember { mutableStateOf(0) }
     var satellites by remember { mutableStateOf<List<Satellite>>(emptyList()) }
+    var diag by remember { mutableStateOf(GpsDiagnostics()) }
+    // v0.2.0: una sola chiamata a onFixFound anche se listener e recupero
+    // da getLastKnownLocation scattano nello stesso momento.
+    var fixHandled by remember { mutableStateOf(false) }
+
+    val handleFix: (String) -> Unit = { source ->
+        if (!fixHandled) {
+            fixHandled = true
+            running = false
+            Log.i(TAG, "fix ottenuto da: $source")
+            onFixFound()
+        }
+    }
 
     if (hasPermission && running) {
         DisposableEffect(attempt) {
             val stop = startGpsSearch(
                 context = context,
                 onSatellites = { satellites = it },
-                onFix = {
-                    running = false
-                    onFixFound()
+                onRegisterResult = { error -> diag = diag.copy(registerError = error) },
+                onListenerFix = {
+                    diag = diag.copy(listenerFixes = diag.listenerFixes + 1)
+                    handleFix("listener GPS")
                 },
             )
             onDispose { stop() }
@@ -112,6 +155,19 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
         LaunchedEffect(attempt) {
             seconds = 0
             while (seconds < SEARCH_LIMIT_S) {
+                // v0.2.0: diagnostica + recupero alternativo, una volta al secondo.
+                val snapshot = readSystemGpsState(context)
+                diag = diag.copy(
+                    locationEnabled = snapshot.locationEnabled,
+                    gpsProviderEnabled = snapshot.gpsProviderEnabled,
+                    lastKnownAgeS = snapshot.lastKnownAgeS,
+                )
+                if (seconds % 10 == 0) Log.i(TAG, "stato: $diag, satelliti=${satellites.size}")
+                val age = snapshot.lastKnownAgeS
+                if (age != null && age <= FRESH_FIX_S) {
+                    handleFix("getLastKnownLocation (${age}s)")
+                    break
+                }
                 delay(1000)
                 seconds++
             }
@@ -160,6 +216,8 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                 Chip(
                     onClick = {
                         satellites = emptyList()
+                        diag = GpsDiagnostics()
+                        fixHandled = false
                         attempt++
                         running = true
                     },
@@ -167,12 +225,46 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                     label = { CenteredChipLabel(stringResourceCompat(R.string.gps_search_retry)) },
                 )
             }
+            DiagnosticsBlock(context, diag)
         }
         CompactChip(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth(),
             colors = ChipDefaults.secondaryChipColors(),
             label = { CenteredChipLabel(stringResourceCompat(R.string.back)) },
+        )
+    }
+}
+
+// v0.2.0: righe di diagnostica sotto le barre (scorrendo in giu').
+@Composable
+private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
+    fun onOff(value: Boolean?): String = when (value) {
+        true -> "ON"
+        false -> "OFF"
+        null -> "?"
+    }
+    val lines = listOf(
+        context.getString(R.string.gps_diag_location, onOff(diag.locationEnabled)),
+        context.getString(R.string.gps_diag_provider, onOff(diag.gpsProviderEnabled)),
+        if (diag.registerError == null) {
+            context.getString(R.string.gps_diag_register_ok)
+        } else {
+            context.getString(R.string.gps_diag_register_error, diag.registerError)
+        },
+        context.getString(R.string.gps_diag_listener_fixes, diag.listenerFixes),
+        if (diag.lastKnownAgeS == null) {
+            context.getString(R.string.gps_diag_last_known_none)
+        } else {
+            context.getString(R.string.gps_diag_last_known_age, diag.lastKnownAgeS)
+        },
+    )
+    lines.forEach {
+        Text(
+            text = it,
+            style = MaterialTheme.typography.caption3,
+            textAlign = TextAlign.Center,
+            color = Color.LightGray,
         )
     }
 }
@@ -205,14 +297,38 @@ private fun SatelliteBars(satellites: List<Satellite>) {
     }
 }
 
+private data class SystemGpsState(
+    val locationEnabled: Boolean?,
+    val gpsProviderEnabled: Boolean?,
+    val lastKnownAgeS: Long?,
+)
+
+// v0.2.0: stato del sistema letto a ogni secondo. Ogni lettura e'
+// protetta a parte: un errore su una non deve nascondere le altre.
+@SuppressLint("MissingPermission")
+private fun readSystemGpsState(context: Context): SystemGpsState {
+    val locationManager = context.getSystemService(LocationManager::class.java)
+    val locationEnabled = runCatching { locationManager.isLocationEnabled }.getOrNull()
+    val gpsEnabled = runCatching { locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrNull()
+    val ageS = runCatching {
+        locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
+            (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000L
+        }
+    }.getOrNull()
+    return SystemGpsState(locationEnabled, gpsEnabled, ageS)
+}
+
 // Avvia GPS + ascolto satelliti; ritorna la funzione che li ferma.
-// Gli errori (es. permesso revocato nel frattempo) vengono solo loggati:
-// la schermata resta a zero satelliti invece di far crashare l'app.
+// v0.2.0: l'esito della registrazione arriva a onRegisterResult (null =
+// ok, altrimenti il messaggio d'errore) per mostrarlo a schermo; prima
+// finiva solo in Logcat. Le due registrazioni sono separate: se una
+// fallisce l'altra resta attiva.
 @SuppressLint("MissingPermission")
 private fun startGpsSearch(
     context: Context,
     onSatellites: (List<Satellite>) -> Unit,
-    onFix: () -> Unit,
+    onRegisterResult: (String?) -> Unit,
+    onListenerFix: () -> Unit,
 ): () -> Unit {
     val locationManager = context.getSystemService(LocationManager::class.java)
     val gnssCallback = object : GnssStatus.Callback() {
@@ -224,15 +340,15 @@ private fun startGpsSearch(
             )
         }
     }
-    var fixDelivered = false
-    val locationListener = LocationListener {
-        if (!fixDelivered) {
-            fixDelivered = true
-            onFix()
-        }
-    }
+    val locationListener = LocationListener { onListenerFix() }
+    val errors = mutableListOf<String>()
     try {
         locationManager.registerGnssStatusCallback(ContextCompat.getMainExecutor(context), gnssCallback)
+    } catch (e: Exception) {
+        Log.w(TAG, "startGpsSearch: registerGnssStatusCallback fallita", e)
+        errors += "satelliti: ${e.javaClass.simpleName}"
+    }
+    try {
         locationManager.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             1000L,
@@ -241,10 +357,54 @@ private fun startGpsSearch(
             Looper.getMainLooper(),
         )
     } catch (e: Exception) {
-        Log.w(TAG, "startGpsSearch: impossibile avviare la ricerca GPS", e)
+        Log.w(TAG, "startGpsSearch: requestLocationUpdates fallita", e)
+        errors += "posizione: ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
     }
+    onRegisterResult(errors.takeIf { it.isNotEmpty() }?.joinToString("; "))
     return {
         runCatching { locationManager.unregisterGnssStatusCallback(gnssCallback) }
         runCatching { locationManager.removeUpdates(locationListener) }
     }
 }
+
+// --- Versione precedente di startGpsSearch (0.1.0, sostituita il 2026-09-23) ---
+// @SuppressLint("MissingPermission")
+// private fun startGpsSearch(
+//     context: Context,
+//     onSatellites: (List<Satellite>) -> Unit,
+//     onFix: () -> Unit,
+// ): () -> Unit {
+//     val locationManager = context.getSystemService(LocationManager::class.java)
+//     val gnssCallback = object : GnssStatus.Callback() {
+//         override fun onSatelliteStatusChanged(status: GnssStatus) {
+//             onSatellites(
+//                 (0 until status.satelliteCount).map {
+//                     Satellite(cn0 = status.getCn0DbHz(it), usedInFix = status.usedInFix(it))
+//                 },
+//             )
+//         }
+//     }
+//     var fixDelivered = false
+//     val locationListener = LocationListener {
+//         if (!fixDelivered) {
+//             fixDelivered = true
+//             onFix()
+//         }
+//     }
+//     try {
+//         locationManager.registerGnssStatusCallback(ContextCompat.getMainExecutor(context), gnssCallback)
+//         locationManager.requestLocationUpdates(
+//             LocationManager.GPS_PROVIDER,
+//             1000L,
+//             0f,
+//             locationListener,
+//             Looper.getMainLooper(),
+//         )
+//     } catch (e: Exception) {
+//         Log.w(TAG, "startGpsSearch: impossibile avviare la ricerca GPS", e)
+//     }
+//     return {
+//         runCatching { locationManager.unregisterGnssStatusCallback(gnssCallback) }
+//         runCatching { locationManager.removeUpdates(locationListener) }
+//     }
+// }
