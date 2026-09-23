@@ -7,6 +7,40 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.97.0] - 2026-09-23
+
+### Added
+- **Avviso quando il watch va in modalita' aereo o si spegne, con icona
+  sul telefono** (richiesta utente).
+  - watch-app v0.28.0: nuovo `location/WatchStateReporter.kt`,
+    registrato da `LocationTrackingService`. Su modalita' aereo attivata
+    o spegnimento tenta subito l'invio (best effort, 4 s: la rete sparisce
+    quasi subito) e salva l'ora; alla disattivazione della modalita' aereo
+    o alla riaccensione (`BootReceiver`) un `WatchStateWorker` con
+    vincolo di rete invia l'evento di rientro con l'inizio del periodo
+    offline.
+  - backend `trigger-event.js` v0.22.0: lo `status` accetta
+    `watchState`/`stateAt`/`since`; salva `devices/{id}.watchState`,
+    aggiunge un evento `watch_*` allo storico e manda una push al
+    telefono ("watch in modalita' aereo", "in spegnimento", "di nuovo
+    raggiungibile (era attiva dalle HH:MM)", "riacceso (era spento dalle
+    HH:MM)").
+  - phone-app v0.22.0: icona accanto al nome (✈️ modalita' aereo, ⏻
+    spento, 📵 non raggiungibile) e riga "Stato watch: … · da quando".
+    "Non raggiungibile" (nessuna notizia da oltre 30 minuti) e' la rete
+    di sicurezza quando l'avviso immediato non riesce a partire. Nuove
+    etichette nello storico eventi.
+
+### Known limitations
+- L'avviso immediato di modalita' aereo/spegnimento arriva solo se parte
+  prima che la rete si spenga; il rientro invece arriva sempre (con
+  rete). Uno spegnimento brusco (batteria staccata) non manda nulla:
+  resta il "non raggiungibile" dopo 30 minuti.
+- Il rilevamento funziona solo se il servizio di tracking e' attivo
+  (lo e' dall'accensione, dopo gli aggiornamenti e dopo una richiesta
+  dal telefono).
+- watch-app e phone-app non compilate in questa sessione.
+
 ## [0.96.0] - 2026-09-23
 
 ### Fixed

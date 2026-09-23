@@ -179,9 +179,17 @@ class BackendClient {
         satsVisible: Int? = null,
         satsUsed: Int? = null,
         gnssActive: Boolean? = null,
+        // 2026-09-23: modalita' aereo/spegnimento (location/WatchStateReporter.kt,
+        // trigger-event.js v0.22.0).
+        watchState: String? = null,
+        stateAt: Long? = null,
+        since: Long? = null,
     ): Boolean {
         val body = JSONObject().apply {
             put("type", "status")
+            watchState?.let { put("watchState", it) }
+            stateAt?.let { put("stateAt", it) }
+            since?.let { put("since", it) }
             satsVisible?.let { put("satsVisible", it) }
             satsUsed?.let { put("satsUsed", it) }
             gnssActive?.let { put("gnssActive", it) }

@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import com.gwatch.childtracker.geofence.GeofenceSyncWorker
 import com.gwatch.childtracker.location.LocationTrackingService
 import com.gwatch.childtracker.location.TrackingStatus
+import com.gwatch.childtracker.location.WatchStateReporter
 
 /**
  * Al riavvio del watch: il foreground service non riparte da solo
@@ -48,6 +49,10 @@ class BootReceiver : BroadcastReceiver() {
             TrackingStatus.lastError = "avvio da $startedBy: ${e.javaClass.simpleName}"
             Log.e(TAG, "avvio tracking da $startedBy fallito", e)
         }
+
+        // 2026-09-23: avvisa il telefono che il watch si e' riacceso (con
+        // l'ora dello spegnimento, se registrata). Non dopo un aggiornamento.
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) WatchStateReporter.onBoot(context)
 
         val work = OneTimeWorkRequestBuilder<GeofenceSyncWorker>().build()
         WorkManager.getInstance(context).enqueueUniqueWork(

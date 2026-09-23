@@ -49,6 +49,8 @@ class LocationTrackingService : Service() {
     private lateinit var pendingStore: PendingLocationStore
     private var currentIntervalMillis: Long = INTERVAL_STILL_MS
     private var updatesActive = false
+    // 2026-09-23: modalita' aereo/spegnimento (WatchStateReporter.kt).
+    private val watchStateReceiver = WatchStateReporter.createReceiver()
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
@@ -104,6 +106,8 @@ class LocationTrackingService : Service() {
         }
         runCatching { registerActivityTransitions() }
             .onFailure { Log.w(TAG, "registerActivityTransitions fallito", it) }
+        // 2026-09-23: avvisi modalita' aereo/spegnimento (richiesta utente).
+        WatchStateReporter.register(this, watchStateReceiver)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -120,6 +124,7 @@ class LocationTrackingService : Service() {
     override fun onDestroy() {
         TrackingStatus.serviceRunning = false
         Log.i(TAG, "onDestroy")
+        runCatching { unregisterReceiver(watchStateReceiver) }
         super.onDestroy()
         fusedClient.removeLocationUpdates(locationCallback)
     }

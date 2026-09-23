@@ -91,6 +91,8 @@ class DeviceRepository {
             val locMap = snap.get("lastLocation") as? Map<*, *>
             // 2026-09-23: vedi DeviceState.satsVisible.
             val gnssMap = snap.get("gnss") as? Map<*, *>
+            // 2026-09-23: vedi DeviceState.watchState.
+            val watchStateMap = snap.get("watchState") as? Map<*, *>
             val lat = (locMap?.get("lat") as? Number)?.toDouble()
             val lon = (locMap?.get("lon") as? Number)?.toDouble()
             trySend(
@@ -111,6 +113,8 @@ class DeviceRepository {
                     satsUsed = (gnssMap?.get("used") as? Number)?.toInt(),
                     satsAtMillis = (gnssMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
                     gnssActive = gnssMap?.get("active") as? Boolean,
+                    watchState = watchStateMap?.get("state") as? String,
+                    watchStateAtMillis = (watchStateMap?.get("at") as? com.google.firebase.Timestamp)?.toDate()?.time,
                 ),
             )
         }

@@ -131,8 +131,10 @@ android {
         // tentativi) con barra "nuovo tentativo tra Ns" nella StatusCard.
         // v0.21.0 (2026-09-23): barra "in attesa del watch" subito dopo la
         // richiesta, invece di 2 minuti senza nulla a schermo.
-        versionCode = 21
-        versionName = "0.21.0"
+        // v0.22.0 (2026-09-23): icona e riga "Stato watch" (modalita' aereo /
+        // spento / non raggiungibile), nuovi eventi nello storico.
+        versionCode = 22
+        versionName = "0.22.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

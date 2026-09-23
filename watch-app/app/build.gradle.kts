@@ -134,8 +134,10 @@ android {
         // aggiornamento dell'app (BootReceiver + MY_PACKAGE_REPLACED).
         // v0.27.0 (2026-09-23): richiesta posizione dal telefono come lavoro
         // espedito + riavvio del tracking se fermo (messaging/FcmService.kt).
-        versionCode = 27
-        versionName = "0.27.0"
+        // v0.28.0 (2026-09-23): avvisi modalita' aereo/spegnimento/riaccensione
+        // (location/WatchStateReporter.kt).
+        versionCode = 28
+        versionName = "0.28.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

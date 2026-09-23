@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.96.0
+**Versione contesto:** 0.97.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2618,3 +2618,18 @@ CHANGELOG.md  Storico versioni
   LocationRetry.waitingForWatch: barra "In attesa della posizione dal
   watch… N s" dall'invio della richiesta, poi barra del nuovo tentativo
   (phone-app v0.21.0) (v0.96.0).
+- 2026-09-23: Richiesta utente: avviso da watch in modalita' aereo o
+  spento, con icona sul telefono. Vincolo fisico dichiarato all'utente:
+  in modalita' aereo la rete sparisce quasi subito. Disegno a tre
+  livelli: (1) invio immediato best effort (4 s, niente coda: un
+  "airplane_on" arrivato dopo il rientro mostrerebbe uno stato falso);
+  (2) ora di inizio salvata in SharedPreferences e inviata al rientro
+  ("airplane_off"/"boot" con since) da un WatchStateWorker con vincolo di
+  rete; (3) sul telefono "non raggiungibile" dopo 30' senza notizie,
+  calcolato localmente. Ricevitore registrato a runtime nel servizio di
+  tracking (AIRPLANE_MODE_CHANGED non arriva ai ricevitori solo da
+  manifest). Backend: riusato lo "status" di trigger-event (limite 12
+  funzioni Vercel). Sul telefono aereo/spento vengono ignorati se dopo
+  arriva altro dal watch (margine 60 s, perche' lo stesso invio aggiorna
+  lastStatusAt con l'ora del server). Backend trigger-event v0.22.0,
+  watch-app v0.28.0, phone-app v0.22.0 (v0.97.0).

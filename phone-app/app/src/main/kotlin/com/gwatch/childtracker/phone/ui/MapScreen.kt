@@ -564,7 +564,14 @@ private fun StatusCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(text = childName, style = MaterialTheme.typography.titleSmall)
+                // 2026-09-23: icona di stato del watch accanto al nome
+                // (modalita' aereo / spento / non raggiungibile), vedi
+                // watchStatus(). Precedente: Text(text = childName, ...).
+                val status = watchStatus(state, System.currentTimeMillis())
+                Text(
+                    text = if (status != null) "$childName ${status.first}" else childName,
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 TextButton(onClick = onRequestLocation, enabled = !requesting) {
                     Text(
                         stringResource(
@@ -612,6 +619,15 @@ private fun StatusCard(
                         label = stringResource(R.string.status_sats_label),
                         value = satsText +
                             (state.satsAtMillis?.let { " · " + formatRelativeTime(it, nowMillis) } ?: ""),
+                    )
+                }
+                // 2026-09-23: stato del watch (modalita' aereo / spento / non
+                // raggiungibile), con da quanto tempo.
+                watchStatus(state, nowMillis)?.let { (_, labelRes, sinceMillis) ->
+                    InfoLine(
+                        label = stringResource(R.string.status_watch_label),
+                        value = stringResource(labelRes) + " · " + formatLastSeen(sinceMillis, nowMillis),
+                        valueColor = Color(0xFFC62828),
                     )
                 }
                 // 2026-09-23: posizione non ricevuta, nuovo tentativo in arrivo.
@@ -783,10 +799,49 @@ private fun EventsList(childEvents: List<ChildEvent>, modifier: Modifier = Modif
     }
 }
 
+/**
+ * 2026-09-23: stato del watch da mostrare, null se tutto normale.
+ * Ritorna (icona, testo, dal-quando). "Non raggiungibile" e' la rete di
+ * sicurezza: vale anche quando l'avviso di modalita' aereo/spegnimento non
+ * e' riuscito a partire dal watch (la rete sparisce quasi subito).
+ */
+private fun watchStatus(state: DeviceState, nowMillis: Long): Triple<String, Int, Long>? {
+    val stateAt = state.watchStateAtMillis
+    // Aereo/spento valgono solo se dopo non e' arrivato nient'altro dal
+    // watch (l'avviso di rientro potrebbe non essere partito). Margine di
+    // 60 s: lo stesso invio dell'avviso aggiorna lastStatusAt (ora del
+    // server) pochi secondi dopo stateAt (ora del watch).
+    val newerContact = listOfNotNull(state.lastSeenMillis, state.lastStatusMillis)
+        .any { stateAt != null && it > stateAt + STATE_CONTACT_MARGIN_MS }
+    if (stateAt != null && !newerContact) {
+        when (state.watchState) {
+            "airplane" -> return Triple("✈️", R.string.status_watch_airplane, stateAt)
+            "off" -> return Triple("⏻", R.string.status_watch_off, stateAt)
+        }
+    }
+    val lastContact = listOfNotNull(state.lastSeenMillis, state.lastStatusMillis, stateAt).maxOrNull()
+        ?: return null
+    return if (nowMillis - lastContact > UNREACHABLE_AFTER_MS) {
+        Triple("📵", R.string.status_watch_unreachable, lastContact)
+    } else {
+        null
+    }
+}
+
+// 2026-09-23: senza notizie dal watch da piu' di cosi' → "non raggiungibile".
+// Il tracking da fermo manda punti almeno ogni 10', l'upload ogni 15'.
+private const val UNREACHABLE_AFTER_MS = 30 * 60 * 1000L
+private const val STATE_CONTACT_MARGIN_MS = 60 * 1000L
+
 private fun eventLabel(type: String, zoneName: String?): String = when (type) {
     "sos" -> "🆘 SOS"
     "geofence_enter" -> "→ Entrato in ${zoneName ?: "zona"}"
     "geofence_exit" -> "← Uscito da ${zoneName ?: "zona"}"
     "location_request" -> "📍 Posizione inviata su richiesta"
+    // 2026-09-23: eventi di stato del watch (trigger-event.js v0.22.0).
+    "watch_airplane_on" -> "✈️ Watch in modalita' aereo"
+    "watch_airplane_off" -> "✈️ Modalita' aereo disattivata"
+    "watch_shutdown" -> "⏻ Watch spento"
+    "watch_boot" -> "⏻ Watch riacceso"
     else -> type
 }

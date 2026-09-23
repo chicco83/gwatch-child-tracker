@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.21.0
+ * Versione: 0.22.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -190,6 +190,17 @@
  *   gli avvisi di batteria scarica (checkBatteryAlerts).
  *   (3) gnssActive=false dal watch (posizione ottenuta da Wi-Fi/rete
  *   senza accendere il GPS): salvato come gnss {active:false}.
+ * - 0.22.0 (2026-09-23): richiesta utente — avviso quando il watch va in
+ *   modalita' aereo o si spegne, con icona sulla phone-app. Lo "status"
+ *   accetta watchState ("airplane_on" | "airplane_off" | "shutdown" |
+ *   "boot"), stateAt (ms, quando e' successo) e since (ms, inizio del
+ *   periodo offline, per airplane_off/boot). Salva
+ *   devices/{id}.watchState {state: "airplane"|"off"|"online", event,
+ *   at, since}, un evento "watch_<watchState>" nello storico e una push
+ *   al topic del bambino. Limite: entrando in modalita' aereo il watch
+ *   perde la rete quasi subito, quindi "airplane_on"/"shutdown" arrivano
+ *   solo se partono in tempo; "airplane_off"/"boot" arrivano al rientro
+ *   e ricostruiscono comunque il periodo offline.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -213,6 +224,35 @@ function gnssUpdate(satsVisible, satsUsed, gnssActive) {
   }
   if (typeof satsVisible !== "number" || typeof satsUsed !== "number") return null;
   return { active: true, visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
+}
+
+// v0.22.0: stati del watch accettati nello "status" e loro traduzione.
+const WATCH_STATES = {
+  airplane_on: "airplane",
+  shutdown: "off",
+  airplane_off: "online",
+  boot: "online",
+};
+
+function formatTimeIt(ts) {
+  return ts.toDate().toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
+}
+
+function buildWatchStateNotification(watchState, childName, since) {
+  const sinceText = since ? ` dalle ${formatTimeIt(since)}` : "";
+  switch (watchState) {
+    case "airplane_on":
+      return {
+        title: `✈️ ${childName}: watch in modalita' aereo`,
+        body: "Non ricevera' richieste ne' inviera' posizioni finche' non viene disattivata.",
+      };
+    case "shutdown":
+      return { title: `⏻ ${childName}: watch in spegnimento`, body: "Il watch si sta spegnendo." };
+    case "airplane_off":
+      return { title: `${childName}: watch di nuovo raggiungibile`, body: `Modalita' aereo disattivata (era attiva${sinceText}).` };
+    default:
+      return { title: `${childName}: watch riacceso`, body: `Il watch si e' riacceso (era spento${sinceText}).` };
+  }
 }
 
 // v0.21.0: solo i campi batteria effettivamente inviati dal watch.
@@ -275,7 +315,7 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive } = req.body || {};
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive, watchState, stateAt, since } = req.body || {};
   const gnss = gnssUpdate(satsVisible, satsUsed, gnssActive);
 
   // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
@@ -288,7 +328,35 @@ module.exports = wrapHandler(async (req, res) => {
     const statusRef = db.collection("devices").doc(childId);
     const update = { lastStatusAt: FieldValue.serverTimestamp(), ...batteryFields(battery, batteryTemp, charging, batteryHoursRemaining) };
     if (gnss) update.gnss = gnss;
+    // v0.22.0: modalita' aereo / spegnimento / rientro (vedi Storico versioni).
+    const hasWatchState = Object.prototype.hasOwnProperty.call(WATCH_STATES, watchState);
+    const stateTs = typeof stateAt === "number" ? Timestamp.fromMillis(stateAt) : Timestamp.now();
+    const sinceTs = typeof since === "number" ? Timestamp.fromMillis(since) : null;
+    if (hasWatchState) {
+      update.watchState = { state: WATCH_STATES[watchState], event: watchState, at: stateTs, since: sinceTs };
+    }
     await statusRef.set(update, { merge: true });
+    if (hasWatchState) {
+      await statusRef.collection("events").add({
+        type: `watch_${watchState}`,
+        since: sinceTs,
+        timestamp: stateTs,
+        acknowledged: true,
+        expiresAt: Timestamp.fromMillis(stateTs.toMillis() + EVENT_RETENTION_HOURS * 3_600_000),
+      });
+      const childName = (await statusRef.get()).data()?.childName || "Bambino";
+      const { title, body } = buildWatchStateNotification(watchState, childName, sinceTs);
+      try {
+        await getMessaging().send({
+          topic: childTopic(childId),
+          notification: { title, body },
+          data: { type: "watch_state", watchState, childId },
+          android: { priority: "high" },
+        });
+      } catch (e) {
+        console.error(`trigger-event: push watchState fallita (childId=${childId})`, e);
+      }
+    }
     // v0.21.0: avvisi di batteria scarica anche senza posizione (richiesta utente).
     if (typeof battery === "number") {
       await checkBatteryAlerts(db, statusRef, childId, battery, typeof charging === "boolean" ? charging : null);
