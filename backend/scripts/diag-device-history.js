@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.1.0 (2026-09-23)
+ * Versione: 0.2.0 (2026-09-23)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
  * dall'utente in modo permanente il 2026-09-23.
  *
- * Privacy: stampa solo date, conteggi e tipi di evento — MAI
- * coordinate, nomi o testi dei messaggi.
+ * Privacy: stampa solo date, conteggi, tipi di evento e precisione in
+ * metri — MAI coordinate, nomi o testi dei messaggi.
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-23): prima versione.
+ * - 0.2.0 (2026-09-23): aggiunta la precisione (accuracy, metri) delle
+ *   ultime posizioni: distingue un fix GPS (pochi metri) da una
+ *   posizione da rete Wi-Fi/celle (decine-centinaia di metri).
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -43,32 +49,33 @@ async function main() {
     console.log(`DEVICE ${dev.id}`);
     console.log(`  lastSeen: ${iso(toDate(d.lastSeen))}   sosActive: ${!!d.sosActive}`);
 
-    // Posizioni: conteggio per giorno + ultime 3 (solo orari).
+    // Posizioni: conteggio per giorno + ultime 8 (orario e precisione).
     const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();
     const perDay = {};
     const times = [];
     locs.docs.forEach((l) => {
       const t = toDate(l.data().timestamp);
       if (!t) return;
-      times.push(t);
+      times.push({ t, acc: l.data().accuracy });
       const k = t.toISOString().slice(0, 10);
       perDay[k] = (perDay[k] || 0) + 1;
     });
-    times.sort((a, b) => b - a);
+    times.sort((a, b) => b.t - a.t);
     console.log(`  posizioni per giorno: ${JSON.stringify(perDay)}`);
-    console.log(`  ultime posizioni: ${times.slice(0, 3).map(iso).join(", ") || "-"}`);
+    console.log("  ultime posizioni (orario, precisione):");
+    times.slice(0, 8).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}`));
 
     // Eventi: orario, tipo, origine (niente coordinate/nomi).
     const evs = await dev.ref.collection("events").where("timestamp", ">=", since).get();
     const rows = evs.docs
       .map((e) => {
         const v = e.data();
-        return { t: toDate(v.timestamp), type: v.type, source: v.source || "" };
+        return { t: toDate(v.timestamp), type: v.type, source: v.source || "", acc: v.accuracy };
       })
       .filter((r) => r.t)
       .sort((a, b) => b.t - a.t);
     console.log(`  eventi (${rows.length}, piu' recenti per primi):`);
-    rows.slice(0, 40).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}`));
+    rows.slice(0, 40).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}${r.acc != null ? "  " + Math.round(r.acc) + " m" : ""}`));
     console.log("");
   }
 }

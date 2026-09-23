@@ -6,7 +6,7 @@ import android.os.SystemClock
 import android.util.Log
 
 /**
- * Versione: 0.1.0 (2026-09-23)
+ * Versione: 0.2.0 (2026-09-23)
  *
  * "Aiuto" al chip GPS prima di una ricerca: chiede al sistema di
  * iniettare l'ora esatta e le effemeridi/almanacco scaricati dalla rete
@@ -31,6 +31,16 @@ import android.util.Log
  * - Limitato a una volta ogni MIN_INTERVAL_MS (il download delle
  *   effemeridi usa dati LTE), tranne quando force=true (azione esplicita
  *   dell'utente dalla schermata Ricerca GPS).
+ *
+ * Storico versioni:
+ * - 0.1.0 (2026-09-23): injectAssistance.
+ * - 0.2.0 (2026-09-23): resetAidingData — dopo la scarica completa del
+ *   watch del 20/9 il chip vede e usa 12-14 satelliti ma non produce
+ *   nuove posizioni (ultima posizione di sistema ferma): tipico di dati
+ *   di aiuto (ora/effemeridi/almanacco) salvati nel chip e diventati
+ *   sbagliati. Il comando standard "delete_aiding_data" li cancella e
+ *   forza una partenza da zero, come il "reset A-GPS" delle app tipo
+ *   GPS Status; subito dopo si reiniettano ora ed effemeridi fresche.
  */
 object GpsAssist {
     private const val TAG = "GpsAssist"
@@ -54,5 +64,19 @@ object GpsAssist {
             }
             Log.i(TAG, "injectAssistance: $command -> $accepted")
         }
+    }
+
+    // v0.2.0: true se il sistema ha accettato il comando di cancellazione.
+    fun resetAidingData(context: Context): Boolean {
+        val locationManager = context.getSystemService(LocationManager::class.java) ?: return false
+        val accepted = runCatching {
+            locationManager.sendExtraCommand(LocationManager.GPS_PROVIDER, "delete_aiding_data", null)
+        }.getOrElse {
+            Log.w(TAG, "resetAidingData fallito", it)
+            false
+        }
+        Log.i(TAG, "resetAidingData -> $accepted")
+        injectAssistance(context, force = true)
+        return accepted
     }
 }

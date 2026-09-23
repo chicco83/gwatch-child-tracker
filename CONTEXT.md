@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.85.0
+**Versione contesto:** 0.86.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2440,3 +2440,18 @@ CHANGELOG.md  Storico versioni
   il watch si e' riavviato/aggiornato o e' stato in risparmio
   energetico in quei giorni). Le notifiche zona mancanti sul telefono
   restano spiegate dalla finestra Fase 2 senza `familyId` (v0.85.0).
+- 2026-09-23: L'utente conferma: watch scaricato del tutto il 20/9 (il
+  21 non ricorda). Nuovo test: nemmeno Maps ottiene la posizione, 23
+  satelliti visti/12 usati, "ultima posizione GPS di sistema" ferma con
+  secondi in aumento. Storico (script diagnostico v0.2.0, ora anche con
+  la precisione): ultima posizione 20:50:30Z con 8 m di precisione =
+  vero fix GPS, poi piu' nulla. **Ipotesi principale**: dopo la scarica
+  completa i dati di aiuto salvati nel chip GPS (ora/effemeridi/
+  almanacco) sono rimasti sbagliati — il chip aggancia i satelliti ma
+  non chiude il fix, se non occasionalmente. Coerente con la data
+  d'inizio del calo (20/9) e con il codice del watch invariato.
+  Azioni: chiesto all'utente di verificare Data e ora automatiche sul
+  watch; aggiunto pulsante "Reset dati GPS" (delete_aiding_data +
+  reiniezione, ricerca fino a 10 min) — watch-app v0.19.0. Se neanche
+  il reset funziona: riavvio completo del watch, poi valutare un
+  problema hardware/firmware (fuori dal controllo dell'app) (v0.86.0).

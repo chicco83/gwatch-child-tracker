@@ -115,8 +115,10 @@ android {
         // v0.18.0 (2026-09-23): iniezione ora/effemeridi (location/GpsAssist.kt),
         // durata esplicita del fix in LocationRequestWorker/SosWorker, Ricerca
         // GPS anche via servizi Google, pulsante "Invio posizione in corso…".
-        versionCode = 18
-        versionName = "0.18.0"
+        // v0.19.0 (2026-09-23): pulsante "Reset dati GPS" nella Ricerca GPS
+        // (location/GpsAssist.kt resetAidingData).
+        versionCode = 19
+        versionName = "0.19.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

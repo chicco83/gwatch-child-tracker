@@ -7,6 +7,29 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-09-23
+
+### Added
+- **watch-app: pulsante "Reset dati GPS"** nella Ricerca GPS
+  (`GpsAssist.resetAidingData`, `ui/GpsSearchScreen.kt` v0.5.0):
+  cancella i dati di aiuto salvati nel chip GPS (comando di sistema
+  standard "delete_aiding_data", come il "reset A-GPS" delle app tipo
+  GPS Status), reinietta subito ora ed effemeridi fresche e riavvia la
+  ricerca per un massimo di 10 minuti (una partenza a freddo puo'
+  richiedere diversi minuti). Esito mostrato in diagnostica. watch-app
+  v0.19.0.
+- `backend/scripts/diag-device-history.js` v0.2.0: mostra anche la
+  precisione (metri) delle ultime posizioni, per distinguere un fix GPS
+  da una posizione Wi-Fi/celle.
+
+### Documentazione
+- Nuovo test su Watch4: nemmeno Google Maps ottiene piu' la posizione
+  (23 satelliti visti, 12 usati); "ultima posizione GPS di sistema" con
+  secondi in aumento = nessuna nuova posizione dopo quella delle 20:50Z,
+  che aveva precisione **8 m** (vero fix GPS, non Wi-Fi). L'utente
+  conferma che il watch si e' scaricato del tutto il 20/9, lo stesso
+  giorno in cui inizia il calo del tracking automatico.
+
 ## [0.85.0] - 2026-09-23
 
 ### Added

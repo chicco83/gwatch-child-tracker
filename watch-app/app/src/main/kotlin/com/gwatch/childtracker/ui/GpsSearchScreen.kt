@@ -1,6 +1,6 @@
 package com.gwatch.childtracker.ui
 
-// Versione: 0.4.0 (2026-09-23)
+// Versione: 0.5.0 (2026-09-23)
 //
 // Schermata "Ricerca GPS" stile vecchi navigatori TomTom: una barra per
 // satellite, alta quanto il segnale (C/N0 in dB-Hz), verde se usato per
@@ -56,6 +56,10 @@ package com.gwatch.childtracker.ui
 //   un'azione esplicita dell'utente); (2) oltre al GPS diretto, richiesta
 //   continua anche tramite servizi Google (fused provider), la stessa
 //   strada di Maps. La diagnostica conta a parte i fix delle due strade.
+// - 0.5.0 (2026-09-23): pulsante "Reset dati GPS" (GpsAssist.resetAidingData):
+//   cancella i dati di aiuto del chip e riparte da zero; in quel caso la
+//   ricerca dura fino a RESET_SEARCH_LIMIT_S (una partenza a freddo puo'
+//   richiedere diversi minuti). Esito mostrato in diagnostica.
 //
 // Nota di progetto: niente Modifier.weight (non risolveva a build reale
 // in questo progetto, vedi CONTEXT.md) — barre a larghezza fissa dentro
@@ -118,6 +122,9 @@ private const val TAG = "GpsSearchScreen"
 // Durata massima di una ricerca: oltre, GPS spento fino a "Riprova".
 private const val SEARCH_LIMIT_S = 180
 
+// v0.5.0: durata dopo un "Reset dati GPS" (partenza a freddo).
+private const val RESET_SEARCH_LIMIT_S = 600
+
 // Barre mostrate: le piu' forti, per stare nella larghezza dello schermo tondo.
 private const val MAX_BARS = 12
 
@@ -137,6 +144,8 @@ private data class GpsDiagnostics(
     val listenerFixes: Int = 0,
     // v0.4.0: fix arrivati tramite servizi Google (fused provider).
     val fusedFixes: Int = 0,
+    // v0.5.0: esito dell'ultimo "Reset dati GPS" (null = non fatto).
+    val resetAccepted: Boolean? = null,
     val lastKnownAgeS: Long? = null,
     // v0.3.0
     val fineGranted: Boolean? = null,
@@ -158,6 +167,9 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
     var attempt by remember { mutableStateOf(0) }
     var running by remember { mutableStateOf(true) }
     var seconds by remember { mutableStateOf(0) }
+    // v0.5.0: true dal tocco su "Reset dati GPS" fino al riavvio della ricerca.
+    var resetRequested by remember { mutableStateOf(false) }
+    var limitS by remember { mutableStateOf(SEARCH_LIMIT_S) }
     var satellites by remember { mutableStateOf<List<Satellite>>(emptyList()) }
     var diag by remember { mutableStateOf(GpsDiagnostics()) }
     // v0.2.0: una sola chiamata a onFixFound anche se listener e recupero
@@ -175,6 +187,14 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
 
     if (hasPermission && running) {
         DisposableEffect(attempt) {
+            // v0.5.0: il reset avviene qui, dopo che il DisposableEffect
+            // precedente ha gia' spento il GPS (onDispose) e prima di
+            // riaccenderlo.
+            if (resetRequested) {
+                val accepted = GpsAssist.resetAidingData(context)
+                diag = diag.copy(resetAccepted = accepted)
+                resetRequested = false
+            }
             val stop = startGpsSearch(
                 context = context,
                 onSatellites = { satellites = it },
@@ -192,7 +212,7 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
         }
         LaunchedEffect(attempt) {
             seconds = 0
-            while (seconds < SEARCH_LIMIT_S) {
+            while (seconds < limitS) {
                 // v0.2.0: diagnostica + recupero alternativo, una volta al secondo.
                 val snapshot = readSystemGpsState(context)
                 diag = diag.copy(
@@ -261,6 +281,7 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                         satellites = emptyList()
                         diag = GpsDiagnostics()
                         fixHandled = false
+                        limitS = SEARCH_LIMIT_S
                         attempt++
                         running = true
                     },
@@ -268,6 +289,21 @@ fun GpsSearchScreen(onFixFound: () -> Unit, onBack: () -> Unit) {
                     label = { CenteredChipLabel(stringResourceCompat(R.string.gps_search_retry)) },
                 )
             }
+            // v0.5.0: sempre disponibile, anche a ricerca in corso.
+            CompactChip(
+                onClick = {
+                    satellites = emptyList()
+                    diag = GpsDiagnostics()
+                    fixHandled = false
+                    resetRequested = true
+                    limitS = RESET_SEARCH_LIMIT_S
+                    attempt++
+                    running = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ChipDefaults.secondaryChipColors(),
+                label = { CenteredChipLabel(stringResourceCompat(R.string.gps_search_reset)) },
+            )
             DiagnosticsBlock(context, diag)
         }
         CompactChip(
@@ -297,6 +333,14 @@ private fun DiagnosticsBlock(context: Context, diag: GpsDiagnostics) {
         },
         context.getString(R.string.gps_diag_listener_fixes, diag.listenerFixes),
         context.getString(R.string.gps_diag_fused_fixes, diag.fusedFixes),
+        context.getString(
+            R.string.gps_diag_reset,
+            when (diag.resetAccepted) {
+                true -> "accettato"
+                false -> "RIFIUTATO"
+                null -> "non fatto"
+            },
+        ),
         if (diag.lastKnownAgeS == null) {
             context.getString(R.string.gps_diag_last_known_none)
         } else {
