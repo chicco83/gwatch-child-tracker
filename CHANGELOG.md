@@ -7,6 +7,21 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-09-23
+
+### Fixed
+- **Deploy Vercel fallito dopo la Fase 4** (confermato dall'utente):
+  rimossa da `backend/vercel.json` la voce specifica `api/cleanup.js`
+  (`maxDuration:60`) aggiunta in v0.73.0 accanto al wildcard
+  `api/*.js` — stessa forma che aveva gia' rotto il build in v0.12.0.
+  `cleanup.js` (v0.7.0) torna a `maxDuration:30` come le altre
+  funzioni.
+
+### Known limitations
+- Il punto 6 di qwen_plan.md (timeout di `cleanup.js` con uno storico
+  molto grande) torna aperto. Se succede, la pulizia resta parziale e
+  riprende al giro del giorno dopo: nessun dato perso.
+
 ## [0.77.0] - 2026-09-23
 
 ### Documentazione

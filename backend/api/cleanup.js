@@ -1,6 +1,6 @@
 /**
  * GET /api/cleanup
- * Versione: 0.6.0
+ * Versione: 0.7.0
  *
  * Pulizia programmata dello storico scaduto. Sostituisce la TTL
  * policy nativa di Firestore: quella richiede il piano Blaze anche se
@@ -58,6 +58,16 @@
  *   una voce specifica "api/cleanup.js" in vercel.json con
  *   maxDuration:60 — il massimo consentito sul piano Vercel Hobby (le
  *   altre funzioni, tutte rapide, restano a 30 tramite "api/*.js").
+ * - 0.7.0 (2026-09-23): ANNULLATA la modifica di vercel.json della
+ *   0.6.0 — il deploy Vercel e' fallito (confermato dall'utente), come
+ *   gia' successo in v0.12.0 del progetto con lo stesso schema: un
+ *   pattern specifico "api/cleanup.js" accanto al wildcard "api/*.js"
+ *   rompe il build. Questa funzione torna a maxDuration:30 come tutte
+ *   le altre. Il rischio descritto in 0.6.0 (timeout con storico molto
+ *   grande) resta aperto: se si verifica, la pulizia riprende al giro
+ *   successivo senza danni ai dati.
+ *   Precedente voce in vercel.json (2026-09-23, rimossa):
+ *     "api/cleanup.js": { "memory": 128, "maxDuration": 60 }
  */
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");

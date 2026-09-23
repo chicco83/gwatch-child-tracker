@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.77.0
+**Versione contesto:** 0.78.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2288,3 +2288,12 @@ CHANGELOG.md  Storico versioni
   specifico `api/cleanup.js` accanto a `api/*.js`, la stessa forma che
   in v0.12.0 aveva rotto il build Vercel — da confermare sulla
   dashboard Vercel (v0.77.0).
+- 2026-09-23: Confermato dall'utente che il deploy Vercel e' fallito
+  dopo la Fase 4, come sospettato in v0.77.0. Rimossa la voce
+  `api/cleanup.js` da `backend/vercel.json` (tornato alla forma di
+  v0.12.0, un solo pattern `api/*.js`). **Lezione ripetuta, da non
+  dimenticare**: in questo progetto `vercel.json` non tollera un
+  pattern specifico accanto al wildcard che gia' copre lo stesso file.
+  Il punto 6 di qwen_plan.md (timeout cleanup) torna aperto; eventuale
+  soluzione futura senza toccare `vercel.json`: ridurre il lavoro per
+  singola esecuzione in `cleanup.js` (v0.78.0).
