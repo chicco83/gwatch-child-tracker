@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.95.0
+**Versione contesto:** 0.96.0
 **Ultimo aggiornamento:** 2026-09-23
 
 ---
@@ -2612,3 +2612,9 @@ CHANGELOG.md  Storico versioni
   differenze fra gli orologi; logica in AppViewModel (retryStates) per
   coprire anche la richiesta automatica all'apertura; barra disegnata a
   mano come quella del watch (phone-app v0.20.0) (v0.95.0).
+- 2026-09-23: Test utente con watch in modalita' aereo: nessuna barra
+  sul telefono. Causa: i primi 2 minuti (RESPONSE_TIMEOUT_MS) di attesa
+  della risposta non avevano nessuno stato visibile. Aggiunto
+  LocationRetry.waitingForWatch: barra "In attesa della posizione dal
+  watch… N s" dall'invio della richiesta, poi barra del nuovo tentativo
+  (phone-app v0.21.0) (v0.96.0).

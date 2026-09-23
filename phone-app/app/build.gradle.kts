@@ -129,8 +129,10 @@ android {
         // arriva da Wi-Fi/rete.
         // v0.20.0 (2026-09-23): richiesta posizione che insiste (fino a 20
         // tentativi) con barra "nuovo tentativo tra Ns" nella StatusCard.
-        versionCode = 20
-        versionName = "0.20.0"
+        // v0.21.0 (2026-09-23): barra "in attesa del watch" subito dopo la
+        // richiesta, invece di 2 minuti senza nulla a schermo.
+        versionCode = 21
+        versionName = "0.21.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

@@ -7,6 +7,17 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.96.0] - 2026-09-23
+
+### Fixed
+- **phone-app v0.21.0: nessuna barra per 2 minuti dopo la richiesta**
+  (test utente con il watch in modalita' aereo). Il telefono aspettava
+  fino a 2 minuti la risposta del watch senza mostrare nulla, e solo
+  dopo compariva la barra del nuovo tentativo: sembrava che la funzione
+  non esistesse. Ora subito dopo la richiesta compare la barra "In
+  attesa della posizione dal watch… N s", che poi passa a "nuovo
+  tentativo tra N s" se la posizione non arriva.
+
 ## [0.95.0] - 2026-09-23
 
 ### Added

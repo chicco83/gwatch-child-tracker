@@ -358,7 +358,20 @@ class AppViewModel(
                 val requestedAt = System.currentTimeMillis()
                 val ok = sendLocationRequest(user, childId)
                 if (attempt == 1) onResult(ok)
+                // 2026-09-23: barra "in attesa del watch" durante l'attesa della
+                // risposta. Precedente: nessuno stato visibile per 2 minuti.
+                if (ok) {
+                    _retryStates.value = _retryStates.value + (
+                        childId to LocationRetry(
+                            nextRetryAtMillis = requestedAt + RESPONSE_TIMEOUT_MS,
+                            totalWaitMillis = RESPONSE_TIMEOUT_MS,
+                            attempt = attempt - 1,
+                            waitingForWatch = true,
+                        )
+                    )
+                }
                 val succeeded = ok && waitForLocation(childId, requestedAt)
+                _retryStates.value = _retryStates.value - childId
                 if (succeeded || attempt >= MAX_LOCATION_ATTEMPTS) break
                 _retryStates.value = _retryStates.value + (
                     childId to LocationRetry(

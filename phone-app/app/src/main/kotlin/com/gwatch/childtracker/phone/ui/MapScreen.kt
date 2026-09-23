@@ -738,12 +738,14 @@ private fun RetryCountdown(retry: LocationRetry) {
                 .fillMaxWidth(fraction)
                 .background(Color(0xFF1976D2).copy(alpha = 0.30f)),
         )
+        // 2026-09-23: testo diverso durante l'attesa della risposta del watch.
+        val seconds = ((remainingMs + 999) / 1000).toInt()
         Text(
-            text = stringResource(
-                R.string.status_retry_countdown,
-                ((remainingMs + 999) / 1000).toInt(),
-                retry.attempt,
-            ),
+            text = if (retry.waitingForWatch) {
+                stringResource(R.string.status_waiting_watch, seconds)
+            } else {
+                stringResource(R.string.status_retry_countdown, seconds, retry.attempt)
+            },
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall,

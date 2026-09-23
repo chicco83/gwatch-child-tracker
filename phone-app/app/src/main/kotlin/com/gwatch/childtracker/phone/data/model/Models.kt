@@ -14,6 +14,10 @@ data class LocationRetry(
     val nextRetryAtMillis: Long,
     val totalWaitMillis: Long,
     val attempt: Int,
+    // 2026-09-23: true = in attesa della risposta del watch (prima non si
+    // vedeva nulla per 2 minuti, segnalato dall'utente); false = attesa
+    // prima del prossimo tentativo.
+    val waitingForWatch: Boolean = false,
 )
 
 data class DeviceState(
