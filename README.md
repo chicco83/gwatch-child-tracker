@@ -93,6 +93,8 @@ Firebase (piano gratuito).
   Percentuale, temperatura, stato di carica e autonomia stimata vengono
   inviati con ogni posizione, con ogni evento zona e anche quando il GPS
   non trova la posizione, così sul telefono restano sempre aggiornati.
+  Collegando o scollegando il caricatore lo stato parte subito (appena
+  c'è rete), senza aspettare la posizione successiva.
 
 - **Avvisi di stato del watch**
 
@@ -128,7 +130,8 @@ Firebase (piano gratuito).
 - **Stato del watch**
 
   Icona accanto al nome: ✈️ modalità aereo, ⏻ spento, 📵 non
-  raggiungibile (nessuna notizia da oltre 30 minuti). Sotto, la riga
+  raggiungibile (nessuna notizia da oltre 30 minuti), 🔌 in carica
+  (mostrata solo se non c'è uno degli stati precedenti). Sotto, la riga
   "Stato watch" dice da quando.
 
 - **Aggiorna posizione**

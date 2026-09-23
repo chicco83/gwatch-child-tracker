@@ -7,6 +7,30 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.0] - 2026-09-24
+
+### Added
+- **Icona di stato "in carica" (🔌)** accanto al nome del bambino sulla
+  phone-app (v0.25.0, `MapScreen.kt` `watchHeaderIcon()`), richiesta
+  utente. Gli stati aereo/spento/non raggiungibile hanno la precedenza
+  (in quei casi il dato di carica e' vecchio).
+- watch-app v0.30.0: `WatchStateReporter` v0.2.0 ascolta anche
+  `ACTION_POWER_CONNECTED/DISCONNECTED` e invia subito (worker con
+  vincolo di rete, `PowerStateWorker`) uno "status" con `reason: "power"`:
+  il telefono vede il cambio in pochi secondi invece che col punto di
+  tracking successivo (fino a 10').
+
+### Changed
+- `trigger-event.js` v0.24.0: lo "status" con `reason: "power"` aggiorna
+  batteria/carica e `lastStatusAt` ma non `lastNoFixAt` (non e' un
+  tentativo di fix fallito, non deve far comparire la barra dei tentativi).
+
+### Known limitations
+- watch-app e phone-app non compilate in questa sessione.
+- Il ricevitore del caricatore e' registrato da `LocationTrackingService`:
+  se il servizio non e' attivo l'icona si aggiorna solo col dato
+  successivo, come prima.
+
 ## [0.99.1] - 2026-09-24
 
 ### Documentazione

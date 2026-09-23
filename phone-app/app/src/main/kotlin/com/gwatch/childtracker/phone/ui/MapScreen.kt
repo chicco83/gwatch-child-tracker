@@ -96,6 +96,10 @@ package com.gwatch.childtracker.phone.ui
 //   ora assolute oltre al relativo ("5 min fa"), utile per capire "di
 //   che giorno" quando il dato e' vecchio di ore (vedi formatLastSeen
 //   sotto, stesso formato "dd/MM HH:mm" gia' usato in EventsList).
+// v0.13.0 (2026-09-24): richiesta utente — icona di stato "in carica"
+//   (🔌) accanto al nome del bambino quando il watch e' collegato al
+//   caricatore (DeviceState.charging), vedi watchHeaderIcon(). Il watch
+//   invia il cambio subito (WatchStateReporter v0.2.0 lato watch).
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -567,9 +571,16 @@ private fun StatusCard(
                 // 2026-09-23: icona di stato del watch accanto al nome
                 // (modalita' aereo / spento / non raggiungibile), vedi
                 // watchStatus(). Precedente: Text(text = childName, ...).
-                val status = watchStatus(state, System.currentTimeMillis())
+                // 2026-09-24: aggiunta l'icona "in carica", vedi watchHeaderIcon().
+                // Precedente (2026-09-23):
+                // val status = watchStatus(state, System.currentTimeMillis())
+                // Text(
+                //     text = if (status != null) "$childName ${status.first}" else childName,
+                //     style = MaterialTheme.typography.titleSmall,
+                // )
+                val icon = watchHeaderIcon(state, System.currentTimeMillis())
                 Text(
-                    text = if (status != null) "$childName ${status.first}" else childName,
+                    text = if (icon != null) "$childName $icon" else childName,
                     style = MaterialTheme.typography.titleSmall,
                 )
                 TextButton(onClick = onRequestLocation, enabled = !requesting) {
@@ -829,6 +840,17 @@ private fun watchStatus(state: DeviceState, nowMillis: Long): Triple<String, Int
     } else {
         null
     }
+}
+
+/**
+ * 2026-09-24: icona accanto al nome del bambino. Gli stati di allarme di
+ * watchStatus() (aereo / spento / non raggiungibile) hanno la precedenza:
+ * in quei casi il dato "in carica" e' vecchio e non affidabile. Altrimenti
+ * 🔌 se l'ultimo dato ricevuto dice che il watch e' sul caricatore.
+ */
+private fun watchHeaderIcon(state: DeviceState, nowMillis: Long): String? {
+    watchStatus(state, nowMillis)?.let { return it.first }
+    return if (state.charging == true) "🔌" else null
 }
 
 // 2026-09-23: senza notizie dal watch da piu' di cosi' → "non raggiungibile".

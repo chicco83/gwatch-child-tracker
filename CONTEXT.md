@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.99.1
+**Versione contesto:** 0.100.0
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.29.0**, phone-app **v0.24.0**, backend `trigger-event.js` **v0.23.0**
+**v0.30.0**, phone-app **v0.25.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2734,3 +2734,14 @@ CHANGELOG.md  Storico versioni
   nuova funzione va documentata con spiegazione nel README.md. Regola
   scritta in CLAUDE.md; creata la sezione "Funzioni" del README con
   l'elenco completo attuale (watch/telefono/backend) (v0.99.1).
+- 2026-09-24: Richiesta utente: icona di stato quando il watch e' in
+  carica. Il campo `charging` arrivava gia' con ogni punto/status, ma fino
+  a 10' dopo il collegamento: il watch ora invia subito uno "status" con
+  reason "power" su ACTION_POWER_CONNECTED/DISCONNECTED (ricevitore
+  runtime in LocationTrackingService, come aereo/spegnimento; i broadcast
+  di alimentazione non arrivano ai ricevitori del solo manifest). Il
+  backend non lo conta come fix fallito (niente lastNoFixAt), nessuna push
+  (solo icona, per non disturbare). Sulla phone-app 🔌 accanto al nome,
+  solo se non c'e' gia' un'icona di allarme (aereo/spento/non
+  raggiungibile). watch-app v0.30.0, phone-app v0.25.0, trigger-event
+  v0.24.0 (v0.100.0).

@@ -184,9 +184,13 @@ class BackendClient {
         watchState: String? = null,
         stateAt: Long? = null,
         since: Long? = null,
+        // 2026-09-24: "power" = caricatore collegato/scollegato
+        // (WatchStateReporter.onPowerChanged, trigger-event.js v0.24.0).
+        reason: String? = null,
     ): Boolean {
         val body = JSONObject().apply {
             put("type", "status")
+            reason?.let { put("reason", it) }
             watchState?.let { put("watchState", it) }
             stateAt?.let { put("stateAt", it) }
             since?.let { put("since", it) }

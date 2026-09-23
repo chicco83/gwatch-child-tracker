@@ -139,8 +139,11 @@ android {
         // v0.29.0 (2026-09-24): tracking da fermo di nuovo bilanciato, alta
         // precisione attivabile dalla phone-app (location/TrackingMode.kt);
         // la sync zone non cancella piu' le zone se la rete manca.
-        versionCode = 29
-        versionName = "0.29.0"
+        // v0.30.0 (2026-09-24): stato del caricatore inviato subito al
+        // collegamento/scollegamento (location/WatchStateReporter.kt v0.2.0),
+        // per l'icona "in carica" sulla phone-app.
+        versionCode = 30
+        versionName = "0.30.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

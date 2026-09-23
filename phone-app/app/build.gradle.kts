@@ -138,8 +138,10 @@ android {
         // contano piu' come tentativo fallito (lastNoFixAt).
         // v0.24.0 (2026-09-24): interruttore "Alta precisione da fermo" per
         // bambino nelle Impostazioni.
-        versionCode = 24
-        versionName = "0.24.0"
+        // v0.25.0 (2026-09-24): icona "in carica" (🔌) accanto al nome del
+        // bambino (ui/MapScreen.kt watchHeaderIcon).
+        versionCode = 25
+        versionName = "0.25.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

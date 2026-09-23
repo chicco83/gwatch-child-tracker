@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.23.0
+ * Versione: 0.24.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -208,6 +208,12 @@
  *   si aggiorna anche con gli avvisi di modalita' aereo/riaccensione: al
  *   riavvio del watch l'avviso "boot" veniva scambiato per un tentativo
  *   fallito mentre la posizione stava arrivando (segnalato dall'utente).
+ * - 0.24.0 (2026-09-24): richiesta utente, icona "in carica" sulla
+ *   phone-app. Lo "status" accetta reason: "power" (inviato dal watch
+ *   quando si collega/scollega il caricatore, WatchStateReporter): aggiorna
+ *   batteria/charging e lastStatusAt ma NON lastNoFixAt (non e' un
+ *   tentativo di fix fallito) e non tocca watchState. Nessuna push e
+ *   nessun evento nello storico (solo l'icona).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -322,7 +328,9 @@ module.exports = wrapHandler(async (req, res) => {
     return;
   }
 
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive, watchState, stateAt, since } = req.body || {};
+  // v0.24.0: aggiunto "reason" (vedi Storico versioni).
+  // Precedente (2026-09-24): stessa destrutturazione senza "reason".
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive, watchState, stateAt, since, reason } = req.body || {};
   const gnss = gnssUpdate(satsVisible, satsUsed, gnssActive);
 
   // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
@@ -341,8 +349,10 @@ module.exports = wrapHandler(async (req, res) => {
     const sinceTs = typeof since === "number" ? Timestamp.fromMillis(since) : null;
     if (hasWatchState) {
       update.watchState = { state: WATCH_STATES[watchState], event: watchState, at: stateTs, since: sinceTs };
-    } else {
+    } else if (reason !== "power") {
       // v0.23.0: tentativo di fix non riuscito (vedi Storico versioni).
+      // v0.24.0: escluso reason "power" (caricatore collegato/scollegato).
+      // Precedente (2026-09-24): } else { update.lastNoFixAt = ... }
       update.lastNoFixAt = FieldValue.serverTimestamp();
     }
     await statusRef.set(update, { merge: true });

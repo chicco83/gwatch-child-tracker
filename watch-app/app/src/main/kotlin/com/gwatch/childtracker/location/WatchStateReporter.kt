@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Versione: 0.1.0 (2026-09-23)
+ * Versione: 0.2.0 (2026-09-24)
  *
  * Richiesta utente: avvisare il telefono quando il watch va in modalita'
  * aereo o si spegne (icona corrispondente sulla phone-app).
@@ -41,6 +41,15 @@ import kotlinx.coroutines.withTimeoutOrNull
  *    non e' partito.
  * Il ricevitore e' registrato da LocationTrackingService (i broadcast di
  * modalita' aereo non arrivano a ricevitori dichiarati solo nel manifest).
+ *
+ * v0.2.0 (2026-09-24): richiesta utente, icona "in carica" sulla
+ * phone-app. Lo stesso ricevitore ascolta ACTION_POWER_CONNECTED /
+ * ACTION_POWER_DISCONNECTED (anche questi non arrivano ai ricevitori
+ * del solo manifest da Android 8) e invia subito uno "status" con
+ * reason "power" (trigger-event.js v0.24.0), cosi' il telefono vede
+ * il cambio in pochi secondi invece di aspettare il prossimo punto di
+ * tracking (fino a 10'). Worker con vincolo di rete e REPLACE: conta
+ * solo l'ultimo stato del caricatore.
  */
 object WatchStateReporter {
     private const val TAG = "WatchStateReporter"
@@ -57,6 +66,9 @@ object WatchStateReporter {
             when (intent.action) {
                 Intent.ACTION_AIRPLANE_MODE_CHANGED -> onAirplaneModeChanged(context, isAirplaneOn(context, intent))
                 Intent.ACTION_SHUTDOWN -> onShutdown(context)
+                // v0.2.0: caricatore collegato/scollegato.
+                Intent.ACTION_POWER_CONNECTED -> onPowerChanged(context, true)
+                Intent.ACTION_POWER_DISCONNECTED -> onPowerChanged(context, false)
             }
         }
     }
@@ -64,6 +76,9 @@ object WatchStateReporter {
     fun intentFilter() = IntentFilter().apply {
         addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
         addAction(Intent.ACTION_SHUTDOWN)
+        // v0.2.0: vedi onPowerChanged.
+        addAction(Intent.ACTION_POWER_CONNECTED)
+        addAction(Intent.ACTION_POWER_DISCONNECTED)
     }
 
     fun register(context: Context, receiver: BroadcastReceiver) {
@@ -107,6 +122,25 @@ object WatchStateReporter {
         val since = prefs.getLong(KEY_OFF_SINCE, 0L).takeIf { it > 0 }
         prefs.edit().remove(KEY_OFF_SINCE).apply()
         enqueueOnNetwork(context, "boot", System.currentTimeMillis(), since)
+    }
+
+    /**
+     * v0.2.0 (2026-09-24): caricatore collegato/scollegato. Lo stato di
+     * carica viene passato esplicitamente al worker: l'intento sticky
+     * della batteria letto da BatteryInfo puo' non essere ancora
+     * aggiornato nell'istante del broadcast.
+     */
+    fun onPowerChanged(context: Context, charging: Boolean) {
+        Log.i(TAG, "caricatore ${if (charging) "collegato" else "scollegato"}")
+        val work = OneTimeWorkRequestBuilder<PowerStateWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setInputData(workDataOf(PowerStateWorker.KEY_CHARGING to charging))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            PowerStateWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            work,
+        )
     }
 
     private fun sendImmediate(context: Context, watchState: String, stateAt: Long) {
@@ -164,5 +198,30 @@ class WatchStateWorker(context: Context, params: WorkerParameters) : CoroutineWo
         const val KEY_STATE = "state"
         const val KEY_AT = "at"
         const val KEY_SINCE = "since"
+    }
+}
+
+/**
+ * v0.2.0 (2026-09-24): invio dello stato del caricatore (reason "power",
+ * trigger-event.js v0.24.0) appena c'e' rete, con ritentativi.
+ */
+class PowerStateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val charging = inputData.getBoolean(KEY_CHARGING, false)
+        val battery = BatteryInfo.read(applicationContext)
+        val ok = BackendClient().sendStatus(
+            battery = battery.percent,
+            batteryTemp = battery.temperatureC,
+            charging = charging,
+            // In carica l'autonomia residua non ha senso (vedi BatteryInfo).
+            batteryHoursRemaining = if (charging) null else battery.hoursRemaining,
+            reason = "power",
+        )
+        return if (ok) Result.success() else Result.retry()
+    }
+
+    companion object {
+        const val WORK_NAME = "power-state"
+        const val KEY_CHARGING = "charging"
     }
 }
