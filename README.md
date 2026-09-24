@@ -100,6 +100,9 @@ Firebase (piano gratuito).
   L'autonomia è la previsione di Wear OS (la stessa delle impostazioni
   batteria), non calcolata dall'app: se il sistema non ne fornisce una
   (o su Wear OS 3) la riga "Autonomia" sul telefono non compare.
+  Quando la batteria scende al 10%, 5% o 2% il watch invia subito le
+  posizioni in attesa, così l'avviso di batteria scarica arriva al
+  telefono in pochi secondi, senza aprire l'app.
 
 - **Avvisi di stato del watch**
 

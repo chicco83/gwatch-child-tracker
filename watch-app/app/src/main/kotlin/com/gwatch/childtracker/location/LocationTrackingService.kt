@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
@@ -83,8 +84,17 @@ class LocationTrackingService : Service() {
             )
             pendingStore.addPoint(point)
 
-            if (pendingStore.size() >= UPLOAD_TRIGGER_THRESHOLD) {
-                enqueueImmediateUpload()
+            // 2026-09-24: caricamento subito anche quando la batteria scende
+            // a 10/5/2 %, cosi' il backend manda l'avviso di batteria scarica
+            // senza aspettare il caricamento a gruppi (vedi LowBatteryTrigger).
+            // Precedente: if (pendingStore.size() >= UPLOAD_TRIGGER_THRESHOLD) {
+            val lowBattery = LowBatteryTrigger.crossedNewThreshold(
+                this@LocationTrackingService,
+                batterySnapshot.percent,
+                batterySnapshot.isCharging,
+            )
+            if (lowBattery || pendingStore.size() >= UPLOAD_TRIGGER_THRESHOLD) {
+                enqueueImmediateUpload(expedited = lowBattery)
             }
         }
     }
@@ -210,8 +220,16 @@ class LocationTrackingService : Service() {
             .requestActivityTransitionUpdates(request, pendingIntent)
     }
 
-    private fun enqueueImmediateUpload() {
-        val work = OneTimeWorkRequestBuilder<LocationUploadWorker>().build()
+    // 2026-09-24: "expedited" per la batteria scarica: un lavoro espedito
+    // non viene rinviato da Doze/risparmio energetico come uno normale
+    // (se la quota del sistema e' esaurita parte come lavoro normale).
+    // Precedente:
+    //     private fun enqueueImmediateUpload() {
+    //         val work = OneTimeWorkRequestBuilder<LocationUploadWorker>().build()
+    private fun enqueueImmediateUpload(expedited: Boolean = false) {
+        val work = OneTimeWorkRequestBuilder<LocationUploadWorker>()
+            .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
+            .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
             LocationUploadWorker.ONE_SHOT_WORK_NAME,
             ExistingWorkPolicy.REPLACE,

@@ -153,8 +153,11 @@ android {
         // v0.34.0 (2026-09-24): posizione su richiesta con GPS acceso davvero
         // (niente cache, attesa fino a 30 s di un fix migliore;
         // location/LocationRequestWorker.kt acquireBestLocation).
-        versionCode = 34
-        versionName = "0.34.0"
+        // v0.35.0 (2026-09-24): caricamento immediato (lavoro espedito)
+        // quando la batteria scende a 10/5/2 %, per l'avviso di batteria
+        // scarica senza ritardi (location/LowBatteryTrigger.kt).
+        versionCode = 35
+        versionName = "0.35.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

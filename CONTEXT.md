@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.101.0
+**Versione contesto:** 0.101.1
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.34.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
+**v0.35.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2794,3 +2794,12 @@ CHANGELOG.md  Storico versioni
   aereo/spento gia' segnalati, niente push di "tornato raggiungibile".
   Alternativa scartata: Device Owner per impedire l'arresto forzato
   (reset di fabbrica, esito incerto su Samsung, non copre ADB).
+- 2026-09-24: Avviso batteria scarica in ritardo (10% alle 15:21, push
+  alle 15:39): il backend valuta la batteria solo quando riceve dati, e i
+  punti restano sul watch fino al caricamento a gruppi (Doze lo rinvia).
+  Scelta: il watch forza un caricamento espedito al primo attraversamento
+  di 10/5/2 % (LowBatteryTrigger), invece di caricare piu' spesso sempre
+  (costerebbe batteria). Nota: "GPS non usato" su una risposta da 15 m
+  senza Wi-Fi era la posizione in cache (watch ancora < v0.34). Consumo
+  pomeridiano ~17%/h con punti da fermo a 13-17 m (GPS acceso anche da
+  fermo?) da verificare con batterystats.

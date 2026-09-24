@@ -7,6 +7,27 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.101.1] - 2026-09-24
+
+### Fixed
+- **Avviso "batteria scarica" in ritardo** (segnalato dall'utente;
+  watch-app v0.35.0). Il 24/9 il watch e' sceso al 10% alle 15:21 ma la
+  push e' partita solo alle 15:39, con la richiesta di posizione del
+  genitore: i punti del tracking (che portano la batteria) restavano sul
+  watch fino al caricamento a gruppi, rinviato da Doze/risparmio
+  energetico a schermo spento. Nuovo `location/LowBatteryTrigger.kt`: al
+  primo scendere a 10/5/2 % (stesse soglie di `_lib/batteryAlerts.js`,
+  azzerate in carica o sopra il 15%) `LocationTrackingService` accoda un
+  caricamento immediato come lavoro espedito.
+
+### Changed
+- `diag-device-history.js` v0.8.4: batteria % accanto a ogni posizione.
+
+### Known limitations
+- Consumo del 24/9 pomeriggio molto alto (36% → 8% in 1h40', ~17%/h):
+  da capire con `dumpsys batterystats` (vedi CONTEXT.md).
+- watch-app non compilata in questa sessione.
+
 ## [0.101.0] - 2026-09-24
 
 ### Added

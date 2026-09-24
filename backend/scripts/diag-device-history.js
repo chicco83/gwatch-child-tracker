@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.8.3 (2026-09-24)
+ * Versione: 0.8.4 (2026-09-24)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -43,6 +43,8 @@
  * - 0.8.3 (2026-09-24): stampa watchState (stato/evento/ora/da quando),
  *   silenceAlertAt e il "since" degli eventi watch_* — per ricostruire i
  *   periodi di modalita' aereo/spegnimento.
+ * - 0.8.4 (2026-09-24): batteria % (e ⚡ se in carica) accanto a ogni
+ *   posizione elencata, per datare quando e' scesa sotto le soglie.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -122,7 +124,8 @@ async function main() {
     locs.docs.forEach((l) => {
       const t = toDate(l.data().timestamp);
       if (!t) return;
-      times.push({ t, acc: l.data().accuracy, activity: l.data().activity, lat: l.data().lat, lon: l.data().lon });
+      // v0.8.4: aggiunti battery/charging.
+      times.push({ t, acc: l.data().accuracy, activity: l.data().activity, lat: l.data().lat, lon: l.data().lon, battery: l.data().battery, charging: l.data().charging });
       const k = t.toISOString().slice(0, 10);
       perDay[k] = (perDay[k] || 0) + 1;
       const acc = l.data().accuracy;
@@ -173,7 +176,7 @@ async function main() {
       console.log("");
       return;
     }
-    (listAll ? times : times.slice(0, 8)).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}${p.activity ? "  " + p.activity : ""}${trackInfo(p)}`));
+    (listAll ? times : times.slice(0, 8)).forEach((p) => console.log(`    ${iso(p.t)}  ${p.acc != null ? Math.round(p.acc) + " m" : "precisione ?"}${p.activity ? "  " + p.activity : ""}${p.battery != null ? "  " + p.battery + "%" + (p.charging ? "⚡" : "") : ""}${trackInfo(p)}`));
 
     // Eventi: orario, tipo, origine (niente coordinate/nomi).
     const evs = await dev.ref.collection("events").where("timestamp", ">=", since).get();
