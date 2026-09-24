@@ -1,0 +1,34 @@
+# Avviso "watch muto" (vedi backend/api/watch-silence.js).
+# Versione: 0.1.0 (2026-09-24)
+#
+# Stesso schema di cleanup-cron.yml: GitHub Actions al posto dei Cron
+# Job di Vercel (bloccati sul piano Hobby). Stesso secret CRON_SECRET.
+#
+# Ogni 30 minuti: la soglia di silenzio e' 60', quindi l'avviso arriva
+# fra 60 e ~90 minuti dall'ultimo contatto (GitHub puo' ritardare i cron
+# di qualche minuto nei momenti di carico). Consumo: ~1 minuto di Actions
+# a esecuzione, ~1.440 al mese — dentro i 2.000 gratuiti di un repository
+# privato insieme agli altri workflow (per un repository pubblico sono
+# illimitati).
+name: Avviso watch muto
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {} # permette anche l'avvio manuale da GitHub
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama /api/watch-silence
+        run: |
+          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://gwatch-child-tracker.vercel.app/api/watch-silence)
+          echo "HTTP $status"
+          cat /tmp/response.json; echo
+          if [ "$status" != "200" ]; then
+            echo "Chiamata fallita (HTTP $status)"
+            exit 1
+          fi

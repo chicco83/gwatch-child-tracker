@@ -7,6 +7,25 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.101.0] - 2026-09-24
+
+### Added
+- **Avviso "watch muto"** (richiesta utente, dopo la mattinata del 24/9
+  senza posizioni per l'app ferma dall'arresto forzato): nuovo endpoint
+  `backend/api/watch-silence.js` v0.1.0, chiamato ogni 30' dal workflow
+  `.github/workflows/watch-silence-cron.yml` (stesso `CRON_SECRET` della
+  pulizia). Se un watch tace da oltre 60' manda la push "📵 <nome>:
+  nessuna notizia dal watch" con l'ora dell'ultimo contatto; un solo
+  avviso per periodo di silenzio (`devices/{id}.silenceAlertAt`), niente
+  avviso se l'ultimo stato noto e' aereo/spento. Test in
+  `backend/test/watch-silence.test.js` (8 casi).
+
+### Known limitations
+- GitHub puo' ritardare i cron di qualche minuto: l'avviso arriva fra
+  60 e ~90' dall'ultimo contatto.
+- Consumo ~1.440 minuti/mese di GitHub Actions (limite gratuito 2.000
+  per un repository privato, insieme agli altri workflow).
+
 ## [0.100.5] - 2026-09-24
 
 ### Fixed

@@ -184,6 +184,13 @@ Firebase (piano gratuito).
   Ogni chiamata resta entro i limiti di tempo di Vercel e viene ripetuta
   finché non c'è più niente da cancellare.
 
+- **Avviso "watch muto"**
+
+  Ogni 30 minuti un workflow GitHub Actions controlla i watch: se uno non
+  manda nulla da oltre un'ora arriva una push al telefono ("📵 nessuna
+  notizia dal watch"), una sola volta per periodo di silenzio. Non scatta
+  se il watch aveva già segnalato modalità aereo o spegnimento.
+
 - **Limite giornaliero di sicurezza**
 
   Tetto alle scritture per dispositivo, per restare nel piano gratuito

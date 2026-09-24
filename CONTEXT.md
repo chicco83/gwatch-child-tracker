@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.100.5
+**Versione contesto:** 0.101.0
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -2787,3 +2787,10 @@ CHANGELOG.md  Storico versioni
   Wi-Fi senza accendere il GPS → ora requestLocationUpdates HIGH_ACCURACY
   con maxUpdateAge 0 e finestra di miglioramento di 30 s (v0.100.5,
   watch-app v0.34.0). Tracking da fermo lasciato su rete per scelta.
+- 2026-09-24: Avviso push "watch muto" (v0.101.0). Scelte: controllo su
+  GitHub Actions ogni 30' (Vercel Hobby non ha cron, stesso schema della
+  pulizia), soglia 60' (tracking da fermo ≤10', upload ogni 15'), un
+  avviso per periodo di silenzio (silenceAlertAt), niente avviso con
+  aereo/spento gia' segnalati, niente push di "tornato raggiungibile".
+  Alternativa scartata: Device Owner per impedire l'arresto forzato
+  (reset di fabbrica, esito incerto su Samsung, non copre ADB).
