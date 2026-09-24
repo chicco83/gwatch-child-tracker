@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.100.4
+**Versione contesto:** 0.100.5
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.33.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
+**v0.34.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2780,3 +2780,10 @@ CHANGELOG.md  Storico versioni
   cc in µAh (conferma del motivo per cui la vecchia formula d'autonomia
   veniva scartata). Per il consumo reale per app serve
   `dumpsys batterystats` senza ADB Wi-Fi attivo.
+- 2026-09-24: Verificato sul campo: autonomia di Wear OS funziona (5,5 h).
+  Silenzio 01:23→11:46 = arresto forzato lasciato da Android Studio
+  (nessun codice puo' aggirarlo; alternativa Device Owner proposta e non
+  scelta). Posizione su richiesta: getCurrentLocation restituiva la cache
+  Wi-Fi senza accendere il GPS → ora requestLocationUpdates HIGH_ACCURACY
+  con maxUpdateAge 0 e finestra di miglioramento di 30 s (v0.100.5,
+  watch-app v0.34.0). Tracking da fermo lasciato su rete per scelta.

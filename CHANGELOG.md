@@ -7,6 +7,31 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.100.5] - 2026-09-24
+
+### Fixed
+- **Posizioni su richiesta "da rete, non GPS"** (segnalato dall'utente;
+  watch-app v0.34.0, `LocationRequestWorker.kt`). La risposta delle 12:11
+  (73 m, nessun satellite durante il tentativo) era la posizione Wi-Fi in
+  cache del tracking da fermo: `getCurrentLocation(HIGH_ACCURACY)` la
+  restituiva senza accendere il GPS. Ora aggiornamenti continui ad alta
+  precisione con `maxUpdateAge = 0`, primo punto entro 90 s e poi fino a
+  30 s per un fix migliore (stop subito sotto 20 m). Vale per "Invia
+  posizione" sul watch e per "Aggiorna posizione" dal telefono.
+
+### Verificato
+- Autonomia stimata di Wear OS visibile e valorizzata sulla phone-app
+  (5,5 h al 59%, confermato dall'utente): chiusa la questione di v0.100.2.
+- Il silenzio dalle 01:23 alle 11:46 del 24/9 era l'app in stato di
+  arresto forzato dopo la sessione di Android Studio: ripartita appena il
+  bambino l'ha aperta (Invia posizione 11:47).
+
+### Known limitations
+- Il tracking automatico da fermo resta volutamente su Wi-Fi/rete
+  (decisione del 24/9, v0.99.0); GPS anche da fermo con l'interruttore
+  "Alta precisione da fermo" nelle Impostazioni della phone-app.
+- watch-app non compilata in questa sessione.
+
 ## [0.100.4] - 2026-09-24
 
 ### Fixed

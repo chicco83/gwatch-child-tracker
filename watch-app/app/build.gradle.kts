@@ -150,8 +150,11 @@ android {
         // (location/BatteryInfo.kt v0.12.0, richiesta utente).
         // v0.33.0 (2026-09-24): niente piu' falso "watch riacceso" a ogni
         // Run da Android Studio (location/WatchStateReporter.kt v0.3.0).
-        versionCode = 33
-        versionName = "0.33.0"
+        // v0.34.0 (2026-09-24): posizione su richiesta con GPS acceso davvero
+        // (niente cache, attesa fino a 30 s di un fix migliore;
+        // location/LocationRequestWorker.kt acquireBestLocation).
+        versionCode = 34
+        versionName = "0.34.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

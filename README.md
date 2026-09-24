@@ -61,7 +61,9 @@ Firebase (piano gratuito).
 
 - **Invia posizione**
 
-  Pulsante che invia subito la posizione al telefono. Durante il
+  Pulsante che invia subito la posizione al telefono. Accende davvero il
+  GPS (niente posizione in cache) e aspetta fino a 30 s un fix sotto i
+  20 m; al chiuso, se il GPS non aggancia, invia la migliore ottenuta. Durante il
   tentativo diventa una barra blu (max 90 s), poi verde per qualche
   secondo se l'invio riesce, rosso fisso "GPS assente" se non c'è segnale.
 

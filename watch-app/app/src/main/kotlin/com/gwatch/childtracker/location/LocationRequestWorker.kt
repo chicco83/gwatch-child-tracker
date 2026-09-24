@@ -4,15 +4,21 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.gwatch.childtracker.network.BackendClient
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Invio manuale/su richiesta remota della posizione attuale — pulsante
@@ -88,6 +94,64 @@ class LocationRequestWorker(
     //     CurrentLocationRequest.Builder()
     //         .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
     //         .build(),
+    // 2026-09-24: segnalato dall'utente — le posizioni su richiesta erano
+    // "da rete, non GPS" (12:11 del 24/9: 73 m, nessun satellite durante il
+    // tentativo). getCurrentLocation() restituiva una posizione gia' in
+    // cache (quella Wi-Fi del tracking da fermo) senza nemmeno accendere il
+    // GPS: HIGH_ACCURACY vuol dire "la migliore disponibile", non "GPS".
+    // Ora (acquireBestLocation) aggiornamenti continui ad alta precisione
+    // con maxUpdateAge 0 (niente cache, GPS acceso davvero), e dopo il primo
+    // punto si aspetta fino a IMPROVE_WINDOW_MS un fix migliore, fermandosi
+    // subito sotto GOOD_ACCURACY_M. Al chiuso il GPS puo' non agganciare: in
+    // quel caso si invia comunque il migliore ottenuto (anche Wi-Fi).
+    // Precedente (2026-09-23), dentro sendCurrentLocation:
+    //     LocationServices.getFusedLocationProviderClient(appContext)
+    //         .getCurrentLocation(
+    //             CurrentLocationRequest.Builder()
+    //                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+    //                 .setDurationMillis(FIX_TIMEOUT_MS)
+    //                 .build(),
+    //             null,
+    //         )
+    //         .await()
+    @SuppressLint("MissingPermission")
+    private suspend fun acquireBestLocation(): Location? {
+        val client = LocationServices.getFusedLocationProviderClient(appContext)
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
+            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS / 2)
+            .setMaxUpdateAgeMillis(0)
+            .build()
+        val fixes = Channel<Location>(Channel.UNLIMITED)
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.locations.forEach { fixes.trySend(it) }
+            }
+        }
+        client.requestLocationUpdates(request, callback, Looper.getMainLooper()).await()
+        var best: Location? = null
+        try {
+            withTimeoutOrNull(FIX_TIMEOUT_MS) {
+                // Primo punto: si aspetta quanto serve (entro FIX_TIMEOUT_MS).
+                best = fixes.receive()
+                Log.i(TAG, "primo punto: ${best?.accuracy} m (${best?.provider})")
+                if ((best?.accuracy ?: Float.MAX_VALUE) <= GOOD_ACCURACY_M) return@withTimeoutOrNull
+                // Poi fino a IMPROVE_WINDOW_MS per un fix migliore (GPS).
+                withTimeoutOrNull(IMPROVE_WINDOW_MS) {
+                    while (true) {
+                        val fix = fixes.receive()
+                        if (fix.accuracy < (best?.accuracy ?: Float.MAX_VALUE)) best = fix
+                        if (fix.accuracy <= GOOD_ACCURACY_M) break
+                    }
+                }
+            }
+        } finally {
+            client.removeLocationUpdates(callback)
+            fixes.close()
+        }
+        Log.i(TAG, "punto scelto: ${best?.accuracy} m (${best?.provider})")
+        return best
+    }
+
     @SuppressLint("MissingPermission")
     private suspend fun sendCurrentLocation(source: String): Result {
         GpsAssist.injectAssistance(appContext)
@@ -95,16 +159,10 @@ class LocationRequestWorker(
         // alla phone-app (richiesta utente). Nessun consumo in piu': ascolta
         // solo mentre il GPS e' gia' acceso per questa richiesta.
         val gnss = GnssCounter(appContext).also { it.start() }
+        // 2026-09-24: acquireBestLocation() al posto di getCurrentLocation
+        // (vedi commento sopra acquireBestLocation).
         val location = try {
-            LocationServices.getFusedLocationProviderClient(appContext)
-                .getCurrentLocation(
-                    CurrentLocationRequest.Builder()
-                        .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                        .setDurationMillis(FIX_TIMEOUT_MS)
-                        .build(),
-                    null,
-                )
-                .await()
+            acquireBestLocation()
         } catch (e: Exception) {
             Log.w(TAG, "doWork: fix GPS fallito", e)
             null
@@ -177,6 +235,13 @@ class LocationRequestWorker(
         // 10 minuti concessi da WorkManager a un worker.
         // 2026-09-23: pubblica, la usa anche la barra di progresso in MainActivity.
         const val FIX_TIMEOUT_MS = 90_000L
+        // 2026-09-24: vedi acquireBestLocation(). Dopo il primo punto si
+        // aspetta al massimo 30 s un fix GPS migliore; sotto i 20 m ci si
+        // ferma subito. Il totale resta entro FIX_TIMEOUT_MS (la barra
+        // di progresso sul watch non cambia).
+        private const val UPDATE_INTERVAL_MS = 1_000L
+        private const val IMPROVE_WINDOW_MS = 30_000L
+        private const val GOOD_ACCURACY_M = 20f
         const val WORK_NAME = "location-request"
         const val KEY_SOURCE = "source"
         const val SOURCE_CHILD = "child"
