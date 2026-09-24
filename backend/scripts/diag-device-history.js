@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Diagnostica di SOLA LETTURA dello storico dei dispositivi.
- * Versione: 0.8.2 (2026-09-24)
+ * Versione: 0.8.3 (2026-09-24)
  *
  * Serve a datare un problema ("da quando non arrivano piu' posizioni /
  * eventi zona?") senza aprire la Firebase Console. Autorizzata
@@ -40,6 +40,9 @@
  *   invece di "null visti, null agganciati".
  * - 0.8.2 (2026-09-24): stampa anche batteryHoursRemaining (autonomia
  *   stimata), per capire perche' non compare mai sulla phone-app.
+ * - 0.8.3 (2026-09-24): stampa watchState (stato/evento/ora/da quando),
+ *   silenceAlertAt e il "since" degli eventi watch_* — per ricostruire i
+ *   periodi di modalita' aereo/spegnimento.
  * Sicurezza: nessuna scrittura (solo get()).
  *
  * Uso (stesse credenziali del backend, gia' nell'ambiente):
@@ -104,6 +107,12 @@ async function main() {
         ? `GPS non usato (posizione da Wi-Fi/rete), ${iso(toDate(d.gnss.at))}`
         : `${d.gnss.visible} visti, ${d.gnss.used} agganciati, ${iso(toDate(d.gnss.at))}`;
     console.log(`  gnss: ${gnssText}`);
+    // v0.8.3: stato del watch e avviso "watch muto".
+    const ws = d.watchState;
+    console.log(
+      `  watchState: ${ws ? `${ws.state} (${ws.event}) at ${iso(toDate(ws.at))} since ${iso(toDate(ws.since))}` : "-"}` +
+        `   silenceAlertAt: ${iso(toDate(d.silenceAlertAt))}`,
+    );
 
     // Posizioni: conteggio per giorno + ultime 8 (orario e precisione).
     const locs = await dev.ref.collection("locations").where("timestamp", ">=", since).get();
@@ -171,12 +180,13 @@ async function main() {
     const rows = evs.docs
       .map((e) => {
         const v = e.data();
-        return { t: toDate(v.timestamp), type: v.type, source: v.source || "", acc: v.accuracy };
+        // v0.8.3: aggiunto since (eventi watch_*). Precedente: senza since.
+        return { t: toDate(v.timestamp), type: v.type, source: v.source || "", acc: v.accuracy, since: toDate(v.since) };
       })
       .filter((r) => r.t)
       .sort((a, b) => b.t - a.t);
     console.log(`  eventi (${rows.length}, piu' recenti per primi):`);
-    (listAll ? rows : rows.slice(0, 40)).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}${r.acc != null ? "  " + Math.round(r.acc) + " m" : ""}`));
+    (listAll ? rows : rows.slice(0, 40)).forEach((r) => console.log(`    ${iso(r.t)}  ${r.type}${r.source ? " (" + r.source + ")" : ""}${r.acc != null ? "  " + Math.round(r.acc) + " m" : ""}${r.since ? "  (da " + iso(r.since) + ")" : ""}`));
     console.log("");
   }
 }
