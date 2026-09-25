@@ -156,8 +156,10 @@ android {
         // v0.35.0 (2026-09-24): caricamento immediato (lavoro espedito)
         // quando la batteria scende a 10/5/2 %, per l'avviso di batteria
         // scarica senza ritardi (location/LowBatteryTrigger.kt).
-        versionCode = 35
-        versionName = "0.35.0"
+        // v0.36.0 (2026-09-25): richiesta di posizione anche al GPS di
+        // sistema, satelliti letti dal fix GPS (LocationRequestWorker.kt).
+        versionCode = 36
+        versionName = "0.36.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

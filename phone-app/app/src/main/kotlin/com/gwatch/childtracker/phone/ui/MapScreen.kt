@@ -100,6 +100,9 @@ package com.gwatch.childtracker.phone.ui
 //   (🔌) accanto al nome del bambino quando il watch e' collegato al
 //   caricatore (DeviceState.charging), vedi watchHeaderIcon(). Il watch
 //   invia il cambio subito (WatchStateReporter v0.2.0 lato watch).
+// v0.14.0 (2026-09-25): richiesta automatica della posizione solo alla
+//   prima apertura del processo e solo se l'ultima posizione ha piu' di
+//   10 minuti (prima ripartiva a ogni ritorno dal background).
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -239,11 +242,30 @@ fun MapScreen(
     // scatti una sola volta per apertura, alla prima lista non vuota,
     // invece di ripartire ad ogni ricomposizione o cambio di
     // "children" successivo (es. un bambino rinominato).
-    var hasAutoRequestedLocation by remember { mutableStateOf(false) }
-    LaunchedEffect(children) {
-        if (!hasAutoRequestedLocation && children.isNotEmpty()) {
-            hasAutoRequestedLocation = true
-            children.forEach { child -> viewModel.requestLocation(child.id) {} }
+    // 2026-09-25: segnalato dall'utente — tornando sull'app dal background
+    // partiva ogni volta una nuova richiesta. Il flag "remember" si azzerava
+    // quando MapScreen usciva dalla composizione (altre schermate) o
+    // l'Activity veniva ricreata. Ora: flag per bambino nel ViewModel (una
+    // volta per processo) e richiesta solo se l'ultima posizione ha piu' di
+    // AUTO_REQUEST_STALE_MS (il tracking ne manda una ogni 5-10'). Si
+    // aspetta lo stato del bambino da Firestore prima di decidere.
+    // Precedente (2026-09-22, v0.12.0):
+    // var hasAutoRequestedLocation by remember { mutableStateOf(false) }
+    // LaunchedEffect(children) {
+    //     if (!hasAutoRequestedLocation && children.isNotEmpty()) {
+    //         hasAutoRequestedLocation = true
+    //         children.forEach { child -> viewModel.requestLocation(child.id) {} }
+    //     }
+    // }
+    LaunchedEffect(children, deviceStates) {
+        val now = System.currentTimeMillis()
+        children.forEach { child ->
+            val state = deviceStates[child.id] ?: return@forEach
+            if (!viewModel.markAutoRequestChecked(child.id)) return@forEach
+            val lastSeen = state.lastSeenMillis
+            if (lastSeen == null || now - lastSeen > AUTO_REQUEST_STALE_MS) {
+                viewModel.requestLocation(child.id) {}
+            }
         }
     }
 
@@ -622,10 +644,15 @@ private fun StatusCard(
                 // 2026-09-23: satelliti dell'ultimo tentativo (richiesta utente);
                 // "GPS non usato" se la posizione e' arrivata da Wi-Fi/rete.
                 // Precedente: riga mostrata solo con satsVisible/satsUsed presenti.
+                // 2026-09-25: anche solo "N agganciati" (i visti non arrivano
+                // se il watch e' in background) e "GPS acceso" senza numero.
+                // Precedente: solo "visti/agganciati" con entrambi presenti.
                 val satsText = when {
                     state.gnssActive == false -> stringResource(R.string.status_sats_not_used)
                     state.satsVisible != null && state.satsUsed != null ->
                         stringResource(R.string.status_sats_format, state.satsVisible, state.satsUsed)
+                    state.satsUsed != null -> stringResource(R.string.status_sats_used_only, state.satsUsed)
+                    state.gnssActive == true -> stringResource(R.string.status_sats_active_unknown)
                     else -> null
                 }
                 if (satsText != null) {
@@ -857,6 +884,9 @@ private fun watchHeaderIcon(state: DeviceState, nowMillis: Long): String? {
 // Il tracking da fermo manda punti almeno ogni 10', l'upload ogni 15'.
 private const val UNREACHABLE_AFTER_MS = 30 * 60 * 1000L
 private const val STATE_CONTACT_MARGIN_MS = 60 * 1000L
+// 2026-09-25: richiesta automatica all'apertura solo se l'ultima posizione
+// e' piu' vecchia di cosi' (vedi LaunchedEffect(children, deviceStates)).
+private const val AUTO_REQUEST_STALE_MS = 10 * 60 * 1000L
 
 private fun eventLabel(type: String, zoneName: String?): String = when (type) {
     "sos" -> "🆘 SOS"

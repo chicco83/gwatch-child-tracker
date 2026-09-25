@@ -18,6 +18,9 @@
     <string name="status_sats_label">Satelliti (ultimo tentativo):</string>
     <string name="status_sats_format">%1$d visti, %2$d agganciati</string>
     <string name="status_sats_not_used">GPS non usato (posizione da Wi-Fi/rete)</string>
+    <!-- 2026-09-25: solo satelliti agganciati (i visti non sono noti) / GPS acceso senza numero -->
+    <string name="status_sats_used_only">%1$d agganciati</string>
+    <string name="status_sats_active_unknown">GPS acceso</string>
     <!-- 2026-09-23: nuovo tentativo automatico di richiesta posizione -->
     <!-- 2026-09-24: alta precisione del tracking da fermo -->
     <string name="settings_tracking_label">Alta precisione da fermo</string>

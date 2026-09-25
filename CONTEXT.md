@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.101.1
+**Versione contesto:** 0.101.2
 **Ultimo aggiornamento:** 2026-09-24
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.35.0**, phone-app **v0.26.0**, backend `trigger-event.js` **v0.24.0**
+**v0.36.0**, phone-app **v0.27.0**, backend `trigger-event.js` **v0.25.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2803,3 +2803,10 @@ CHANGELOG.md  Storico versioni
   senza Wi-Fi era la posizione in cache (watch ancora < v0.34). Consumo
   pomeridiano ~17%/h con punti da fermo a 13-17 m (GPS acceso anche da
   fermo?) da verificare con batterystats.
+- 2026-09-25: Giornata "nella norma" secondo l'utente. Restavano: "GPS non
+  usato" fisso e satelliti mai visti → GnssStatus.Callback non arriva ai
+  worker in background (Android lo limita alle app in primo piano);
+  aggiunta la richiesta diretta a GPS_PROVIDER con satelliti dagli extras
+  del fix (watch v0.36.0, trigger-event v0.25.0, phone v0.27.0). Richiesta
+  automatica all'apertura: flag spostato nel ViewModel + soglia 10' di
+  freschezza.

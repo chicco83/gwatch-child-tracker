@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.24.0
+ * Versione: 0.25.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -214,6 +214,8 @@
  *   batteria/charging e lastStatusAt ma NON lastNoFixAt (non e' un
  *   tentativo di fix fallito) e non tocca watchState. Nessuna push e
  *   nessun evento nello storico (solo l'icona).
+ * - 0.25.0 (2026-09-25): gnssUpdate accetta i soli satelliti agganciati
+ *   (visti null) e "GPS acceso" senza numeri (vedi gnssUpdate).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -230,13 +232,21 @@ const EVENT_RETENTION_HOURS = 24 * 365;
 
 // v0.20.0: {visible, used, at} se il watch ha mandato i satelliti, altrimenti null.
 // v0.21.0: gnssActive=false -> GPS non usato (posizione da rete).
-// Precedente: function gnssUpdate(satsVisible, satsUsed) senza gnssActive.
+// v0.25.0 (2026-09-25): basta satsUsed (visible puo' mancare: il watch in
+// background ha solo i satelliti del fix GPS, non quelli visti), e
+// gnssActive=true senza numeri viene salvato comunque (GPS acceso, numero
+// ignoto) invece di lasciare il dato precedente.
+// Precedente (v0.21.0):
+//   if (typeof satsVisible !== "number" || typeof satsUsed !== "number") return null;
+//   return { active: true, visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
 function gnssUpdate(satsVisible, satsUsed, gnssActive) {
   if (gnssActive === false) {
     return { active: false, visible: null, used: null, at: FieldValue.serverTimestamp() };
   }
-  if (typeof satsVisible !== "number" || typeof satsUsed !== "number") return null;
-  return { active: true, visible: satsVisible, used: satsUsed, at: FieldValue.serverTimestamp() };
+  const visible = typeof satsVisible === "number" ? satsVisible : null;
+  const used = typeof satsUsed === "number" ? satsUsed : null;
+  if (gnssActive !== true && used === null) return null;
+  return { active: true, visible, used, at: FieldValue.serverTimestamp() };
 }
 
 // v0.22.0: stati del watch accettati nello "status" e loro traduzione.

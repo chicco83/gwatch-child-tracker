@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -114,6 +116,22 @@ class LocationRequestWorker(
     //             null,
     //         )
     //         .await()
+    // 2026-09-25: segnalato dall'utente — dopo la v0.34 la phone-app diceva
+    // ancora sempre "GPS non usato" e il numero di satelliti non e' MAI
+    // comparso. Il conteggio dipendeva solo da GnssStatus.Callback
+    // (GnssCounter), che Android consegna solo alle app considerate in
+    // primo piano: da un worker in background non arriva nulla, e il
+    // fused provider puo' comunque rispondere col Wi-Fi senza che si sappia
+    // se il GPS e' stato acceso. Ora durante la richiesta si chiede il fix
+    // ANCHE direttamente al GPS di sistema (LocationManager.GPS_PROVIDER):
+    // (1) il GPS si accende di sicuro; (2) un fix da questa fonte e' GPS
+    // per definizione; (3) il fix GPS riporta nei suoi extras
+    // "satellites" = satelliti usati, disponibile anche senza GnssStatus.
+    // I fix delle due fonti finiscono nello stesso canale, vince il piu'
+    // preciso come prima.
+    private var gpsFixReceived = false
+    private var gpsSatellitesInFix: Int? = null
+
     @SuppressLint("MissingPermission")
     private suspend fun acquireBestLocation(): Location? {
         val client = LocationServices.getFusedLocationProviderClient(appContext)
@@ -128,6 +146,23 @@ class LocationRequestWorker(
             }
         }
         client.requestLocationUpdates(request, callback, Looper.getMainLooper()).await()
+        // 2026-09-25: fonte GPS diretta, vedi commento sopra.
+        val locationManager = appContext.getSystemService(LocationManager::class.java)
+        val gpsListener = LocationListener { fix ->
+            gpsFixReceived = true
+            fix.extras?.getInt("satellites", -1)?.takeIf { it >= 0 }?.let { gpsSatellitesInFix = it }
+            Log.i(TAG, "fix GPS diretto: ${fix.accuracy} m, satelliti=${gpsSatellitesInFix}")
+            fixes.trySend(fix)
+        }
+        runCatching {
+            locationManager?.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                UPDATE_INTERVAL_MS,
+                0f,
+                ContextCompat.getMainExecutor(appContext),
+                gpsListener,
+            )
+        }.onFailure { Log.w(TAG, "richiesta GPS diretta fallita", it) }
         var best: Location? = null
         try {
             withTimeoutOrNull(FIX_TIMEOUT_MS) {
@@ -146,6 +181,7 @@ class LocationRequestWorker(
             }
         } finally {
             client.removeLocationUpdates(callback)
+            runCatching { locationManager?.removeUpdates(gpsListener) }
             fixes.close()
         }
         Log.i(TAG, "punto scelto: ${best?.accuracy} m (${best?.provider})")
@@ -169,11 +205,18 @@ class LocationRequestWorker(
         } finally {
             gnss.stop()
         }
+        // 2026-09-25: se GnssStatus non arriva (app in background, vedi
+        // acquireBestLocation) si usano i satelliti riportati dal fix GPS
+        // diretto: solo "agganciati", i "visti" restano sconosciuti (null).
+        // gnssActive = il GPS ha dato almeno un segnale (stato o fix).
+        // Precedente (2026-09-23):
+        // val satsVisible = gnss.maxVisible.takeIf { gnss.received }
+        // val satsUsed = gnss.maxUsed.takeIf { gnss.received }
+        // val gnssActive = gnss.received
         val satsVisible = gnss.maxVisible.takeIf { gnss.received }
-        val satsUsed = gnss.maxUsed.takeIf { gnss.received }
-        // 2026-09-23: false = nessun dato satelliti, cioe' posizione arrivata
-        // da Wi-Fi/rete senza accendere il GPS (mostrato sulla phone-app).
-        val gnssActive = gnss.received
+        val satsUsed = if (gnss.received) gnss.maxUsed else gpsSatellitesInFix
+        val gnssActive = gnss.received || gpsFixReceived
+        Log.i(TAG, "doWork: GnssStatus=${gnss.received} fixGPS=$gpsFixReceived")
         Log.i(TAG, "doWork: satelliti visti=$satsVisible agganciati=$satsUsed")
         if (location == null) {
             Log.w(TAG, "doWork: fix GPS non disponibile (null), ritento piu' tardi")

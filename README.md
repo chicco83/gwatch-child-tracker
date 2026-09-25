@@ -62,7 +62,8 @@ Firebase (piano gratuito).
 - **Invia posizione**
 
   Pulsante che invia subito la posizione al telefono. Accende davvero il
-  GPS (niente posizione in cache) e aspetta fino a 30 s un fix sotto i
+  GPS (niente posizione in cache, richiesta anche al GPS di sistema, che
+  riporta i satelliti agganciati) e aspetta fino a 30 s un fix sotto i
   20 m; al chiuso, se il GPS non aggancia, invia la migliore ottenuta. Durante il
   tentativo diventa una barra blu (max 90 s), poi verde per qualche
   secondo se l'invio riesce, rosso fisso "GPS assente" se non c'è segnale.
@@ -147,7 +148,8 @@ Firebase (piano gratuito).
 - **Aggiorna posizione**
 
   Chiede la posizione al watch, anche in automatico all'apertura
-  dell'app. Mostra "In attesa della posizione dal watch…" e, se non
+  dell'app (solo se l'ultima posizione ha più di 10 minuti, non a ogni
+  ritorno dal background). Mostra "In attesa della posizione dal watch…" e, se non
   arriva, "nuovo tentativo tra N s": riprova fino a 20 volte (circa un'ora).
 
 - **Zone**

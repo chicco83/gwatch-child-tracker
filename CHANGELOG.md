@@ -7,6 +7,29 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.101.2] - 2026-09-25
+
+### Fixed
+- **"GPS non usato" sempre, satelliti mai mostrati** (segnalato
+  dall'utente; watch-app v0.36.0, `LocationRequestWorker.kt`). Il
+  conteggio dipendeva solo da `GnssStatus.Callback`, che Android consegna
+  alle app in primo piano: dal worker in background non arrivava mai.
+  Ora la richiesta chiede il fix anche a `LocationManager.GPS_PROVIDER`:
+  il GPS si accende di sicuro, un fix da li' e' GPS per definizione e
+  porta negli extras i satelliti usati. `trigger-event.js` v0.25.0
+  accetta i soli "agganciati" (visti null) e "GPS acceso" senza numero;
+  la phone-app (v0.27.0) mostra "N agganciati" o "GPS acceso".
+- **Richiesta di posizione a ogni ritorno sull'app** (phone-app v0.27.0,
+  `MapScreen.kt`): il flag "gia' richiesta" era un `remember` e si
+  azzerava uscendo dalla schermata o con l'Activity ricreata. Ora e' nel
+  ViewModel (una volta per processo) e la richiesta parte solo se
+  l'ultima posizione ha piu' di 10 minuti.
+
+### Known limitations
+- Da confermare sul watch che il GPS di sistema risponda anche con l'app
+  in background (log `adb logcat -s LocationRequestWorker`, riga "fix GPS
+  diretto"). watch-app e phone-app non compilate in questa sessione.
+
 ## [0.101.1] - 2026-09-24
 
 ### Fixed

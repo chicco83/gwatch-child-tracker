@@ -348,6 +348,15 @@ class AppViewModel(
     val retryStates: StateFlow<Map<String, LocationRetry>> = _retryStates.asStateFlow()
     private val insistJobs = mutableMapOf<String, Job>()
 
+    // 2026-09-25: bambini per cui la richiesta automatica all'apertura e'
+    // gia' stata valutata in questo processo (vedi MapScreen). Nel
+    // ViewModel e non in un "remember": sopravvive al cambio di schermata
+    // e al ritorno dal background.
+    private val autoRequestChecked = mutableSetOf<String>()
+
+    /** true solo la prima volta per bambino (per processo). */
+    fun markAutoRequestChecked(childId: String): Boolean = autoRequestChecked.add(childId)
+
     fun requestLocation(childId: String, onResult: (Boolean) -> Unit) {
         val user = _user.value ?: return onResult(false)
         insistJobs.remove(childId)?.cancel()

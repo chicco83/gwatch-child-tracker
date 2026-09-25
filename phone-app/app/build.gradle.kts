@@ -142,8 +142,11 @@ android {
         // bambino (ui/MapScreen.kt watchHeaderIcon).
         // v0.26.0 (2026-09-24): push di sistema nel canale "alerts" con
         // l'icona di notifica (AndroidManifest.xml, meta-data FCM).
-        versionCode = 26
-        versionName = "0.26.0"
+        // v0.27.0 (2026-09-25): richiesta automatica all'apertura solo se
+        // l'ultima posizione ha piu' di 10'; satelliti anche solo
+        // "agganciati" o "GPS acceso" (ui/MapScreen.kt).
+        versionCode = 27
+        versionName = "0.27.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai
