@@ -145,8 +145,11 @@ android {
         // v0.27.0 (2026-09-25): richiesta automatica all'apertura solo se
         // l'ultima posizione ha piu' di 10'; satelliti anche solo
         // "agganciati" o "GPS acceso" (ui/MapScreen.kt).
-        versionCode = 27
-        versionName = "0.27.0"
+        // v0.28.0 (2026-10-01): richiesta di posizione che insiste con pause
+        // crescenti (60-300 s) e al massimo 10 tentativi, per non tenere
+        // acceso il GPS del watch (ui/AppViewModel.kt retryDelayMs).
+        versionCode = 28
+        versionName = "0.28.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

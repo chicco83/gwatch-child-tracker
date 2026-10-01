@@ -3,6 +3,7 @@ package com.gwatch.childtracker.location
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -96,7 +97,42 @@ class LocationTrackingService : Service() {
             if (lowBattery || pendingStore.size() >= UPLOAD_TRIGGER_THRESHOLD) {
                 enqueueImmediateUpload(expedited = lowBattery)
             }
+            adaptIntervalToDisplacement(location)
         }
+    }
+
+    // 2026-10-01: rete di sicurezza sul riconoscimento dell'attivita'
+    // (vedi ActivityTransitionReceiver). Il sistema puo' non segnalare mai
+    // "fermo" (o un nuovo "movimento"), e senza questo controllo il servizio
+    // resterebbe a GPS ogni minuto da fermo, oppure a un punto ogni 10' in
+    // cammino, fino alla transizione successiva. Si guarda lo spostamento
+    // reale: in "movimento", 5 punti entro 100 m = fermo; da "fermo", un
+    // punto a piu' di 200 m dal precedente (entrambi con precisione < 100 m,
+    // per non farsi ingannare da posizioni di rete imprecise) = movimento.
+    private val recentFixes = ArrayDeque<Location>()
+
+    private fun adaptIntervalToDisplacement(location: Location) {
+        recentFixes.addLast(location)
+        while (recentFixes.size > STILL_FIX_COUNT) recentFixes.removeFirst()
+
+        val target = when {
+            currentIntervalMillis == INTERVAL_MOVING_MS &&
+                recentFixes.size == STILL_FIX_COUNT &&
+                recentFixes.all { it.distanceTo(location) <= STILL_RADIUS_M } -> INTERVAL_STILL_MS
+            currentIntervalMillis == INTERVAL_STILL_MS &&
+                recentFixes.size >= 2 &&
+                location.hasAccuracy() && location.accuracy < MAX_RELIABLE_ACCURACY_M &&
+                recentFixes[recentFixes.size - 2].let { prev ->
+                    prev.hasAccuracy() && prev.accuracy < MAX_RELIABLE_ACCURACY_M &&
+                        prev.distanceTo(location) > MOVED_DISTANCE_M
+                } -> INTERVAL_MOVING_MS
+            else -> return
+        }
+        Log.i(TAG, "intervallo cambiato dallo spostamento reale: ${target / 60000} min")
+        currentIntervalMillis = target
+        recentFixes.clear()
+        recentFixes.addLast(location)
+        startLocationUpdates(target)
     }
 
     override fun onCreate() {
@@ -132,6 +168,7 @@ class LocationTrackingService : Service() {
 
         if (!updatesActive || newInterval != currentIntervalMillis) {
             currentIntervalMillis = newInterval
+            recentFixes.clear()
             startLocationUpdates(newInterval)
         }
         return START_STICKY
@@ -262,5 +299,11 @@ class LocationTrackingService : Service() {
         // Oltre questa soglia di punti bufferizzati, forza un upload
         // immediato invece di aspettare il prossimo giro periodico.
         private const val UPLOAD_TRIGGER_THRESHOLD = 15
+
+        // 2026-10-01: soglie di adaptIntervalToDisplacement().
+        private const val STILL_FIX_COUNT = 5
+        private const val STILL_RADIUS_M = 100f
+        private const val MOVED_DISTANCE_M = 200f
+        private const val MAX_RELIABLE_ACCURACY_M = 100f
     }
 }

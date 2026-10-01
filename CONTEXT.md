@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.101.2
-**Ultimo aggiornamento:** 2026-09-24
+**Versione contesto:** 0.102.0
+**Ultimo aggiornamento:** 2026-10-01
 
 ---
 
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.36.0**, phone-app **v0.27.0**, backend `trigger-event.js` **v0.25.0**
+**v0.37.0**, phone-app **v0.28.0**, backend `trigger-event.js` **v0.25.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2810,3 +2810,33 @@ CHANGELOG.md  Storico versioni
   del fix (watch v0.36.0, trigger-event v0.25.0, phone v0.27.0). Richiesta
   automatica all'apertura: flag spostato nel ViewModel + soglia 10' di
   freschezza.
+- 2026-10-01: Analisi consumi batteria su richiesta dell'utente (obiettivo
+  >10 ore, oggi ~5,5 h, ~17-18%/h). Dal logcat del 24/9: batteria in buono
+  stato (cc 232 mAh al 64% = ~363 mAh a piena carica), -105 mA a schermo
+  spento, ~40 risvegli/min da pacchetti di rete (debug ADB via Wi-Fi), nulla
+  di nostro nel log. Dalle statistiche batteria del watch: **~30% attribuito
+  al Play Store** (non al nostro codice; ipotesi da verificare con
+  `dumpsys batterystats`/`dumpsys jobscheduler`: aggiornamenti automatici,
+  Play Protect, installazioni ripetute da Android Studio). Corretti i punti
+  trovati nel codice (watch v0.37.0, phone v0.28.0): (1) fused provider di
+  `LocationRequestWorker` registrato fuori dal try/finally, GPS a 1 Hz
+  possibile se il lavoro veniva annullato (REPLACE da secondo tocco o
+  nuova richiesta) + pulsante non cliccabile durante l'invio; (2) in
+  `ActivityTransitionReceiver` conta solo l'ultima transizione, piu' rete
+  di sicurezza sullo spostamento reale in `LocationTrackingService` (5
+  punti entro 100 m = fermo; >200 m dal punto precedente = movimento;
+  scelto per non restare bloccati a GPS ogni minuto da fermi, ne' a 10'
+  in cammino se il sistema non segnala la ripartenza); (3) tetto di 2
+  tentativi sul watch (prima retry senza limite) e phone-app con pause
+  crescenti 60-300 s, 10 tentativi invece di 20 a 60 s; (4) A-GPS al
+  massimo ogni 6 h (era 10'), reset esplicito sempre immediato.
+  Non fatte per scelta, da proporre se non basta: `setNotificationResponsiveness`
+  delle geofence (ritarda ingresso/uscita zona), `setMaxUpdateDelayMillis`
+  in movimento, GPS ogni 2' invece di 1' in movimento, upload ogni 30' da
+  fermo (richiederebbe di adeguare le soglie "non raggiungibile" 30' e
+  "watch muto" 60'). Script diagnostico non eseguito: su questo PC manca
+  `FIREBASE_SERVICE_ACCOUNT_B64` e `backend/node_modules` e' incompleto
+  (`@google-cloud/firestore` assente, serve `npm ci`). Da fare con
+  l'utente: misura reale con `dumpsys batterystats` su una giornata, con
+  Debug wireless spento. Non compilato (nessun SDK). Rollback: `git revert`
+  del commit (v0.102.0).

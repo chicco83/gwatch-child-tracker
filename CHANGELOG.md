@@ -7,6 +7,39 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.102.0] - 2026-10-01
+
+### Fixed
+- **GPS di "Invia posizione" che poteva restare acceso** (analisi
+  consumi; watch-app v0.37.0, `LocationRequestWorker.kt`). La richiesta al
+  fused provider era registrata prima del `try/finally` che la toglie: se
+  il lavoro veniva annullato in quel punto (secondo tocco sul pulsante o
+  nuova richiesta del telefono, entrambi con `REPLACE`) il GPS restava a
+  1 Hz finche' viveva il processo. Registrazioni spostate dentro il `try`;
+  il pulsante non e' piu' cliccabile durante l'invio (`MainActivity.kt`).
+- **Modalita' "movimento" bloccata da fermo** (`ActivityTransitionReceiver.kt`).
+  Contava come movimento qualunque evento diverso da "fermo" in un gruppo
+  di transizioni consegnate insieme; ora conta solo l'ultimo. Rete di
+  sicurezza in `LocationTrackingService`: 5 punti entro 100 m in
+  "movimento" riportano a "fermo"; da "fermo" un punto a piu' di 200 m dal
+  precedente (precisione < 100 m) riporta a "movimento".
+
+### Changed
+- **Meno tentativi quando non c'e' fix** (watch-app v0.37.0, phone-app
+  v0.28.0). Il watch prova 2 volte e poi si ferma (prima `retry()` senza
+  limite, ogni giro con GPS fino a 90 s); sul watch compare "Invio
+  posizione fallito". La phone-app ripete la richiesta con pause crescenti
+  (60, 120, 180, 240, poi 300 s) e al massimo 10 volte (prima 20 a 60 s).
+- **A-GPS al massimo ogni 6 ore** (`GpsAssist.kt`, prima 10 minuti): le
+  effemeridi restano valide per giorni. "Reset dati GPS" resta immediato.
+
+### Known limitations
+- watch-app e phone-app non compilate in questa sessione (nessun SDK):
+  da compilare e provare in Android Studio. Il risparmio reale non e'
+  misurato: serve `dumpsys batterystats` su una giornata (vedi CONTEXT.md).
+- Rollback: `git revert <commit>` (modifiche confinate a watch-app e
+  phone-app, nessun cambio al backend).
+
 ## [0.101.2] - 2026-09-25
 
 ### Fixed

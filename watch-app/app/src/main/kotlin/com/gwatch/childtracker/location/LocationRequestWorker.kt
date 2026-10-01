@@ -145,7 +145,6 @@ class LocationRequestWorker(
                 result.locations.forEach { fixes.trySend(it) }
             }
         }
-        client.requestLocationUpdates(request, callback, Looper.getMainLooper()).await()
         // 2026-09-25: fonte GPS diretta, vedi commento sopra.
         val locationManager = appContext.getSystemService(LocationManager::class.java)
         val gpsListener = LocationListener { fix ->
@@ -154,17 +153,30 @@ class LocationRequestWorker(
             Log.i(TAG, "fix GPS diretto: ${fix.accuracy} m, satelliti=${gpsSatellitesInFix}")
             fixes.trySend(fix)
         }
-        runCatching {
-            locationManager?.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                UPDATE_INTERVAL_MS,
-                0f,
-                ContextCompat.getMainExecutor(appContext),
-                gpsListener,
-            )
-        }.onFailure { Log.w(TAG, "richiesta GPS diretta fallita", it) }
         var best: Location? = null
+        // 2026-10-01: le due registrazioni (fused e GPS diretto) sono ora
+        // DENTRO il try, cosi' il finally le toglie sempre. Prima il fused
+        // veniva registrato (.await()) prima del try: se il lavoro veniva
+        // annullato proprio li' (secondo tocco su "Invia posizione" o nuova
+        // richiesta del telefono, entrambe con ExistingWorkPolicy.REPLACE)
+        // la richiesta restava attiva senza nessuno che la togliesse: GPS
+        // ad alta precisione ogni secondo finche' il processo restava vivo.
+        // Precedente:
+        //     client.requestLocationUpdates(request, callback, Looper.getMainLooper()).await()
+        //     ... (registrazione del GPS diretto) ...
+        //     try {
+        //         withTimeoutOrNull(FIX_TIMEOUT_MS) {
         try {
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper()).await()
+            runCatching {
+                locationManager?.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    UPDATE_INTERVAL_MS,
+                    0f,
+                    ContextCompat.getMainExecutor(appContext),
+                    gpsListener,
+                )
+            }.onFailure { Log.w(TAG, "richiesta GPS diretta fallita", it) }
             withTimeoutOrNull(FIX_TIMEOUT_MS) {
                 // Primo punto: si aspetta quanto serve (entro FIX_TIMEOUT_MS).
                 best = fixes.receive()
@@ -236,7 +248,7 @@ class LocationRequestWorker(
                 gnssActive = gnssActive,
             )
             Log.i(TAG, "doWork: stato batteria senza posizione inviato=$statusSent")
-            return Result.retry()
+            return retryOrGiveUp()
         }
         GpsAvailability.markAvailable()
 
@@ -265,7 +277,22 @@ class LocationRequestWorker(
         )
         // 2026-09-23: conferma verde sul pulsante del watch (GpsAvailability).
         if (result.ok) GpsAvailability.markSent()
-        return if (result.ok) Result.success() else Result.retry()
+        return if (result.ok) Result.success() else retryOrGiveUp()
+    }
+
+    // 2026-10-01: tetto ai tentativi. Prima ogni fallimento (GPS assente o
+    // rete) era un Result.retry() senza limite: WorkManager ripartiva con
+    // backoff esponenziale e ogni giro riaccende il GPS fino a 90 s. In piu'
+    // il telefono ripete la richiesta da solo (AppViewModel), quindi i
+    // tentativi si moltiplicavano. Ora il watch prova MAX_ATTEMPTS volte e
+    // poi si ferma (stato FAILED: sul watch compare "Invio posizione fallito").
+    // Precedente: return Result.retry() in entrambi i punti.
+    private fun retryOrGiveUp(): Result {
+        if (runAttemptCount + 1 >= MAX_ATTEMPTS) {
+            Log.w(TAG, "doWork: $MAX_ATTEMPTS tentativi senza esito, mi fermo")
+            return Result.failure()
+        }
+        return Result.retry()
     }
 
     // 2026-09-23: un lavoro espedito su Android 11 (minSdk 30) richiede
@@ -285,6 +312,8 @@ class LocationRequestWorker(
         private const val UPDATE_INTERVAL_MS = 1_000L
         private const val IMPROVE_WINDOW_MS = 30_000L
         private const val GOOD_ACCURACY_M = 20f
+        // 2026-10-01: vedi retryOrGiveUp().
+        private const val MAX_ATTEMPTS = 2
         const val WORK_NAME = "location-request"
         const val KEY_SOURCE = "source"
         const val SOURCE_CHILD = "child"

@@ -44,7 +44,12 @@ import android.util.Log
  */
 object GpsAssist {
     private const val TAG = "GpsAssist"
-    private const val MIN_INTERVAL_MS = 10 * 60 * 1000L
+    // 2026-10-01: 6 ore invece di 10 minuti. Effemeridi e ora restano valide
+    // per giorni; ogni passaggio a "movimento" e ogni richiesta di posizione
+    // riscaricava i dati via LTE senza motivo. Il reset esplicito dalla
+    // schermata Ricerca GPS passa comunque con force=true.
+    // Precedente: private const val MIN_INTERVAL_MS = 10 * 60 * 1000L
+    private const val MIN_INTERVAL_MS = 6 * 60 * 60 * 1000L
 
     @Volatile
     private var lastInjectionElapsed = 0L

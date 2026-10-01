@@ -607,8 +607,11 @@ private fun LocationButton(sending: Boolean, gpsAvailable: Boolean?, onClick: ()
                 .fillMaxWidth()
                 .height(52.dp)
                 .clip(RoundedCornerShape(26.dp))
-                .background(Color(0xFF263238))
-                .clickable(onClick = onClick),
+                .background(Color(0xFF263238)),
+            // 2026-10-01: niente piu' clickable durante l'invio. Un secondo
+            // tocco rimetteva in coda il lavoro con REPLACE, annullando il
+            // tentativo in corso (vedi LocationRequestWorker.acquireBestLocation).
+            // Precedente: .clickable(onClick = onClick)
             contentAlignment = Alignment.CenterStart,
         ) {
             Box(

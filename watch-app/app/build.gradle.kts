@@ -158,8 +158,14 @@ android {
         // scarica senza ritardi (location/LowBatteryTrigger.kt).
         // v0.36.0 (2026-09-25): richiesta di posizione anche al GPS di
         // sistema, satelliti letti dal fix GPS (LocationRequestWorker.kt).
-        versionCode = 36
-        versionName = "0.36.0"
+        // v0.37.0 (2026-10-01): consumo batteria — GPS di "Invia posizione"
+        // sempre rilasciato anche se il lavoro viene annullato, pulsante
+        // inerte durante l'invio, al massimo 2 tentativi (LocationRequestWorker),
+        // solo l'ultima transizione di attivita' conta + rete di sicurezza
+        // sullo spostamento reale (ActivityTransitionReceiver,
+        // LocationTrackingService), A-GPS al massimo ogni 6 ore (GpsAssist).
+        versionCode = 37
+        versionName = "0.37.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

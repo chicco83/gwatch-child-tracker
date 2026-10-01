@@ -50,7 +50,9 @@ Firebase (piano gratuito).
 
   Registra la posizione e la invia al backend a gruppi, ogni 15 minuti
   o prima se ci sono molti punti. Da fermo ogni 10 minuti usando Wi-Fi
-  e rete (poca batteria), in movimento ogni minuto con il GPS.
+  e rete (poca batteria), in movimento ogni minuto con il GPS. Il
+  passaggio fermo/movimento segue l'ultima attività rilevata e si
+  corregge da solo: 5 punti entro 100 m riportano a "fermo".
   Richiede sul watch "Migliora precisione" attiva (Impostazioni → Posizione).
 
 - **Avvio automatico**
@@ -150,7 +152,8 @@ Firebase (piano gratuito).
   Chiede la posizione al watch, anche in automatico all'apertura
   dell'app (solo se l'ultima posizione ha più di 10 minuti, non a ogni
   ritorno dal background). Mostra "In attesa della posizione dal watch…" e, se non
-  arriva, "nuovo tentativo tra N s": riprova fino a 20 volte (circa un'ora).
+  arriva, "nuovo tentativo tra N s": riprova fino a 10 volte con pause
+  crescenti da 1 a 5 minuti (circa tre quarti d'ora).
 
 - **Zone**
 

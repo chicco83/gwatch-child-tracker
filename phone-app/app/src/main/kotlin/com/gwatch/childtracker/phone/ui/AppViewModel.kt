@@ -382,10 +382,13 @@ class AppViewModel(
                 val succeeded = ok && waitForLocation(childId, requestedAt)
                 _retryStates.value = _retryStates.value - childId
                 if (succeeded || attempt >= MAX_LOCATION_ATTEMPTS) break
+                // 2026-10-01: pausa crescente (vedi retryDelayMs), per non
+                // riaccendere il GPS del watch ogni minuto per un'ora.
+                val retryDelay = retryDelayMs(attempt)
                 _retryStates.value = _retryStates.value + (
                     childId to LocationRetry(
-                        nextRetryAtMillis = System.currentTimeMillis() + RETRY_DELAY_MS,
-                        totalWaitMillis = RETRY_DELAY_MS,
+                        nextRetryAtMillis = System.currentTimeMillis() + retryDelay,
+                        totalWaitMillis = retryDelay,
                         attempt = attempt,
                     )
                 )
@@ -394,7 +397,7 @@ class AppViewModel(
                 // riaccensione del watch): se arriva, stop. Prima un semplice
                 // delay(RETRY_DELAY_MS) lasciava la barra a schermo anche con
                 // la posizione gia' ricevuta (segnalato dall'utente).
-                val arrived = withTimeoutOrNull(RETRY_DELAY_MS) {
+                val arrived = withTimeoutOrNull(retryDelay) {
                     deviceStates.first { states ->
                         (states[childId]?.lastSeenMillis ?: 0L) > requestedAt - CLOCK_MARGIN_MS
                     }
@@ -556,7 +559,16 @@ class AppViewModel(
 // Attesa della risposta del watch: copre i 90s massimi del suo tentativo GPS
 // (LocationRequestWorker.FIX_TIMEOUT_MS) piu' il tempo di consegna della push.
 private const val RESPONSE_TIMEOUT_MS = 120_000L
-private const val RETRY_DELAY_MS = 60_000L
-// 20 tentativi: circa un'ora di insistenza con l'app aperta.
-private const val MAX_LOCATION_ATTEMPTS = 20
+// 2026-10-01: pausa fra i tentativi crescente (60 s, 120 s, 180 s, 240 s, poi
+// 300 s) e 10 tentativi invece di 20 a 60 s fissi: ogni tentativo tiene il GPS
+// del watch acceso fino a 90 s, e senza segnale a 20 tentativi voleva dire
+// circa mezz'ora di GPS acceso nell'ora. Ora circa tre quarti d'ora in tutto.
+// Precedente:
+//     private const val RETRY_DELAY_MS = 60_000L
+//     private const val MAX_LOCATION_ATTEMPTS = 20
+private const val RETRY_STEP_MS = 60_000L
+private const val RETRY_MAX_DELAY_MS = 300_000L
+private const val MAX_LOCATION_ATTEMPTS = 10
+
+private fun retryDelayMs(attempt: Int): Long = minOf(RETRY_STEP_MS * attempt, RETRY_MAX_DELAY_MS)
 private const val CLOCK_MARGIN_MS = 10_000L

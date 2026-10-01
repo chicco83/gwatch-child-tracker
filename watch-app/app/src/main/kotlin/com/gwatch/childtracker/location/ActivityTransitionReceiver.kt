@@ -18,9 +18,16 @@ class ActivityTransitionReceiver : BroadcastReceiver() {
         if (!ActivityTransitionResult.hasResult(intent)) return
         val result = ActivityTransitionResult.extractResult(intent) ?: return
 
-        val moving = result.transitionEvents.any { event ->
-            event.activityType != DetectedActivity.STILL
-        }
+        // 2026-10-01: conta solo l'ULTIMA transizione. Con il watch in
+        // sospensione il sistema consegna gli eventi a gruppi: bastava un
+        // "cammina" in un gruppo che finiva con "fermo" per passare in
+        // "movimento" (GPS ogni minuto) e, non arrivando piu' nessun cambio,
+        // restarci per ore da fermi. Precedente:
+        //     val moving = result.transitionEvents.any { event ->
+        //         event.activityType != DetectedActivity.STILL
+        //     }
+        val last = result.transitionEvents.maxByOrNull { it.elapsedRealTimeNanos } ?: return
+        val moving = last.activityType != DetectedActivity.STILL
 
         val serviceIntent = Intent(context, LocationTrackingService::class.java)
             .putExtra(LocationTrackingService.EXTRA_MOVING, moving)
