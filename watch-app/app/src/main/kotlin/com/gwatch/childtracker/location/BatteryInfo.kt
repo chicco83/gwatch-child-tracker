@@ -104,11 +104,24 @@ object BatteryInfo {
 
         // EXTRA_PLUGGED e' diverso da 0 se collegato a un alimentatore
         // (AC/USB/wireless — sul watch, il caricabatterie a induzione):
-        // risponde direttamente a "sta caricando adesso", a differenza
-        // di EXTRA_STATUS che distinguerebbe anche "pieno mentre ancora
-        // collegato" come stato separato, distinzione non utile qui.
+        // dice solo "collegato", non "sta caricando" (vedi sotto).
         val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
-        val isCharging = if (plugged != -1) plugged != 0 else null
+        // 2026-10-02: "collegato" non basta. L'1/10 il watch e' stato sul
+        // caricatore con lo schermo sempre acceso (opzione sviluppatore
+        // "resta attivo in carica"): collegato ma in scarica (91% -> 30% in
+        // 7 ore) e comunque segnalato "in carica" (icona sulla phone-app,
+        // avvisi di batteria scarica soppressi, autonomia assente). Ora e'
+        // in carica solo se collegato E lo stato del sistema e' CHARGING o
+        // FULL; se lo stato manca si ripiega su "collegato". Precedente:
+        //     val isCharging = if (plugged != -1) plugged != 0 else null
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val isCharging = when {
+            plugged == -1 -> null
+            plugged == 0 -> false
+            status == -1 -> true
+            else -> status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL
+        }
 
         // Autonomia residua: ha senso solo in scarica, non mentre e' in
         // carica (li' il sistema stimerebbe semmai un tempo di carica

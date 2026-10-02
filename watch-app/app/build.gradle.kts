@@ -164,8 +164,11 @@ android {
         // solo l'ultima transizione di attivita' conta + rete di sicurezza
         // sullo spostamento reale (ActivityTransitionReceiver,
         // LocationTrackingService), A-GPS al massimo ogni 6 ore (GpsAssist).
-        versionCode = 37
-        versionName = "0.37.0"
+        // v0.38.0 (2026-10-02): "in carica" solo se collegato E con stato di
+        // sistema CHARGING/FULL (location/BatteryInfo.kt): un watch sul
+        // caricatore ma in scarica non risulta piu' in carica.
+        versionCode = 38
+        versionName = "0.38.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

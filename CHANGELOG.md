@@ -7,6 +7,22 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.102.1] - 2026-10-02
+
+### Fixed
+- **Watch sul caricatore ma in scarica segnalato "in carica"** (trovato
+  dai dati del 1/10; watch-app v0.38.0, `BatteryInfo.kt`). Il watch era
+  sul caricatore con lo schermo sempre acceso (opzione sviluppatore) e
+  non si caricava (91% -> 30% in 7 ore), ma `EXTRA_PLUGGED` lo dava "in
+  carica": icona 🔌 errata, autonomia assente e avvisi di batteria
+  scarica soppressi (il backend li salta in carica). Ora e' in carica
+  solo se collegato e con stato di sistema CHARGING/FULL; senza stato si
+  ripiega su "collegato". L'evento istantaneo di collegamento resta
+  basato sul broadcast e viene corretto dalla lettura successiva.
+
+### Known limitations
+- Non compilato (nessun SDK). Rollback: `git revert <commit>`.
+
 ## [0.102.0] - 2026-10-01
 
 ### Fixed

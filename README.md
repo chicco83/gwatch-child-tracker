@@ -99,7 +99,10 @@ Firebase (piano gratuito).
   inviati con ogni posizione, con ogni evento zona e anche quando il GPS
   non trova la posizione, così sul telefono restano sempre aggiornati.
   Collegando o scollegando il caricatore lo stato parte subito (appena
-  c'è rete), senza aspettare la posizione successiva.
+  c'è rete), senza aspettare la posizione successiva. "In carica" vale
+  solo se il watch si sta davvero caricando: sul caricatore ma in
+  scarica (es. schermo sempre acceso) non lo è, e gli avvisi di batteria
+  scarica restano attivi.
   L'autonomia è la previsione di Wear OS (la stessa delle impostazioni
   batteria), non calcolata dall'app: se il sistema non ne fornisce una
   (o su Wear OS 3) la riga "Autonomia" sul telefono non compare.

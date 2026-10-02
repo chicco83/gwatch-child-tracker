@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.102.0
-**Ultimo aggiornamento:** 2026-10-01
+**Versione contesto:** 0.102.1
+**Ultimo aggiornamento:** 2026-10-02
 
 ---
 
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.37.0**, phone-app **v0.28.0**, backend `trigger-event.js` **v0.25.0**
+**v0.38.0**, phone-app **v0.28.0**, backend `trigger-event.js` **v0.25.0**
 (`parent-command.js`/`device-config.js` v0.5.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2840,3 +2840,19 @@ CHANGELOG.md  Storico versioni
   l'utente: misura reale con `dumpsys batterystats` su una giornata, con
   Debug wireless spento. Non compilato (nessun SDK). Rollback: `git revert`
   del commit (v0.102.0).
+- 2026-10-02: Dati reali (diagnostica eseguita dalla sessione cloud su
+  richiesta, 29/9-2/10). (1) Il consumo NON dipende dal tracking: 29/9 a
+  scuola con GPS ogni minuto ~13%/h, da fermo ~12,6%/h; 2/10 a scuola
+  sempre fermo ~20%/h (Wear OS stima 3,1 h); a casa sul Wi-Fi 4-6%/h.
+  Ipotesi principale: LTE a scuola e/o uso dello schermo, piu' Play Store
+  (~30% nelle statistiche dell'utente); da misurare con `dumpsys
+  batterystats` SENZA --reset (copre gia' il periodo dall'ultima carica
+  completa), collegandosi con adb prima di rimettere il watch in carica.
+  Le correzioni v0.102.0 sono quindi igiene, non la causa. (2) Bug:
+  1/10 14:08-21:15 il watch sul caricatore con schermo sempre acceso
+  (non si caricava, 91% -> 30%) risultava "in carica" perche' si usava
+  EXTRA_PLUGGED; corretto con lo stato CHARGING/FULL (watch v0.38.0,
+  v0.102.1). I punti arrivano ogni 5' e non 10' perche' Android consegna
+  anche le posizioni chieste da altre app (setMinUpdateInterval = meta'):
+  nessun costo per noi. Anomalia non spiegata: watch_shutdown 08:43 e
+  boot 09:39 del 2/10 con batteria 96% -> 89% (non era spento davvero?).
