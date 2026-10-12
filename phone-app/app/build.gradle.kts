@@ -155,8 +155,10 @@ android {
         // posizione richiesta all'apertura (ui/MapScreen.kt).
         // v0.31.0 (2026-10-12): il ricentraggio vale anche per "Aggiorna
         // posizione" manuale e non dipende piu' dal tocco sulla mappa.
-        versionCode = 31
-        versionName = "0.31.0"
+        // v0.32.0 (2026-10-12): il ricentraggio non ha piu' la finestra di 3
+        // minuti: sempre alla prima posizione piu' recente della richiesta.
+        versionCode = 32
+        versionName = "0.32.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

@@ -7,6 +7,19 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.4] - 2026-10-12
+
+### Changed
+- **La mappa si ricentra sempre sulla posizione richiesta** (richiesta
+  utente; phone-app v0.32.0, `MapScreen.kt`). Tolta la finestra di 3
+  minuti: alla prima posizione piu' recente della richiesta (apertura o
+  "Aggiorna posizione") la mappa si sposta sul pin, anche se arriva dopo
+  piu' tentativi. Resta una volta sola per richiesta e lo zoom invariato.
+  Conseguenza: se la richiesta non riceve risposta e il watch si fa
+  risentire ore dopo, con la mappa aperta la prima posizione nuova la
+  sposta sul pin (finche' MapScreen resta in composizione).
+- Non compilato (nessun SDK). Rollback: `git revert <commit>`.
+
 ## [0.103.3] - 2026-10-12
 
 ### Changed

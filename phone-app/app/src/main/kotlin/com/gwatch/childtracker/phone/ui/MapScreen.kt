@@ -109,6 +109,9 @@ package com.gwatch.childtracker.phone.ui
 //   minuti dalla richiesta e solo se la mappa non e' stata toccata.
 // v0.16.0 (2026-10-12): richiesta utente — il ricentraggio vale anche per
 //   "Aggiorna posizione" manuale e non dipende piu' dal tocco sulla mappa.
+// v0.17.0 (2026-10-12): richiesta utente — tolta anche la finestra di 3
+//   minuti: la mappa si ricentra sempre alla prima posizione piu' recente
+//   della richiesta, anche dopo piu' tentativi.
 
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
@@ -288,17 +291,14 @@ fun MapScreen(
     // (all'apertura o con "Aggiorna posizione") e arriva quella nuova, la
     // mappa deve centrarsi sul pin. Prima si centrava una volta sola
     // (`centered`), sull'ultima posizione nota all'apertura (spesso vecchia),
-    // e la posizione richiesta la spostava solo il pin. Cautela: solo entro
-    // RECENTER_WINDOW_MS dalla richiesta (una posizione che arriva molto dopo
-    // non deve strappare la mappa), una volta sola per richiesta. Il zoom
-    // resta quello corrente. Una versione precedente (v0.15.0) non ricentrava
-    // se l'utente aveva toccato la mappa; tolto su richiesta (v0.16.0).
+    // e la posizione richiesta la spostava solo il pin. Si ricentra sempre
+    // alla prima posizione piu' recente della richiesta, anche se arriva dopo
+    // piu' tentativi, e anche se l'utente stava muovendo la mappa; una volta
+    // sola per richiesta. Il zoom resta quello corrente. Versioni precedenti:
+    // v0.15.0 non ricentrava se la mappa era stata toccata e oltre 3 minuti
+    // dalla richiesta; tolto su richiesta (v0.16.0 e v0.17.0).
     LaunchedEffect(pendingRecenter, deviceStates) {
         val (childId, requestedAt) = pendingRecenter ?: return@LaunchedEffect
-        if (System.currentTimeMillis() - requestedAt > RECENTER_WINDOW_MS) {
-            pendingRecenter = null
-            return@LaunchedEffect
-        }
         val state = deviceStates[childId] ?: return@LaunchedEffect
         val seen = state.lastSeenMillis ?: return@LaunchedEffect
         if (seen <= requestedAt - RECENTER_CLOCK_MARGIN_MS) return@LaunchedEffect
@@ -931,10 +931,9 @@ private const val STATE_CONTACT_MARGIN_MS = 60 * 1000L
 // 2026-09-25: richiesta automatica all'apertura solo se l'ultima posizione
 // e' piu' vecchia di cosi' (vedi LaunchedEffect(children, deviceStates)).
 private const val AUTO_REQUEST_STALE_MS = 10 * 60 * 1000L
-// 2026-10-12: la mappa si ricentra sul pin solo se la posizione richiesta
-// all'apertura arriva entro 3 minuti (il watch risponde in 1-2 al massimo);
-// margine per le differenze fra l'orologio del telefono e quello del server.
-private const val RECENTER_WINDOW_MS = 3 * 60 * 1000L
+// 2026-10-12: margine per le differenze fra l'orologio del telefono e quello
+// del server, nel decidere se una posizione e' piu' recente della richiesta
+// (ricentraggio della mappa). Precedente: anche RECENTER_WINDOW_MS = 3 minuti.
 private const val RECENTER_CLOCK_MARGIN_MS = 10 * 1000L
 
 private fun eventLabel(type: String, zoneName: String?): String = when (type) {
