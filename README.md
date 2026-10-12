@@ -163,7 +163,8 @@ Firebase (piano gratuito).
 
   Chiede la posizione al watch, anche in automatico all'apertura
   dell'app (solo se l'ultima posizione ha più di 10 minuti, non a ogni
-  ritorno dal background). Mostra "In attesa della posizione dal watch…" e, se non
+  ritorno dal background); quando la posizione arriva la mappa si
+  ricentra sul pin, se non l'hai ancora toccata. Mostra "In attesa della posizione dal watch…" e, se non
   arriva, "nuovo tentativo tra N s": riprova fino a 10 volte con pause
   crescenti da 1 a 5 minuti (circa tre quarti d'ora).
 

@@ -7,6 +7,21 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.2] - 2026-10-12
+
+### Changed
+- **La mappa si ricentra sul pin quando arriva la posizione richiesta
+  all'apertura** (richiesta utente; phone-app v0.30.0, `MapScreen.kt`).
+  Prima la mappa si centrava una volta sola (`centered`) sull'ultima
+  posizione nota all'apertura, spesso vecchia, e la posizione appena
+  arrivata muoveva solo il pin. Ora la richiesta automatica memorizza
+  (bambino, istante) e, alla prima posizione piu' recente della richiesta,
+  fa `animateTo` sul pin mantenendo lo zoom. Cautele: solo entro 3 minuti
+  dalla richiesta e solo se l'utente non ha toccato la mappa nel frattempo
+  (un `OnTouchListener` che restituisce false, la mappa gestisce i tocchi
+  come prima); una volta per richiesta.
+- Non compilato (nessun SDK). Rollback: `git revert <commit>`.
+
 ## [0.103.1] - 2026-10-12
 
 ### Changed

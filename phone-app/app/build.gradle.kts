@@ -151,8 +151,10 @@ android {
         // v0.29.0 (2026-10-12): avviso "viaggio lungo" con pulsante "Sì, previsto"
         // (messaging/FcmService.kt, TripReplyReceiver.kt) e interruttore
         // "Viaggio previsto" per bambino nelle Impostazioni.
-        versionCode = 29
-        versionName = "0.29.0"
+        // v0.30.0 (2026-10-12): la mappa si ricentra sul pin quando arriva la
+        // posizione richiesta all'apertura (ui/MapScreen.kt).
+        versionCode = 30
+        versionName = "0.30.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

@@ -103,7 +103,12 @@ package com.gwatch.childtracker.phone.ui
 // v0.14.0 (2026-09-25): richiesta automatica della posizione solo alla
 //   prima apertura del processo e solo se l'ultima posizione ha piu' di
 //   10 minuti (prima ripartiva a ogni ritorno dal background).
+// v0.15.0 (2026-10-12): richiesta utente — quando la posizione richiesta
+//   all'apertura arriva, la mappa si ricentra sul pin (prima si centrava
+//   una sola volta, sull'ultima posizione nota all'apertura). Solo entro 3
+//   minuti dalla richiesta e solo se la mappa non e' stata toccata.
 
+import android.view.MotionEvent
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
@@ -222,6 +227,21 @@ fun MapScreen(
     }
     DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
 
+    // 2026-10-12: ricentraggio della mappa all'arrivo della posizione richiesta
+    // all'apertura (vedi LaunchedEffect(pendingRecenter, deviceStates)).
+    // pendingRecenter = (bambino, istante della richiesta); mapTouched = true
+    // se l'utente ha gia' toccato la mappa dopo la richiesta.
+    var pendingRecenter by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    var mapTouched by remember { mutableStateOf(false) }
+    DisposableEffect(mapView) {
+        // Il listener restituisce false: la mappa gestisce i tocchi come prima.
+        mapView.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) mapTouched = true
+            false
+        }
+        onDispose { mapView.setOnTouchListener(null) }
+    }
+
     // Vedi storico versioni v0.5.0 sopra. Filtro sul "source": una
     // richiesta di posizione fatta dal genitore stesso non deve generare
     // "il genitore ha visto la tua posizione" sul watch, non avrebbe
@@ -265,8 +285,34 @@ fun MapScreen(
             val lastSeen = state.lastSeenMillis
             if (lastSeen == null || now - lastSeen > AUTO_REQUEST_STALE_MS) {
                 viewModel.requestLocation(child.id) {}
+                // 2026-10-12: quando la posizione richiesta arriva, la mappa
+                // si ricentra sul pin (vedi LaunchedEffect piu' sotto).
+                pendingRecenter = child.id to now
+                mapTouched = false
             }
         }
+    }
+
+    // 2026-10-12: richiesta utente — all'apertura l'app chiede la posizione
+    // e, appena arriva quella nuova, la mappa deve centrarsi sul pin. Prima
+    // si centrava una volta sola (`centered`), sull'ultima posizione nota
+    // all'apertura (spesso vecchia), e la posizione richiesta la spostava solo
+    // il pin. Cautele: solo entro RECENTER_WINDOW_MS dalla richiesta (una
+    // posizione che arriva molto dopo non deve strappare la mappa), solo se
+    // l'utente non ha gia' toccato la mappa, una volta sola per richiesta.
+    // Il zoom resta quello corrente.
+    LaunchedEffect(pendingRecenter, deviceStates) {
+        val (childId, requestedAt) = pendingRecenter ?: return@LaunchedEffect
+        if (System.currentTimeMillis() - requestedAt > RECENTER_WINDOW_MS) {
+            pendingRecenter = null
+            return@LaunchedEffect
+        }
+        val state = deviceStates[childId] ?: return@LaunchedEffect
+        val seen = state.lastSeenMillis ?: return@LaunchedEffect
+        if (seen <= requestedAt - RECENTER_CLOCK_MARGIN_MS) return@LaunchedEffect
+        val loc = state.lastLocation ?: return@LaunchedEffect
+        pendingRecenter = null
+        if (!mapTouched) mapView.controller.animateTo(GeoPoint(loc.lat, loc.lon))
     }
 
     // Centra la mappa sulla prima posizione nota (di un bambino
@@ -887,6 +933,11 @@ private const val STATE_CONTACT_MARGIN_MS = 60 * 1000L
 // 2026-09-25: richiesta automatica all'apertura solo se l'ultima posizione
 // e' piu' vecchia di cosi' (vedi LaunchedEffect(children, deviceStates)).
 private const val AUTO_REQUEST_STALE_MS = 10 * 60 * 1000L
+// 2026-10-12: la mappa si ricentra sul pin solo se la posizione richiesta
+// all'apertura arriva entro 3 minuti (il watch risponde in 1-2 al massimo);
+// margine per le differenze fra l'orologio del telefono e quello del server.
+private const val RECENTER_WINDOW_MS = 3 * 60 * 1000L
+private const val RECENTER_CLOCK_MARGIN_MS = 10 * 1000L
 
 private fun eventLabel(type: String, zoneName: String?): String = when (type) {
     "sos" -> "🆘 SOS"

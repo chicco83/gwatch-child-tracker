@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.1
+**Versione contesto:** 0.103.2
 **Ultimo aggiornamento:** 2026-10-12
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.39.0**, phone-app **v0.29.0**, backend `trigger-event.js` **v0.27.0**
+**v0.39.0**, phone-app **v0.30.0**, backend `trigger-event.js` **v0.27.0**
 (`parent-command.js`/`device-config.js` v0.6.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2895,3 +2895,13 @@ CHANGELOG.md  Storico versioni
   normale, che e' la scelta prudente per un bambino. Nessun avviso al
   genitore alla fine del viaggio previsto (non richiesto). 41 test, 7 nuovi.
   Rollback: git revert.
+- 2026-10-12: Richiesta utente: all'apertura, quando l'app chiede la posizione,
+  la mappa deve ricentrarsi sul pin. Prima: `centered` centrava una volta sola
+  sull'ultima posizione nota (spesso vecchia) e l'arrivo della posizione
+  richiesta spostava solo il pin. Ora (phone v0.30.0, MapScreen): la richiesta
+  automatica salva (bambino, istante) e, alla prima posizione piu' recente,
+  animateTo sul pin con lo zoom corrente. Scelte: finestra di 3 minuti (una
+  posizione che arriva molto dopo, con il tentativo che insiste fino a 45',
+  non deve strappare la mappa) e niente ricentraggio se l'utente ha gia'
+  toccato la mappa. Vale solo per la richiesta automatica all'apertura, non
+  per "Aggiorna posizione" manuale (non richiesto). Non compilato.
