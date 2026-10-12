@@ -107,8 +107,9 @@ package com.gwatch.childtracker.phone.ui
 //   all'apertura arriva, la mappa si ricentra sul pin (prima si centrava
 //   una sola volta, sull'ultima posizione nota all'apertura). Solo entro 3
 //   minuti dalla richiesta e solo se la mappa non e' stata toccata.
+// v0.16.0 (2026-10-12): richiesta utente — il ricentraggio vale anche per
+//   "Aggiorna posizione" manuale e non dipende piu' dal tocco sulla mappa.
 
-import android.view.MotionEvent
 import android.widget.Toast
 import com.gwatch.childtracker.phone.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
@@ -228,19 +229,10 @@ fun MapScreen(
     DisposableEffect(Unit) { onDispose { mapView.onDetach() } }
 
     // 2026-10-12: ricentraggio della mappa all'arrivo della posizione richiesta
-    // all'apertura (vedi LaunchedEffect(pendingRecenter, deviceStates)).
-    // pendingRecenter = (bambino, istante della richiesta); mapTouched = true
-    // se l'utente ha gia' toccato la mappa dopo la richiesta.
+    // (all'apertura o con "Aggiorna posizione"; vedi
+    // LaunchedEffect(pendingRecenter, deviceStates)).
+    // pendingRecenter = (bambino, istante della richiesta).
     var pendingRecenter by remember { mutableStateOf<Pair<String, Long>?>(null) }
-    var mapTouched by remember { mutableStateOf(false) }
-    DisposableEffect(mapView) {
-        // Il listener restituisce false: la mappa gestisce i tocchi come prima.
-        mapView.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) mapTouched = true
-            false
-        }
-        onDispose { mapView.setOnTouchListener(null) }
-    }
 
     // Vedi storico versioni v0.5.0 sopra. Filtro sul "source": una
     // richiesta di posizione fatta dal genitore stesso non deve generare
@@ -288,19 +280,19 @@ fun MapScreen(
                 // 2026-10-12: quando la posizione richiesta arriva, la mappa
                 // si ricentra sul pin (vedi LaunchedEffect piu' sotto).
                 pendingRecenter = child.id to now
-                mapTouched = false
             }
         }
     }
 
-    // 2026-10-12: richiesta utente — all'apertura l'app chiede la posizione
-    // e, appena arriva quella nuova, la mappa deve centrarsi sul pin. Prima
-    // si centrava una volta sola (`centered`), sull'ultima posizione nota
-    // all'apertura (spesso vecchia), e la posizione richiesta la spostava solo
-    // il pin. Cautele: solo entro RECENTER_WINDOW_MS dalla richiesta (una
-    // posizione che arriva molto dopo non deve strappare la mappa), solo se
-    // l'utente non ha gia' toccato la mappa, una volta sola per richiesta.
-    // Il zoom resta quello corrente.
+    // 2026-10-12: richiesta utente — quando l'app chiede la posizione
+    // (all'apertura o con "Aggiorna posizione") e arriva quella nuova, la
+    // mappa deve centrarsi sul pin. Prima si centrava una volta sola
+    // (`centered`), sull'ultima posizione nota all'apertura (spesso vecchia),
+    // e la posizione richiesta la spostava solo il pin. Cautela: solo entro
+    // RECENTER_WINDOW_MS dalla richiesta (una posizione che arriva molto dopo
+    // non deve strappare la mappa), una volta sola per richiesta. Il zoom
+    // resta quello corrente. Una versione precedente (v0.15.0) non ricentrava
+    // se l'utente aveva toccato la mappa; tolto su richiesta (v0.16.0).
     LaunchedEffect(pendingRecenter, deviceStates) {
         val (childId, requestedAt) = pendingRecenter ?: return@LaunchedEffect
         if (System.currentTimeMillis() - requestedAt > RECENTER_WINDOW_MS) {
@@ -312,7 +304,7 @@ fun MapScreen(
         if (seen <= requestedAt - RECENTER_CLOCK_MARGIN_MS) return@LaunchedEffect
         val loc = state.lastLocation ?: return@LaunchedEffect
         pendingRecenter = null
-        if (!mapTouched) mapView.controller.animateTo(GeoPoint(loc.lat, loc.lon))
+        mapView.controller.animateTo(GeoPoint(loc.lat, loc.lon))
     }
 
     // Centra la mappa sulla prima posizione nota (di un bambino
@@ -480,7 +472,13 @@ fun MapScreen(
                     children = children,
                     deviceStates = deviceStates,
                     retryStates = retryStates,
-                    onRequestLocation = { childId, onResult -> viewModel.requestLocation(childId, onResult) },
+                    // 2026-10-12: anche la richiesta manuale ricentra la mappa
+                    // all'arrivo della posizione. Precedente:
+                    //     onRequestLocation = { childId, onResult -> viewModel.requestLocation(childId, onResult) },
+                    onRequestLocation = { childId, onResult ->
+                        pendingRecenter = childId to System.currentTimeMillis()
+                        viewModel.requestLocation(childId, onResult)
+                    },
                 )
             }
             EventsList(

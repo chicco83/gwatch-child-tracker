@@ -7,6 +7,20 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.3] - 2026-10-12
+
+### Changed
+- **Ricentraggio della mappa anche con "Aggiorna posizione" manuale, e
+  anche se hai toccato la mappa** (richiesta utente; phone-app v0.31.0,
+  `MapScreen.kt`). Il pulsante manuale imposta lo stesso
+  `pendingRecenter` della richiesta all'apertura. Tolta la guardia
+  "solo se la mappa non e' stata toccata" della v0.30.0 (stato
+  `mapTouched` e `OnTouchListener` rimossi): la mappa si sposta sul pin
+  anche se la stavi muovendo. Resta la finestra di 3 minuti dalla richiesta
+  (se la posizione arriva dopo, ad esempio dopo piu' tentativi, la mappa
+  non si muove). Zoom invariato.
+- Non compilato (nessun SDK). Rollback: `git revert <commit>`.
+
 ## [0.103.2] - 2026-10-12
 
 ### Changed

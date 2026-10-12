@@ -153,8 +153,10 @@ android {
         // "Viaggio previsto" per bambino nelle Impostazioni.
         // v0.30.0 (2026-10-12): la mappa si ricentra sul pin quando arriva la
         // posizione richiesta all'apertura (ui/MapScreen.kt).
-        versionCode = 30
-        versionName = "0.30.0"
+        // v0.31.0 (2026-10-12): il ricentraggio vale anche per "Aggiorna
+        // posizione" manuale e non dipende piu' dal tocco sulla mappa.
+        versionCode = 31
+        versionName = "0.31.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai
