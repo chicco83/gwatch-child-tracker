@@ -50,10 +50,19 @@ Firebase (piano gratuito).
 
   Registra la posizione e la invia al backend a gruppi, ogni 15 minuti
   o prima se ci sono molti punti. Da fermo ogni 10 minuti usando Wi-Fi
-  e rete (poca batteria), in movimento ogni minuto con il GPS. Il
+  e rete (poca batteria), in movimento ogni 2 minuti con il GPS. Il
   passaggio fermo/movimento segue l'ultima attività rilevata e si
   corregge da solo: 5 punti entro 100 m riportano a "fermo".
   Richiede sul watch "Migliora precisione" attiva (Impostazioni → Posizione).
+
+- **Viaggio lungo e viaggio previsto**
+
+  Se il watch resta in movimento per almeno 15 minuti e si allontana di
+  almeno 10 km da dove è partito, avvisa il genitore (una volta per
+  viaggio, al massimo una ogni 3 ore). Se il genitore risponde che il
+  viaggio è previsto, per 12 ore il watch in movimento traccia ogni 10
+  minuti come da fermo, invece di ogni 2: nei viaggi lunghi è il carico
+  che scarica di più la batteria. SOS e zone non cambiano.
 
 - **Avvio automatico**
 
@@ -168,7 +177,9 @@ Firebase (piano gratuito).
 
   SOS con allarme che suona anche in silenzioso, ingresso/uscita zone,
   messaggi, batteria scarica (10%, 5%, 2%: al 2% anche richiesta di
-  posizione e messaggio al watch) e stato del watch.
+  posizione e messaggio al watch), stato del watch e "viaggio lungo": la
+  notifica ha il pulsante "Sì, previsto" che mette il watch in risparmio
+  per 12 ore, senza aprire l'app. Toccandola si apre l'app.
 
 - **Chat**
 
@@ -180,6 +191,9 @@ Firebase (piano gratuito).
   Proprio nickname, nickname dei bambini, aggiunta di un bambino e
   invito di un secondo genitore. Per ogni bambino, l'interruttore "Alta
   precisione da fermo": GPS ogni 10 minuti anche da fermo, più batteria.
+  E l'interruttore "Viaggio previsto": per 12 ore il watch traccia ogni
+  10 minuti anche in movimento; si attiva anche in anticipo e si annulla
+  da qui.
 
 ### Backend (Vercel + Firestore)
 

@@ -131,6 +131,11 @@ class FcmService : FirebaseMessagingService() {
                 handleChatMessage(message.data)
                 return
             }
+            // 2026-10-12: avviso "viaggio lungo" con pulsante di risposta.
+            "long_trip" -> {
+                handleLongTrip(message.data)
+                return
+            }
         }
 
         // Fallback per eventuali push che includono ancora "notification"
@@ -154,6 +159,50 @@ class FcmService : FirebaseMessagingService() {
             getString(R.string.chat_notification_title)
         }
         postNotification(title, text, openChat = true)
+    }
+
+    // 2026-10-12: il watch e' in viaggio da un po' (backend _lib/tripAlerts.js).
+    // Push solo-dati, costruita a mano: una "notification" mostrata dal sistema
+    // ad app in background non potrebbe avere il pulsante di risposta. Il
+    // pulsante "Sì, previsto" passa da TripReplyReceiver; toccare la notifica
+    // apre l'app (mappa), da dove si puo' chiamare/scrivere o chiedere la posizione.
+    private fun handleLongTrip(data: Map<String, String>) {
+        val childId = data["childId"] ?: return
+        val childName = data["childName"] ?: getString(R.string.sos_alarm_unknown_child)
+        val minutes = data["minutes"]?.toIntOrNull() ?: 0
+        val km = data["km"]?.toIntOrNull() ?: 0
+
+        val notificationId = NEXT_NOTIFICATION_ID.getAndIncrement()
+        val openIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val replyIntent = Intent(this, TripReplyReceiver::class.java)
+            .putExtra(TripReplyReceiver.EXTRA_CHILD_ID, childId)
+            .putExtra(TripReplyReceiver.EXTRA_CHILD_NAME, childName)
+            .putExtra(TripReplyReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        val replyPending = PendingIntent.getBroadcast(
+            this,
+            notificationId,
+            replyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(this, TrackerApplication.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(getString(R.string.trip_notification_title, childName))
+            .setContentText(getString(R.string.trip_notification_text, minutes, km))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(getString(R.string.trip_notification_text, minutes, km)))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openIntent)
+            .addAction(0, getString(R.string.trip_action_expected), replyPending)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(notificationId, notification)
     }
 
     private fun postNotification(title: String, text: String, openChat: Boolean = false) {

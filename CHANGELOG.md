@@ -7,6 +7,55 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.0] - 2026-10-12
+
+### Added
+- **Avviso "viaggio lungo" e "viaggio previsto"** (richiesta utente, dopo
+  l'analisi dei consumi: l'11/10 5 ore di GPS a un punto al minuto in
+  viaggio, circa 180 km da casa). Watch-app v0.39.0, phone-app v0.29.0,
+  backend `trigger-event.js` v0.26.0, `parent-command.js` v0.6.0,
+  `device-config.js` v0.6.0.
+  - Il watch (`LocationTrackingService.checkLongTrip`) segnala un viaggio
+    lungo quando e' in movimento da almeno 15 minuti e ad almeno 10 km in
+    linea d'aria dal primo punto del movimento (il tragitto casa-scuola di
+    circa 2 km non scatta); una volta per viaggio, `LongTripWorker` con
+    `reason: "long_trip"` allo "status".
+  - Il backend (`_lib/tripAlerts.js`) manda al genitore una push SOLO dati
+    `long_trip` (con un payload `notification` Android la mostrerebbe da
+    solo e non si potrebbe aggiungere il pulsante), al massimo una ogni 3
+    ore e nessuna se un viaggio previsto e' gia' attivo.
+  - La phone-app costruisce la notifica con il pulsante "Sì, previsto"
+    (`TripReplyReceiver`, funziona anche ad app chiusa) e ha un interruttore
+    "Viaggio previsto" per bambino nelle Impostazioni (attiva in anticipo,
+    annulla). Azione backend `set_trip_expected` -> `devices/{id}.tripExpectedUntil`
+    + push `trip_mode` al watch; `device-config` restituisce
+    `tripExpectedUntilMillis` per riallinearlo a ogni sync.
+  - Con il viaggio previsto (12 ore, max 24) il watch in movimento usa la
+    cadenza di quando e' fermo (`TripMode`): 10 minuti, priorita'
+    bilanciata (alta se il genitore ha "Alta precisione da fermo").
+    Alla scadenza torna da solo ai 2 minuti.
+
+### Changed
+- **In movimento un punto ogni 2 minuti** (era 1): a 100 km/h sono circa 3
+  km tra un punto e l'altro, il tragitto sulla mappa e' meno dettagliato.
+  Il risparmio NON e' misurato e potrebbe essere piccolo: il 29/9 il watch
+  in movimento (GPS al minuto) e fermo consumava lo stesso (~13%/h), quindi
+  il GPS non e' provatamente la voce principale (LTE, schermo e altro non
+  sono stati ancora separati). Da verificare con `dumpsys batterystats` su
+  un viaggio.
+
+### Known limitations
+- Watch-app e phone-app non compilate (nessun SDK): da compilare e provare
+  in Android Studio. Il backend e' provato: 34 test (10 nuovi in
+  `trip-alerts.test.js`) e caricamento dei tre endpoint con le librerie
+  reali, in una copia fuori da Google Drive (`npm ci` fallisce con EBADF su
+  Drive).
+- Le soglie (15 minuti, 10 km, 3 ore tra gli avvisi, 12 ore di durata) sono
+  scelte nostre da affinare con l'uso. Il viaggio previsto si annulla solo
+  a mano o alla scadenza (non all'arrivo in una zona).
+- Rollback: `git revert <commit>`; il campo `tripExpectedUntil` su Firestore
+  resta inerte per le versioni vecchie.
+
 ## [0.102.1] - 2026-10-02
 
 ### Fixed

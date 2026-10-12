@@ -148,8 +148,11 @@ android {
         // v0.28.0 (2026-10-01): richiesta di posizione che insiste con pause
         // crescenti (60-300 s) e al massimo 10 tentativi, per non tenere
         // acceso il GPS del watch (ui/AppViewModel.kt retryDelayMs).
-        versionCode = 28
-        versionName = "0.28.0"
+        // v0.29.0 (2026-10-12): avviso "viaggio lungo" con pulsante "Sì, previsto"
+        // (messaging/FcmService.kt, TripReplyReceiver.kt) e interruttore
+        // "Viaggio previsto" per bambino nelle Impostazioni.
+        versionCode = 29
+        versionName = "0.29.0"
     }
 
     // Keystore di debug fisso nel progetto (../debug.keystore, mai

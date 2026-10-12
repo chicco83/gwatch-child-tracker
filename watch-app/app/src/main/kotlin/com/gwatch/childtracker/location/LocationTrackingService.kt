@@ -6,6 +6,7 @@ import android.content.Intent
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
@@ -97,7 +98,47 @@ class LocationTrackingService : Service() {
             if (lowBattery || pendingStore.size() >= UPLOAD_TRIGGER_THRESHOLD) {
                 enqueueImmediateUpload(expedited = lowBattery)
             }
+            // 2026-10-12: "viaggio previsto" scaduto mentre il servizio e' in
+            // movimento: torna la richiesta ad alta frequenza.
+            if (tripSlowApplied && !TripMode.isExpected(this@LocationTrackingService)) {
+                startLocationUpdates(currentIntervalMillis)
+            }
             adaptIntervalToDisplacement(location)
+            checkLongTrip(location)
+        }
+    }
+
+    // 2026-10-12: avviso "viaggio lungo". Si guarda da quanto il servizio e'
+    // in movimento e quanto si e' allontanato dal primo punto di quel
+    // movimento; una sola volta per viaggio (tripAlerted), e mai se il
+    // genitore ha gia' dichiarato un viaggio previsto. Il backend ha comunque
+    // un suo limite (al massimo un avviso ogni 3 ore, trigger-event.js).
+    private var movingStartLocation: Location? = null
+    private var movingStartElapsed = 0L
+    private var tripAlerted = false
+    private var tripSlowApplied = false
+
+    private fun resetTripTracking() {
+        movingStartLocation = null
+        movingStartElapsed = 0L
+        tripAlerted = false
+    }
+
+    private fun checkLongTrip(location: Location) {
+        if (currentIntervalMillis != INTERVAL_MOVING_MS || tripAlerted) return
+        if (TripMode.isExpected(this)) return
+        val start = movingStartLocation
+        if (start == null) {
+            movingStartLocation = location
+            movingStartElapsed = SystemClock.elapsedRealtime()
+            return
+        }
+        val minutes = (SystemClock.elapsedRealtime() - movingStartElapsed) / 60_000
+        val km = start.distanceTo(location) / 1000f
+        if (minutes >= LONG_TRIP_MIN_MINUTES && km >= LONG_TRIP_MIN_KM) {
+            tripAlerted = true
+            Log.i(TAG, "viaggio lungo: $minutes min, ${"%.0f".format(km)} km dall'inizio del movimento")
+            LongTripWorker.enqueue(this, minutes.toInt(), km.toDouble())
         }
     }
 
@@ -130,6 +171,7 @@ class LocationTrackingService : Service() {
         }
         Log.i(TAG, "intervallo cambiato dallo spostamento reale: ${target / 60000} min")
         currentIntervalMillis = target
+        resetTripTracking()
         recentFixes.clear()
         recentFixes.addLast(location)
         startLocationUpdates(target)
@@ -168,6 +210,7 @@ class LocationTrackingService : Service() {
 
         if (!updatesActive || newInterval != currentIntervalMillis) {
             currentIntervalMillis = newInterval
+            resetTripTracking()
             recentFixes.clear()
             startLocationUpdates(newInterval)
         }
@@ -207,12 +250,24 @@ class LocationTrackingService : Service() {
         // priorita'), con l'alta precisione attivabile dal genitore sulla
         // phone-app (TrackingMode). In movimento resta sempre alta.
         // Precedente (2026-09-23): val priority = Priority.PRIORITY_HIGH_ACCURACY
-        val high = intervalMillis == INTERVAL_MOVING_MS || TrackingMode.isHighAccuracy(this)
+        // 2026-10-12: "viaggio previsto" (TripMode, scelto dal genitore): in
+        // movimento si usa la cadenza di quando il watch e' fermo (10', senza
+        // GPS continuo salvo "Alta precisione da fermo"). Il resto del servizio
+        // continua a ragionare in "fermo/movimento" (etichetta dei punti,
+        // rete di sicurezza sullo spostamento): cambia solo la richiesta al
+        // fused provider. Precedente:
+        //     val high = intervalMillis == INTERVAL_MOVING_MS || TrackingMode.isHighAccuracy(this)
+        //     LocationRequest.Builder(priority, intervalMillis)
+        //         .setMinUpdateIntervalMillis(intervalMillis / 2)
+        val tripSlow = intervalMillis == INTERVAL_MOVING_MS && TripMode.isExpected(this)
+        tripSlowApplied = tripSlow
+        val requestInterval = if (tripSlow) INTERVAL_STILL_MS else intervalMillis
+        val high = (intervalMillis == INTERVAL_MOVING_MS && !tripSlow) || TrackingMode.isHighAccuracy(this)
         val priority = if (high) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
         if (high) GpsAssist.injectAssistance(this)
 
-        val request = LocationRequest.Builder(priority, intervalMillis)
-            .setMinUpdateIntervalMillis(intervalMillis / 2)
+        val request = LocationRequest.Builder(priority, requestInterval)
+            .setMinUpdateIntervalMillis(requestInterval / 2)
             .build()
 
         // 2026-09-23: try/catch + log. Precedente:
@@ -222,7 +277,8 @@ class LocationTrackingService : Service() {
             fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
             updatesActive = true
             TrackingStatus.priorityLabel =
-                (if (high) "alta" else "bilanciata") + ", ogni ${intervalMillis / 60000} min"
+                (if (high) "alta" else "bilanciata") + ", ogni ${requestInterval / 60000} min" +
+                (if (tripSlow) " (viaggio previsto)" else "")
             Log.i(TAG, "richiesta posizioni: ${TrackingStatus.priorityLabel}")
         } catch (e: Exception) {
             TrackingStatus.lastError = "requestLocationUpdates: ${e.javaClass.simpleName}"
@@ -291,10 +347,22 @@ class LocationTrackingService : Service() {
         // 2026-09-24: vedi TrackingMode.set().
         const val EXTRA_REAPPLY = "reapply_mode"
 
-        // Sampling adattivo: 10 min da fermi, 1 min in movimento
+        // Sampling adattivo: 10 min da fermi, 2 min in movimento
         // (vedi CONTEXT.md — risparmio batteria).
+        // 2026-10-12: movimento da 1 a 2 minuti (richiesta utente dopo
+        // l'analisi dei consumi: l'11/10 5 ore di viaggio a un punto al
+        // minuto; a 100 km/h un punto ogni 2 minuti sono circa 3 km tra un
+        // punto e l'altro). Il risparmio non e' misurato: il 29/9 in
+        // movimento e da fermo il watch consumava lo stesso (~13%/h).
+        // Precedente: private const val INTERVAL_MOVING_MS = 60 * 1000L
         private const val INTERVAL_STILL_MS = 10 * 60 * 1000L
-        private const val INTERVAL_MOVING_MS = 60 * 1000L
+        private const val INTERVAL_MOVING_MS = 2 * 60 * 1000L
+
+        // 2026-10-12: viaggio lungo = in movimento da almeno 15 minuti E ad
+        // almeno 10 km (in linea d'aria) da dove e' iniziato il movimento.
+        // Il tragitto casa-scuola (circa 2 km) non lo raggiunge mai.
+        private const val LONG_TRIP_MIN_MINUTES = 15L
+        private const val LONG_TRIP_MIN_KM = 10f
 
         // Oltre questa soglia di punti bufferizzati, forza un upload
         // immediato invece di aspettare il prossimo giro periodico.

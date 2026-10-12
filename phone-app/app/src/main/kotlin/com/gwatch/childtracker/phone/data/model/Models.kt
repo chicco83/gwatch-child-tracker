@@ -64,7 +64,14 @@ data class DeviceState(
     // 2026-09-24: tracking ad alta precisione anche da fermo (scelto dal
     // genitore, parent-command.js set_tracking_mode).
     val trackingHighAccuracy: Boolean = false,
-)
+    // 2026-10-12: scadenza del "viaggio previsto" (devices/{id}.tripExpectedUntil,
+    // parent-command.js set_trip_expected). null = nessuno; puo' essere gia'
+    // passata (il campo resta sul device): usare isTripExpected().
+    val tripExpectedUntilMillis: Long? = null,
+) {
+    fun isTripExpected(nowMillis: Long = System.currentTimeMillis()): Boolean =
+        (tripExpectedUntilMillis ?: 0L) > nowMillis
+}
 
 data class LocationPoint(
     val lat: Double,

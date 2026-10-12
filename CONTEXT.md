@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.102.1
-**Ultimo aggiornamento:** 2026-10-02
+**Versione contesto:** 0.103.0
+**Ultimo aggiornamento:** 2026-10-12
 
 ---
 
@@ -92,8 +92,8 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.38.0**, phone-app **v0.28.0**, backend `trigger-event.js` **v0.25.0**
-(`parent-command.js`/`device-config.js` v0.5.0),
+**v0.39.0**, phone-app **v0.29.0**, backend `trigger-event.js` **v0.26.0**
+(`parent-command.js`/`device-config.js` v0.6.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
 
@@ -2856,3 +2856,29 @@ CHANGELOG.md  Storico versioni
   anche le posizioni chieste da altre app (setMinUpdateInterval = meta'):
   nessun costo per noi. Anomalia non spiegata: watch_shutdown 08:43 e
   boot 09:39 del 2/10 con batteria 96% -> 89% (non era spento davvero?).
+- 2026-10-12: Dati dell'11/10 (riepilogo orario dalla sessione cloud): dalle
+  10 alle 14 circa 150 punti "moving" ~1/min, a ~180 km da casa (viaggio);
+  buchi senza dati 10/10 13:00 -> 11/10 09:00 e 11/10 14:00 -> 12/10 00:00
+  non spiegati (mancano eventi e batteria: serve `--all`). La notte del 12/10
+  il watch ha perso il 14% e il lag del Launcher e' sparito dopo riavvii e
+  carica; causa non nota (ipotesi non provate: processo di sistema
+  incastrato, caldo/limitazione durante il viaggio). Richiesta utente:
+  (1) movimento da 1 a 2 minuti; (2) avviso "viaggio lungo" al genitore;
+  (3) se il genitore risponde "viaggio previsto", cadenza come da fermo.
+  Implementato (watch v0.39.0, phone v0.29.0, trigger-event v0.26.0,
+  parent-command v0.6.0, device-config v0.6.0, v0.103.0). Scelte: l'avviso
+  parte dal watch (in movimento >= 15' e >= 10 km dal primo punto del
+  movimento; il tragitto di scuola, ~2 km, non scatta) e non dal backend,
+  che vede i punti solo a gruppi; push SOLO dati perche' una "notification"
+  ad app in background non puo' avere il pulsante di risposta; backend
+  limita a un avviso ogni 3 ore e non avvisa con un viaggio gia' previsto;
+  durata 12 ore (max 24) con scadenza lato watch, nessun annullamento
+  automatico all'arrivo in una zona (scelto per semplicita', da rivalutare);
+  interruttore "Viaggio previsto" nelle Impostazioni per attivare in
+  anticipo/annullare. **Attenzione**: il risparmio non e' provato: il 29/9
+  moving ~13%/h = fermo ~12,6%/h, quindi il GPS al minuto non spiega da solo
+  il consumo; la causa vera (LTE? schermo? Play Store al 30% il 2/10?) resta
+  da misurare con `dumpsys batterystats` senza --reset. Backend provato (34
+  test, endpoint caricati in una copia fuori da Drive perche' `npm ci` su
+  Drive fallisce con EBADF); app Android non compilate. Rollback: `git
+  revert` del commit; `tripExpectedUntil` su Firestore resta inerte.

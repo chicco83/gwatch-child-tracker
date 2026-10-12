@@ -139,6 +139,21 @@ class BackendClient {
     }
 
     /**
+     * 2026-10-12: "viaggio previsto" (parent-command.js set_trip_expected).
+     * expected=true: per `hours` ore (12 se null) il watch in movimento usa la
+     * cadenza di quando e' fermo; expected=false lo annulla.
+     */
+    suspend fun setTripExpected(idToken: String, childId: String, expected: Boolean, hours: Int? = null): Boolean {
+        val body = JSONObject().apply {
+            put("action", "set_trip_expected")
+            put("childId", childId)
+            put("expected", expected)
+            hours?.let { put("hours", it) }
+        }
+        return callParentCommand(idToken, body, "setTripExpected")
+    }
+
+    /**
      * Registra un nuovo bambino: il backend genera childId + token e
      * salva solo l'hash del token. Il token in chiaro torna SOLO in
      * questa risposta (null se la chiamata fallisce) — la UI deve

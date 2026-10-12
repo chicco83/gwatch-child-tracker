@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.25.0
+ * Versione: 0.26.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -216,6 +216,12 @@
  *   nessun evento nello storico (solo l'icona).
  * - 0.25.0 (2026-09-25): gnssUpdate accetta i soli satelliti agganciati
  *   (visti null) e "GPS acceso" senza numeri (vedi gnssUpdate).
+ * - 0.26.0 (2026-10-12): lo "status" accetta reason "long_trip" con
+ *   tripMinutes/tripKm (il watch e' in viaggio da almeno 15 minuti e ad
+ *   almeno 10 km da dove e' partito). Non conta come fix fallito (niente
+ *   lastNoFixAt) e manda al genitore una push solo-dati "long_trip" con la
+ *   richiesta "viaggio previsto?" (_lib/tripAlerts.js, al massimo una ogni
+ *   3 ore e nessuna se un viaggio previsto e' gia' attivo).
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -224,6 +230,7 @@ const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
+const { maybeSendLongTripAlert } = require("./_lib/tripAlerts.js");
 const { childTopic } = require("./_lib/fcmTopics.js");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
@@ -340,7 +347,8 @@ module.exports = wrapHandler(async (req, res) => {
 
   // v0.24.0: aggiunto "reason" (vedi Storico versioni).
   // Precedente (2026-09-24): stessa destrutturazione senza "reason".
-  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive, watchState, stateAt, since, reason } = req.body || {};
+  // v0.26.0: aggiunti tripMinutes/tripKm (reason "long_trip").
+  const { type, lat, lon, accuracy, battery, zoneId, source, batteryTemp, charging, speed, batteryHoursRemaining, timestamp, satsVisible, satsUsed, gnssActive, watchState, stateAt, since, reason, tripMinutes, tripKm } = req.body || {};
   const gnss = gnssUpdate(satsVisible, satsUsed, gnssActive);
 
   // v0.19.0: stato batteria senza posizione (vedi Storico versioni).
@@ -359,13 +367,18 @@ module.exports = wrapHandler(async (req, res) => {
     const sinceTs = typeof since === "number" ? Timestamp.fromMillis(since) : null;
     if (hasWatchState) {
       update.watchState = { state: WATCH_STATES[watchState], event: watchState, at: stateTs, since: sinceTs };
-    } else if (reason !== "power") {
+    } else if (reason !== "power" && reason !== "long_trip") {
       // v0.23.0: tentativo di fix non riuscito (vedi Storico versioni).
       // v0.24.0: escluso reason "power" (caricatore collegato/scollegato).
+      // v0.26.0: escluso anche "long_trip" (avviso di viaggio lungo).
       // Precedente (2026-09-24): } else { update.lastNoFixAt = ... }
       update.lastNoFixAt = FieldValue.serverTimestamp();
     }
     await statusRef.set(update, { merge: true });
+    // v0.26.0: avviso "viaggio lungo" al genitore (vedi _lib/tripAlerts.js).
+    if (reason === "long_trip") {
+      await maybeSendLongTripAlert(statusRef, childId, tripMinutes, tripKm);
+    }
     if (hasWatchState) {
       await statusRef.collection("events").add({
         type: `watch_${watchState}`,

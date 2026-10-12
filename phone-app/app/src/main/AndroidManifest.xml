@@ -61,6 +61,13 @@
             </intent-filter>
         </service>
 
+        <!-- 2026-10-12: risposta "Sì, previsto" dalla notifica "viaggio lungo"
+             (messaging/TripReplyReceiver.kt). Non esportato: solo il PendingIntent
+             dell'app lo raggiunge. -->
+        <receiver
+            android:name=".messaging.TripReplyReceiver"
+            android:exported="false" />
+
         <service
             android:name=".alarm.ExitAlarmService"
             android:exported="false"

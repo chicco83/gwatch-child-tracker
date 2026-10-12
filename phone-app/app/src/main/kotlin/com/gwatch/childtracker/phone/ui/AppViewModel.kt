@@ -493,6 +493,19 @@ class AppViewModel(
         }
     }
 
+    // 2026-10-12: "viaggio previsto" (SettingsScreen); la risposta alla
+    // notifica "viaggio lungo" passa invece da messaging/TripReplyReceiver.
+    fun setTripExpected(childId: String, expected: Boolean, onDone: (Boolean) -> Unit) {
+        val user = _user.value ?: return onDone(false)
+        viewModelScope.launch {
+            val ok = runCatching {
+                val idToken = user.getIdToken(false).await().token ?: error("token nullo")
+                backendClient.setTripExpected(idToken, childId, expected)
+            }.getOrDefault(false)
+            onDone(ok)
+        }
+    }
+
     fun setChildNickname(childId: String, nickname: String, onDone: (Boolean) -> Unit) {
         val user = _user.value ?: return onDone(false)
         viewModelScope.launch {

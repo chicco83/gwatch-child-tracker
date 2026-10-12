@@ -10,6 +10,7 @@ import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.gwatch.childtracker.location.TrackingMode
+import com.gwatch.childtracker.location.TripMode
 import com.gwatch.childtracker.network.BackendClient
 import kotlinx.coroutines.tasks.await
 
@@ -34,6 +35,8 @@ class GeofenceSyncWorker(
         // Precedente: val zones = BackendClient().fetchDeviceConfig()
         val config = BackendClient().fetchDeviceConfig() ?: return Result.retry()
         config.trackingHighAccuracy?.let { TrackingMode.set(appContext, it) }
+        // 2026-10-12: "viaggio previsto" riallineato a ogni sync (null = nessuno).
+        TripMode.set(appContext, config.tripExpectedUntilMillis ?: 0L)
         val zones = config.zones
         val geofencingClient: GeofencingClient = LocationServices.getGeofencingClient(appContext)
         val pendingIntent = geofencePendingIntent()

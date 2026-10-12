@@ -1,6 +1,6 @@
 /**
  * POST /api/parent-command
- * Versione: 0.5.0
+ * Versione: 0.6.0
  *
  * Endpoint unico per i comandi rapidi del genitore verso il watch:
  * messaggio di chat, richiesta posizione immediata, annulla SOS,
@@ -24,6 +24,7 @@
  *   - action = "cancel_sos": { childId }
  *   - action = "ack_event": { childId, eventId }
  *   - action = "set_tracking_mode": { childId, highAccuracy: boolean }
+ *   - action = "set_trip_expected": { childId, expected: boolean, hours?: number }
  *
  * Storico versioni:
  * - 0.1.0 (2026-09-10): versione iniziale (accorpamento dei 4 file).
@@ -92,6 +93,10 @@
  *   devices/{childId}.trackingHighAccuracy e manda la push data-only
  *   "tracking_mode" al watch; stesso controllo di appartenenza alla
  *   famiglia delle altre azioni con childId.
+ * - 0.6.0 (2026-10-12): azione "set_trip_expected" (richiesta utente, dopo
+ *   l'analisi dei consumi): "viaggio previsto" per 12 ore (max 24) ->
+ *   devices/{childId}.tripExpectedUntil + push "trip_mode" al watch, che
+ *   in movimento torna alla cadenza di quando e' fermo.
  */
 const crypto = require("crypto");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -322,6 +327,43 @@ async function handleSetTrackingMode(deviceRef, body, res) {
   res.status(200).json({ ok: true });
 }
 
+// v0.6.0 (2026-10-12): "viaggio previsto". Con expected=true il watch tiene
+// per `hours` ore (12 se omesso, al massimo 24) la cadenza di quando e' fermo
+// anche in movimento, invece del punto ogni 2 minuti; expected=false annulla.
+// Salvato sul device (lo rilegge anche device-config.js) e mandato subito al
+// watch con la push "trip_mode" (until = scadenza in millisecondi, "0" =
+// annullato). Vedi _lib/tripAlerts.js per l'avviso che lo propone.
+const TRIP_DEFAULT_HOURS = 12;
+const TRIP_MAX_HOURS = 24;
+
+async function handleSetTripExpected(deviceRef, body, res) {
+  const { expected } = body;
+  if (typeof expected !== "boolean") {
+    res.status(400).send("Bad Request: 'expected' deve essere true/false");
+    return;
+  }
+  let hours = TRIP_DEFAULT_HOURS;
+  if (body.hours !== undefined) {
+    if (typeof body.hours !== "number" || !(body.hours > 0) || body.hours > TRIP_MAX_HOURS) {
+      res.status(400).send(`Bad Request: 'hours' deve essere un numero tra 0 e ${TRIP_MAX_HOURS}`);
+      return;
+    }
+    hours = body.hours;
+  }
+  const untilMs = expected ? Date.now() + hours * 3_600_000 : 0;
+  await deviceRef.set(
+    { tripExpectedUntil: expected ? Timestamp.fromMillis(untilMs) : FieldValue.delete() },
+    { merge: true },
+  );
+  const watchToken = (await deviceRef.get()).data()?.fcmToken;
+  if (watchToken) {
+    await sendPushSafe(deviceRef, watchToken, {
+      data: { type: "trip_mode", until: String(untilMs) },
+    });
+  }
+  res.status(200).json({ ok: true, until: untilMs });
+}
+
 async function handleCancelSos(deviceRef, res) {
   await deviceRef.set({ sosActive: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
 
@@ -428,6 +470,9 @@ module.exports = wrapHandler(async (req, res) => {
       return;
     case "set_tracking_mode":
       await handleSetTrackingMode(deviceRef, body, res);
+      return;
+    case "set_trip_expected":
+      await handleSetTripExpected(deviceRef, body, res);
       return;
     default:
       res.status(400).send("Bad Request: 'action' non valido");

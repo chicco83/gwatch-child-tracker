@@ -27,6 +27,17 @@
     <string name="settings_tracking_hint">Accende il GPS anche quando il bambino è fermo, ogni 10 minuti. Più affidabile senza Wi-Fi, ma consuma più batteria del watch. Spento: usa Wi-Fi e rete.</string>
     <string name="settings_tracking_saved">Impostazione inviata al watch</string>
     <string name="settings_tracking_failed">Impossibile salvare l\'impostazione</string>
+
+    <!-- 2026-10-12: viaggio previsto (SettingsScreen.kt, messaging/FcmService.kt long_trip, messaging/TripReplyReceiver.kt) -->
+    <string name="settings_trip_label">Viaggio previsto</string>
+    <string name="settings_trip_hint">Per 12 ore il watch traccia ogni 10 minuti anche in movimento, invece di ogni 2: consuma molto meno nei viaggi lunghi. Si annulla da qui.</string>
+    <string name="settings_trip_active">Attivo fino alle %1$s: il watch traccia ogni 10 minuti anche in movimento.</string>
+    <string name="trip_notification_title">🚗 %1$s è in viaggio</string>
+    <string name="trip_notification_text">In movimento da %1$d minuti, a circa %2$d km da dove è partito. Il viaggio è previsto?</string>
+    <string name="trip_action_expected">Sì, previsto</string>
+    <string name="trip_confirmed_title">Viaggio previsto</string>
+    <string name="trip_confirmed_text">%1$s: per le prossime %2$d ore il watch traccia ogni 10 minuti.</string>
+    <string name="trip_failed_text">Non sono riuscito ad avvisare il watch. Riprova dalle Impostazioni.</string>
     <!-- 2026-09-23: stato del watch -->
     <string name="status_watch_label">Stato watch:</string>
     <string name="status_watch_airplane">in modalità aereo</string>

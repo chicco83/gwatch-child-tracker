@@ -198,6 +198,17 @@ fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                         }
                     },
                 )
+                // 2026-10-12: "viaggio previsto" — in movimento il watch traccia
+                // ogni 10 minuti (come da fermo) per 12 ore, per risparmiare batteria.
+                TripModeRow(
+                    until = deviceStates[child.id]?.tripExpectedUntilMillis,
+                    onChange = { value ->
+                        viewModel.setTripExpected(child.id, value) { ok ->
+                            val res = if (ok) R.string.settings_tracking_saved else R.string.settings_tracking_failed
+                            Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
               }
             }
             item {
@@ -356,6 +367,45 @@ private fun AddChildSection(onAdd: (String) -> Unit) {
  * lo Switch fuori schermo (stesso problema gia' visto in GeofenceScreen,
  * niente Modifier.weight in questo progetto).
  */
+/**
+ * 2026-10-12: interruttore "Viaggio previsto". Attivo finche' la scadenza
+ * (devices/{id}.tripExpectedUntil) e' nel futuro; lo stesso stato si attiva
+ * anche dalla notifica "viaggio lungo" (messaging/TripReplyReceiver).
+ */
+@Composable
+private fun TripModeRow(until: Long?, onChange: (Boolean) -> Unit) {
+    val active = (until ?: 0L) > System.currentTimeMillis()
+    var pending by remember(active) { mutableStateOf<Boolean?>(null) }
+    val checked = pending ?: active
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = stringResource(R.string.settings_trip_label), style = MaterialTheme.typography.bodyMedium)
+            Switch(
+                checked = checked,
+                onCheckedChange = { value ->
+                    pending = value
+                    onChange(value)
+                },
+            )
+        }
+        Text(
+            text = if (active && until != null) {
+                stringResource(
+                    R.string.settings_trip_active,
+                    java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(until)),
+                )
+            } else {
+                stringResource(R.string.settings_trip_hint)
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
 @Composable
 private fun TrackingModeRow(highAccuracy: Boolean, onChange: (Boolean) -> Unit) {
     var pending by remember(highAccuracy) { mutableStateOf<Boolean?>(null) }

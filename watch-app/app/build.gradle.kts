@@ -167,8 +167,13 @@ android {
         // v0.38.0 (2026-10-02): "in carica" solo se collegato E con stato di
         // sistema CHARGING/FULL (location/BatteryInfo.kt): un watch sul
         // caricatore ma in scarica non risulta piu' in carica.
-        versionCode = 38
-        versionName = "0.38.0"
+        // v0.39.0 (2026-10-12): in movimento un punto ogni 2 minuti invece di 1;
+        // avviso "viaggio lungo" (in movimento da 15 min e a 10 km dalla
+        // partenza, location/LongTripWorker.kt) e "viaggio previsto" scelto dal
+        // genitore: in movimento si torna alla cadenza di quando e' fermo
+        // (location/TripMode.kt, LocationTrackingService.kt).
+        versionCode = 39
+        versionName = "0.39.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")

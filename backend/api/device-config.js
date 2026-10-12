@@ -1,6 +1,6 @@
 /**
  * GET /api/device-config
- * Versione: 0.5.0
+ * Versione: 0.6.0
  *
  * Restituisce al watch le geofence attive configurate dal genitore
  * dalla phone-app, per registrarle localmente con la Geofencing API
@@ -61,6 +61,9 @@
  * - 0.5.0 (2026-09-24): la risposta include trackingHighAccuracy
  *   (interruttore "alta precisione" della phone-app, vedi
  *   parent-command.js v0.5.0).
+ * - 0.6.0 (2026-10-12): la risposta include tripExpectedUntilMillis
+ *   (scadenza del "viaggio previsto", null se non attivo; vedi
+ *   parent-command.js v0.6.0).
  */
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -117,5 +120,14 @@ module.exports = wrapHandler(async (req, res) => {
   // v0.5.0: anche l'impostazione di precisione del tracking, cosi' il
   // watch la recupera a ogni sync anche se la push e' andata persa.
   // Precedente: res.status(200).json({ geofences });
-  res.status(200).json({ geofences, trackingHighAccuracy: deviceSnap.data()?.trackingHighAccuracy === true });
+  // v0.6.0: anche la scadenza del "viaggio previsto" (null = nessuno attivo),
+  // cosi' il watch la riallinea a ogni sync anche se la push e' andata persa.
+  const tripUntil = deviceSnap.data()?.tripExpectedUntil;
+  const tripExpectedUntilMillis =
+    tripUntil && typeof tripUntil.toMillis === "function" && tripUntil.toMillis() > Date.now() ? tripUntil.toMillis() : null;
+  res.status(200).json({
+    geofences,
+    trackingHighAccuracy: deviceSnap.data()?.trackingHighAccuracy === true,
+    tripExpectedUntilMillis,
+  });
 });

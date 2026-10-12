@@ -187,10 +187,16 @@ class BackendClient {
         // 2026-09-24: "power" = caricatore collegato/scollegato
         // (WatchStateReporter.onPowerChanged, trigger-event.js v0.24.0).
         reason: String? = null,
+        // 2026-10-12: reason "long_trip" (location/LongTripWorker.kt,
+        // trigger-event.js v0.26.0): minuti in movimento e km dall'inizio.
+        tripMinutes: Int? = null,
+        tripKm: Double? = null,
     ): Boolean {
         val body = JSONObject().apply {
             put("type", "status")
             reason?.let { put("reason", it) }
+            tripMinutes?.let { put("tripMinutes", it) }
+            tripKm?.let { put("tripKm", it) }
             watchState?.let { put("watchState", it) }
             stateAt?.let { put("stateAt", it) }
             since?.let { put("since", it) }
@@ -234,6 +240,13 @@ class BackendClient {
             DeviceConfig(
                 zones = (0 until arr.length()).map { GeofenceZone.fromJson(arr.getJSONObject(it)) },
                 trackingHighAccuracy = if (json.has("trackingHighAccuracy")) json.getBoolean("trackingHighAccuracy") else null,
+                // 2026-10-12: null o assente = nessun viaggio previsto
+                // (device-config.js v0.6.0); un backend piu' vecchio non lo manda.
+                tripExpectedUntilMillis = if (json.has("tripExpectedUntilMillis") && !json.isNull("tripExpectedUntilMillis")) {
+                    json.getLong("tripExpectedUntilMillis")
+                } else {
+                    null
+                },
             )
         } catch (e: Exception) {
             Log.w(TAG, "fetchDeviceConfig: risposta non valida", e)
@@ -377,4 +390,11 @@ enum class SosHeartbeatResult { ACCEPTED, STOP, FAILED }
 data class TriggerEventResult(val ok: Boolean, val dnd: Boolean?)
 
 // 2026-09-24: risposta di /api/device-config (vedi fetchDeviceConfig).
-data class DeviceConfig(val zones: List<GeofenceZone>, val trackingHighAccuracy: Boolean?)
+// 2026-10-12: aggiunto tripExpectedUntilMillis ("viaggio previsto"). Default
+// null per non rompere altre costruzioni di DeviceConfig. Precedente:
+// data class DeviceConfig(val zones: List<GeofenceZone>, val trackingHighAccuracy: Boolean?)
+data class DeviceConfig(
+    val zones: List<GeofenceZone>,
+    val trackingHighAccuracy: Boolean?,
+    val tripExpectedUntilMillis: Long? = null,
+)
