@@ -1,10 +1,18 @@
-// Test per api/_lib/tripAlerts.js (v0.1.0).
-// Versione: 0.1.0 (2026-10-12).
+// Test per api/_lib/tripAlerts.js (v0.2.0).
+// Versione: 0.2.0 (2026-10-12).
 // Nessuna dipendenza da firebase-admin: maybeSendLongTripAlert riceve now/send/serverTimestamp iniettati.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { maybeSendLongTripAlert, shouldAlert, buildPayload, COOLDOWN_MS } = require("../api/_lib/tripAlerts.js");
+const {
+  maybeSendLongTripAlert,
+  clearTripOnZoneEnter,
+  shouldAlert,
+  shouldClearOnEnter,
+  buildPayload,
+  COOLDOWN_MS,
+  STALE_ENTER_MS,
+} = require("../api/_lib/tripAlerts.js");
 
 // Finto Timestamp Firestore: basta toMillis().
 const ts = (ms) => ({ toMillis: () => ms });
@@ -95,4 +103,72 @@ test("errore FCM: non propaga l'errore al chiamante", async () => {
     },
   });
   assert.equal(ok, false);
+});
+
+// --- v0.2.0: annullamento del viaggio previsto all'ingresso in una zona ---
+
+test("ingresso in zona con viaggio previsto attivo: va annullato", () => {
+  assert.equal(shouldClearOnEnter({ tripExpectedUntil: ts(NOW + HOUR) }, NOW - 1000, NOW), true);
+});
+
+test("nessun viaggio previsto o gia' scaduto: niente da annullare", () => {
+  assert.equal(shouldClearOnEnter({}, NOW, NOW), false);
+  assert.equal(shouldClearOnEnter(undefined, NOW, NOW), false);
+  assert.equal(shouldClearOnEnter({ tripExpectedUntil: ts(NOW - HOUR) }, NOW, NOW), false);
+});
+
+test("ingresso vecchio (consegnato in ritardo): non annulla un viaggio dichiarato dopo", () => {
+  const data = { tripExpectedUntil: ts(NOW + HOUR) };
+  assert.equal(shouldClearOnEnter(data, NOW - STALE_ENTER_MS - 1000, NOW), false);
+  assert.equal(shouldClearOnEnter(data, NOW - STALE_ENTER_MS + 1000, NOW), true);
+});
+
+test("annullamento: toglie tripExpectedUntil e manda trip_mode con until 0 al watch", async () => {
+  const ref = fakeRef({});
+  const sent = [];
+  const ok = await clearTripOnZoneEnter(ref, { tripExpectedUntil: ts(NOW + HOUR), fcmToken: "tok" }, NOW, {
+    now: () => NOW,
+    deleteValue: () => "DEL",
+    send: async (m) => sent.push(m),
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(ref.sets, [{ obj: { tripExpectedUntil: "DEL" }, opts: { merge: true } }]);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].token, "tok");
+  assert.deepEqual(sent[0].data, { type: "trip_mode", until: "0" });
+});
+
+test("annullamento senza token del watch: toglie il campo, nessuna push", async () => {
+  const ref = fakeRef({});
+  const sent = [];
+  const ok = await clearTripOnZoneEnter(ref, { tripExpectedUntil: ts(NOW + HOUR) }, NOW, {
+    now: () => NOW,
+    deleteValue: () => "DEL",
+    send: async (m) => sent.push(m),
+  });
+  assert.equal(ok, true);
+  assert.equal(ref.sets.length, 1);
+  assert.equal(sent.length, 0);
+});
+
+test("annullamento con push fallita: il campo e' comunque tolto", async () => {
+  const ref = fakeRef({});
+  const ok = await clearTripOnZoneEnter(ref, { tripExpectedUntil: ts(NOW + HOUR), fcmToken: "tok" }, NOW, {
+    now: () => NOW,
+    deleteValue: () => "DEL",
+    send: async () => {
+      throw new Error("fcm down");
+    },
+  });
+  assert.equal(ok, true);
+  assert.equal(ref.sets.length, 1);
+});
+
+test("nessun viaggio attivo: nessuna scrittura e nessuna push", async () => {
+  const ref = fakeRef({});
+  const sent = [];
+  const ok = await clearTripOnZoneEnter(ref, {}, NOW, { now: () => NOW, send: async (m) => sent.push(m) });
+  assert.equal(ok, false);
+  assert.equal(ref.sets.length, 0);
+  assert.equal(sent.length, 0);
 });

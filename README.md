@@ -61,8 +61,8 @@ Firebase (piano gratuito).
   almeno 10 km da dove è partito, avvisa il genitore (una volta per
   viaggio, al massimo una ogni 3 ore). Se il genitore risponde che il
   viaggio è previsto, per 12 ore il watch in movimento traccia ogni 10
-  minuti come da fermo, invece di ogni 2: nei viaggi lunghi è il carico
-  che scarica di più la batteria. SOS e zone non cambiano.
+  minuti come da fermo, invece di ogni 2. Finisce da solo quando il watch
+  entra in una zona (qualunque) o dopo 12 ore. SOS e zone non cambiano.
 
 - **Avvio automatico**
 
@@ -193,7 +193,7 @@ Firebase (piano gratuito).
   precisione da fermo": GPS ogni 10 minuti anche da fermo, più batteria.
   E l'interruttore "Viaggio previsto": per 12 ore il watch traccia ogni
   10 minuti anche in movimento; si attiva anche in anticipo e si annulla
-  da qui.
+  da qui, oppure da solo entrando in una zona.
 
 ### Backend (Vercel + Firestore)
 

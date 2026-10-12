@@ -1,6 +1,6 @@
 /**
  * POST /api/trigger-event
- * Versione: 0.26.0
+ * Versione: 0.27.0
  *
  * Evento prioritario dal watch: SOS o transizione geofence
  * (ingresso/uscita zona). Scrive l'evento e invia subito la push FCM
@@ -222,6 +222,10 @@
  *   lastNoFixAt) e manda al genitore una push solo-dati "long_trip" con la
  *   richiesta "viaggio previsto?" (_lib/tripAlerts.js, al massimo una ogni
  *   3 ore e nessuna se un viaggio previsto e' gia' attivo).
+ * - 0.27.0 (2026-10-12): "geofence_enter" annulla il viaggio previsto
+ *   ancora attivo (tripExpectedUntil) e manda al watch la push "trip_mode"
+ *   con until "0"; ignorato se l'ingresso e' piu' vecchio di 10 minuti
+ *   (evento consegnato in ritardo). Richiesta utente.
  */
 const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
@@ -230,7 +234,7 @@ const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 const { checkBatteryAlerts } = require("./_lib/batteryAlerts.js");
-const { maybeSendLongTripAlert } = require("./_lib/tripAlerts.js");
+const { maybeSendLongTripAlert, clearTripOnZoneEnter } = require("./_lib/tripAlerts.js");
 const { childTopic } = require("./_lib/fcmTopics.js");
 
 const VALID_TYPES = new Set(["sos", "geofence_enter", "geofence_exit", "location_request"]);
@@ -515,6 +519,12 @@ module.exports = wrapHandler(async (req, res) => {
   });
   // v0.20.0: satelliti dell'ultimo tentativo, fuori dalla guardia di freschezza.
   if (gnss) await deviceRef.set({ gnss }, { merge: true });
+
+  // v0.27.0: entrando in una zona il "viaggio previsto" finisce (richiesta
+  // utente 2026-10-12). Usa i dati letti prima della scrittura.
+  if (type === "geofence_enter") {
+    await clearTripOnZoneEnter(deviceRef, deviceSnapBefore.data(), ts.toMillis());
+  }
 
   if (typeof battery === "number" && updatedCurrentState) {
     await checkBatteryAlerts(db, deviceRef, childId, battery, charging ?? null, deviceSnapBefore.data());

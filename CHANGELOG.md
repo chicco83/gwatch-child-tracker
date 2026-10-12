@@ -7,6 +7,21 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.1] - 2026-10-12
+
+### Changed
+- **Il viaggio previsto finisce entrando in una zona** (richiesta utente;
+  backend `trigger-event.js` v0.27.0, `_lib/tripAlerts.js` v0.2.0, nessuna
+  modifica alle app). Un `geofence_enter` (qualunque zona) toglie
+  `tripExpectedUntil` dal device e manda al watch la push `trip_mode` con
+  `until` "0": il watch torna subito alla cadenza normale. Un ingresso piu'
+  vecchio di 10 minuti (evento consegnato in ritardo dal watch) viene
+  ignorato, per non annullare un viaggio dichiarato dopo. Se la push si perde
+  il watch si riallinea alla sync di `device-config` (ogni 6 ore o alla
+  riapertura dell'app). Provato: 41 test (7 nuovi); non provato sul campo.
+- Rollback: `git revert <commit>`; il viaggio previsto torna a finire solo
+  a mano o dopo 12 ore.
+
 ## [0.103.0] - 2026-10-12
 
 ### Added
@@ -51,8 +66,8 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
   reali, in una copia fuori da Google Drive (`npm ci` fallisce con EBADF su
   Drive).
 - Le soglie (15 minuti, 10 km, 3 ore tra gli avvisi, 12 ore di durata) sono
-  scelte nostre da affinare con l'uso. Il viaggio previsto si annulla solo
-  a mano o alla scadenza (non all'arrivo in una zona).
+  scelte nostre da affinare con l'uso. Il viaggio previsto si annulla a mano,
+  alla scadenza o entrando in una zona (v0.103.1).
 - Rollback: `git revert <commit>`; il campo `tripExpectedUntil` su Firestore
   resta inerte per le versioni vecchie.
 

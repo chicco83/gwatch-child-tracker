@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.0
+**Versione contesto:** 0.103.1
 **Ultimo aggiornamento:** 2026-10-12
 
 ---
@@ -92,7 +92,7 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.39.0**, phone-app **v0.29.0**, backend `trigger-event.js` **v0.26.0**
+**v0.39.0**, phone-app **v0.29.0**, backend `trigger-event.js` **v0.27.0**
 (`parent-command.js`/`device-config.js` v0.6.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
@@ -2882,3 +2882,16 @@ CHANGELOG.md  Storico versioni
   test, endpoint caricati in una copia fuori da Drive perche' `npm ci` su
   Drive fallisce con EBADF); app Android non compilate. Rollback: `git
   revert` del commit; `tripExpectedUntil` su Firestore resta inerte.
+- 2026-10-12: Richiesta utente: il viaggio previsto finisce quando il watch
+  entra in una zona. **Cambia la scelta precedente** ("nessun annullamento
+  automatico all'arrivo in una zona"). Fatto sul backend (trigger-event
+  v0.27.0, tripAlerts v0.2.0), non sulle app: un geofence_enter toglie
+  tripExpectedUntil dal device (e' la fonte che device-config rimanda al
+  watch, quindi annullare solo sul watch non basterebbe) e manda la push
+  trip_mode con until "0"; guardia di 10 minuti sull'eta' dell'evento perche'
+  un ingresso consegnato in ritardo dal watch (offline per ore) non annulli
+  un viaggio dichiarato dopo. Vale per QUALUNQUE zona, anche di passaggio
+  (es. una zona sul percorso): nel dubbio il watch torna al tracking
+  normale, che e' la scelta prudente per un bambino. Nessun avviso al
+  genitore alla fine del viaggio previsto (non richiesto). 41 test, 7 nuovi.
+  Rollback: git revert.

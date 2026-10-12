@@ -1,6 +1,6 @@
 /**
  * _lib/tripAlerts.js
- * Versione: 0.1.0 (2026-10-12)
+ * Versione: 0.2.0 (2026-10-12)
  *
  * Avviso "viaggio lungo" al genitore. NON e' un endpoint a se' stante (limite
  * di 12 Serverless Function su Vercel Hobby, vedi header di
@@ -29,6 +29,8 @@
  *
  * Storico versioni:
  * - 0.1.0 (2026-10-12): versione iniziale.
+ * - 0.2.0 (2026-10-12): clearTripOnZoneEnter — richiesta utente: il viaggio
+ *   previsto si annulla quando il watch entra in una zona (qualunque).
  */
 const { childTopic } = require("./fcmTopics.js");
 
@@ -98,4 +100,58 @@ async function maybeSendLongTripAlert(deviceRef, childId, minutes, km, deps = {}
   }
 }
 
-module.exports = { maybeSendLongTripAlert, shouldAlert, buildPayload, COOLDOWN_MS };
+// Un ingresso in zona piu' vecchio di cosi' (evento consegnato in ritardo dal
+// watch, offline per ore) non deve annullare un viaggio dichiarato dopo.
+const STALE_ENTER_MS = 10 * 60_000;
+
+/** true se questo ingresso in zona deve annullare un viaggio previsto ancora attivo. */
+function shouldClearOnEnter(deviceData, eventMs, nowMs) {
+  return millisOf((deviceData || {}).tripExpectedUntil) > nowMs && nowMs - eventMs <= STALE_ENTER_MS;
+}
+
+/**
+ * Annulla il "viaggio previsto" quando il watch entra in una zona (richiesta
+ * utente 2026-10-12): toglie tripExpectedUntil dal device (e' la fonte che
+ * device-config rimanderebbe al watch) e manda al watch la push "trip_mode"
+ * con until "0" per tornare subito alla cadenza normale.
+ *
+ * @param {FirebaseFirestore.DocumentReference} deviceRef devices/{childId}
+ * @param {object} deviceData dati del device gia' letti dal chiamante
+ * @param {number} eventMs istante dell'ingresso (timestamp dell'evento)
+ * @param {object} [deps] iniezione per i test: { now, send, deleteValue }
+ * @returns {Promise<boolean>} true se il viaggio previsto e' stato annullato
+ */
+async function clearTripOnZoneEnter(deviceRef, deviceData, eventMs, deps = {}) {
+  try {
+    const nowMs = deps.now ? deps.now() : Date.now();
+    if (!shouldClearOnEnter(deviceData, eventMs, nowMs)) return false;
+
+    const deleteValue = deps.deleteValue ?? (() => require("firebase-admin/firestore").FieldValue.delete());
+    await deviceRef.set({ tripExpectedUntil: deleteValue() }, { merge: true });
+
+    const token = deviceData.fcmToken;
+    if (token) {
+      const send = deps.send ?? ((message) => require("firebase-admin/messaging").getMessaging().send(message));
+      try {
+        await send({ token, data: { type: "trip_mode", until: "0" }, android: { priority: "high" } });
+      } catch (e) {
+        // Il watch si riallinea comunque alla prossima sync di device-config.
+        console.error(`clearTripOnZoneEnter: push fallita (childId=${deviceRef.id})`, e);
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error(`clearTripOnZoneEnter: fallita (childId=${deviceRef.id})`, e);
+    return false;
+  }
+}
+
+module.exports = {
+  maybeSendLongTripAlert,
+  clearTripOnZoneEnter,
+  shouldAlert,
+  shouldClearOnEnter,
+  buildPayload,
+  COOLDOWN_MS,
+  STALE_ENTER_MS,
+};
