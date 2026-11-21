@@ -1,6 +1,6 @@
 /**
  * GET /api/messages
- * Versione: 0.2.0
+ * Versione: 0.3.0
  *
  * Storico recente della chat, per il watch: a differenza della
  * phone-app (che legge Firestore direttamente con l'SDK client, vedi
@@ -22,14 +22,22 @@
  *   dell'invio, vedi send-message.js/parent-command.js) — necessari
  *   perche' con due genitori nella stessa conversazione "mittente
  *   parent" da solo non basta piu' a capire chi ha scritto cosa.
+ * - 0.3.0 (2026-11-21): limite 30 -> 20 messaggi e filtro sulle ultime 24
+ *   ore (timestamp >= adesso - 24h). Prima: 30 messaggi di qualunque eta'.
+ *   Perche': dal watch i messaggi vecchi non servono e ogni lettura costa
+ *   traffico LTE e letture Firestore. Rollback: git revert del commit.
  */
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { wrapHandler, errorResponse, successResponse, logError } = require("./_lib/errors.js");
 const { getAdminApp } = require("./_lib/firebase-admin");
 const { resolveDeviceId } = require("./_lib/auth");
 const { checkAndConsumeQuota } = require("./_lib/quota");
 
-const HISTORY_LIMIT = 30;
+// 0.3.0 (2026-11-21): solo gli ultimi 20 messaggi E non piu' vecchi di 24 ore
+// (prima 30 di qualunque eta': i messaggi scaduti restavano fino alla pulizia
+// notturna). Query su un solo campo (timestamp): nessun nuovo indice.
+const HISTORY_LIMIT = 20;
+const HISTORY_MAX_AGE_MS = 24 * 3_600_000;
 
 module.exports = wrapHandler(async (req, res) => {
   if (req.method !== "GET") {
@@ -56,6 +64,7 @@ module.exports = wrapHandler(async (req, res) => {
     .collection("devices")
     .doc(childId)
     .collection("messages")
+    .where("timestamp", ">=", Timestamp.fromMillis(Date.now() - HISTORY_MAX_AGE_MS))
     .orderBy("timestamp", "desc")
     .limit(HISTORY_LIMIT)
     .get();

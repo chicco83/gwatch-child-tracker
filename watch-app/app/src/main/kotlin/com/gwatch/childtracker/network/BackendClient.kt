@@ -329,20 +329,20 @@ class BackendClient {
         return executeForSuccess(request)
     }
 
-    /** Storico chat recente. Lista vuota se la chiamata fallisce. */
-    suspend fun fetchMessages(): List<ChatMessage> {
+    /** Storico chat recente (ultime 24 ore). null se la chiamata fallisce, lista vuota se non c'e' nulla. */
+    suspend fun fetchMessages(): List<ChatMessage>? {
         val request = Request.Builder()
             .url("${BackendConfig.baseUrl}/api/messages")
             .header("X-Device-Token", BackendConfig.deviceToken)
             .get()
             .build()
 
-        val responseBody = executeForBody(request) ?: return emptyList()
+        val responseBody = executeForBody(request) ?: return null
         return try {
             val arr = JSONObject(responseBody).getJSONArray("messages")
             (0 until arr.length()).map { ChatMessage.fromJson(arr.getJSONObject(it)) }
         } catch (e: Exception) {
-            emptyList()
+            null
         }
     }
 

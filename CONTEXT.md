@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.6
+**Versione contesto:** 0.103.7
 **Ultimo aggiornamento:** 2026-11-21
 
 ---
@@ -92,8 +92,8 @@ nel "Log decisioni" in fondo e in CHANGELOG.md (v0.74.0 → v0.98.0).
 
 **Branch unico di lavoro**: `claude/child-geolocation-smartwatch-dblfrv`
 (e' anche quello che Vercel deploya). Versioni correnti: watch-app
-**v0.39.0**, phone-app **v0.32.0**, backend `trigger-event.js` **v0.27.0**
-(`parent-command.js`/`device-config.js` v0.6.0),
+**v0.40.0**, phone-app **v0.32.0**, backend `trigger-event.js` **v0.27.0**
+(`parent-command.js`/`device-config.js` v0.6.0, `messages.js` v0.3.0),
 Node.js **24**. Le app Android non si compilano in queste sessioni
 (nessun SDK): build e prova le fa l'utente in Android Studio.
 
@@ -2986,3 +2986,29 @@ CHANGELOG.md  Storico versioni
   sparisce, se la schermata di Gemini non compare piu', come scende la
   batteria (56% alle 11:00 del 2026-11-21, 55% alle 11:12). Un aggiornamento
   di Google potrebbe riattivare il pacchetto dell'assistente.
+- 2026-11-21: Richiesta utente: aggiungere la risposta rapida "Mi vieni a
+  prendere?" e limitare lo storico chat sul watch (messaggi vecchi inutili,
+  niente traffico superfluo). Stato trovato: la chat sul watch scaricava a
+  OGNI apertura gli ultimi 30 messaggi di qualunque eta' (`GET /api/messages`,
+  che consuma anche la quota giornaliera e legge 30 documenti Firestore); sul
+  backend i messaggi hanno `expiresAt` = 24 ore ma sono cancellati solo dalla
+  pulizia notturna, quindi potevano restare visibili fino a circa 48 ore; in
+  piu' se il backend restituiva una lista vuota il watch non svuotava la
+  lista in memoria. Fatto: (1) watch v0.40.0 (versionCode 40): quarta risposta
+  rapida `chat_quick_reply_pickup` "Mi vieni a prendere?" (`FIXED_HEADER_ITEMS`
+  7 -> 8, che serve solo allo scorrimento automatico); (2) backend
+  `messages.js` v0.3.0: limite 30 -> 20 e filtro `timestamp >= adesso - 24h`
+  (query su un solo campo, nessun nuovo indice); (3) watch `MessageStore`
+  v0.2.0: tiene solo messaggi delle ultime 24 ore e al massimo 20, anche
+  quelli aggiunti in locale; `needsRefresh()` salta lo scaricamento se
+  l'ultimo riuscito ha meno di 5 minuti (i nuovi messaggi arrivano comunque
+  in push); `BackendClient.fetchMessages()` ora restituisce `null` se la
+  chiamata fallisce e lista vuota se non c'e' nulla, cosi' una lista vuota
+  valida svuota la schermata. Decisione di NON fare: niente cache su disco
+  dello storico (piu' complessita', e nessun vantaggio dopo 24 ore); niente
+  paginazione ("carica altri"): dal watch non serve. Trappola: la pulizia
+  notturna non basta come limite di eta', serve il filtro nella query.
+  Rollback: `git revert` del commit. Non compilato (build in Android Studio);
+  `node --check messages.js` ok, la query non e' stata provata su Firestore
+  reale. Limite noto: il backend va rilasciato (Vercel) perche' il filtro
+  lato server sia attivo; il filtro lato watch c'e' comunque.

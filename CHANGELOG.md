@@ -7,6 +7,26 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.7] - 2026-11-21
+
+### Added
+- Watch v0.40.0: risposta rapida **"Mi vieni a prendere?"** nella chat.
+
+### Changed
+- Storico chat sul watch limitato alle ultime 24 ore e a 20 messaggi (prima 30
+  di qualunque eta'): backend `messages.js` v0.3.0 con filtro
+  `timestamp >= adesso - 24h`, `MessageStore` v0.2.0 sul watch con lo stesso
+  limite anche per i messaggi locali. Perche': messaggi vecchi inutili sul
+  watch e traffico LTE superfluo.
+- La chat non riscarica lo storico se l'ultimo scaricamento riuscito ha meno di
+  5 minuti (i nuovi messaggi arrivano in push). `fetchMessages()` restituisce
+  `null` se la chiamata fallisce: una lista vuota valida ora svuota la
+  schermata (prima restavano i messaggi scaduti).
+
+### Known limitations
+- Non compilato; query non provata su Firestore reale; il filtro lato server
+  va in vigore solo dopo il deploy su Vercel. Rollback: `git revert`.
+
 ## [0.103.6] - 2026-11-21
 
 ### Changed

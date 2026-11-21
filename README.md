@@ -99,8 +99,11 @@ Firebase (piano gratuito).
 
 - **Chat**
 
-  Messaggi con il genitore tramite risposte rapide o dettatura vocale,
+  Messaggi con il genitore tramite risposte rapide ("Tutto ok", "Sto
+  arrivando", "Chiamami", "Mi vieni a prendere?") o dettatura vocale,
   senza tastiera. I messaggi in arrivo mostrano una notifica sul watch.
+  Lo storico mostra solo le ultime 24 ore (massimo 20 messaggi) e si
+  riscarica al massimo ogni 5 minuti, per non generare traffico LTE.
 
 - **Batteria**
 

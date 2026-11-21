@@ -142,9 +142,15 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit, scrollToBottom:
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
+    // v0.40.0: lo storico si scarica solo se l'ultimo scaricamento riuscito
+    // ha piu' di 5 minuti (i messaggi nuovi arrivano comunque in push) e,
+    // se riesce, sostituisce la lista anche quando e' vuota (prima restavano
+    // a schermo i messaggi gia' scaduti sul backend).
     LaunchedEffect(Unit) {
-        val history = backendClient.fetchMessages()
-        if (history.isNotEmpty()) MessageStore.replaceAll(history)
+        if (MessageStore.needsRefresh()) {
+            val history = backendClient.fetchMessages()
+            if (history != null) MessageStore.replaceAll(history)
+        }
     }
 
     // v0.6.0 (vedi storico versioni sopra): scorre automaticamente
@@ -195,6 +201,7 @@ fun ChatScreen(backendClient: BackendClient, onBack: () -> Unit, scrollToBottom:
         item { QuickReplyButton(R.string.chat_quick_reply_ok, backendClient, scope, context) }
         item { QuickReplyButton(R.string.chat_quick_reply_coming, backendClient, scope, context) }
         item { QuickReplyButton(R.string.chat_quick_reply_call_me, backendClient, scope, context) }
+        item { QuickReplyButton(R.string.chat_quick_reply_pickup, backendClient, scope, context) }
 
         // Indietro e' secondaria: piu' piccola, colore diverso, in
         // fondo alle azioni primarie (lo swipe di sistema resta la via
@@ -328,8 +335,8 @@ private fun sendChatMessage(
 }
 
 // Elementi fissi sopra lo storico nella LazyColumn di ChatScreen:
-// dettatura, 3 risposte rapide, indietro, separatore, intestazione.
-private const val FIXED_HEADER_ITEMS = 7
+// dettatura, 4 risposte rapide, indietro, separatore, intestazione.
+private const val FIXED_HEADER_ITEMS = 8
 
 // stringResourceCompat e CenteredChipLabel sono condivise da
 // MainActivity.kt (stesso package com.gwatch.childtracker.ui).

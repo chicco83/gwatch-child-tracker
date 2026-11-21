@@ -172,8 +172,8 @@ android {
         // partenza, location/LongTripWorker.kt) e "viaggio previsto" scelto dal
         // genitore: in movimento si torna alla cadenza di quando e' fermo
         // (location/TripMode.kt, LocationTrackingService.kt).
-        versionCode = 39
-        versionName = "0.39.0"
+        versionCode = 40
+        versionName = "0.40.0"
 
         buildConfigField("String", "DEVICE_TOKEN", "\"$deviceToken\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
