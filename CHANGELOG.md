@@ -7,6 +7,23 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.6] - 2026-11-21
+
+### Changed
+- Nessuna modifica al codice. Configurazione del watch via adb (documentata in
+  CONTEXT.md, "Log decisioni" del 2026-11-21): disattivati Gemini
+  (`com.google.android.wearable.assistant`), Meteo, Galleria, Registratore e le
+  watch face Bitmoji, AR Emoji e SuperFiction; calcolatrice e Galaxy Store
+  senza esecuzione in background (`appops RUN_ANY_IN_BACKGROUND ignore`). La
+  watch face e' stata cambiata a mano dall'utente in `digitalmodular`.
+- Misure `batterystats` (850 mAh in 3 giorni): radio mobile 279, CPU 99,
+  Galaxy Store 157, Play Services 88, la nostra app 18 (circa il 2%).
+
+### Known limitations
+- Effetto su lag e batteria non ancora misurato; il blocco in background della
+  calcolatrice dopo un riavvio non e' verificato. Rollback: `pm enable` per i
+  pacchetti e `appops reset` per calcolatrice e Galaxy Store.
+
 ## [0.103.5] - 2026-11-21
 
 ### Added

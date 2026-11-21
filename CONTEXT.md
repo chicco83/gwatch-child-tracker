@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.5
+**Versione contesto:** 0.103.6
 **Ultimo aggiornamento:** 2026-11-21
 
 ---
@@ -2937,3 +2937,52 @@ CHANGELOG.md  Storico versioni
   di token perso): e' una modifica all'autenticazione in produzione, da
   decidere con l'utente; oggi il token perso obbliga a creare un nuovo bambino
   con cronologia separata. Solo documentazione, nessun codice toccato.
+- 2026-11-21: Lag del watch e schermata di configurazione di Gemini che
+  compariva spesso. Analisi e interventi fatti via adb sul Galaxy Watch4 LTE
+  (SM-R895F, Wear OS 6 / Android 16, 1,3 GB di RAM, `adb pair/connect` con il
+  debug Wi-Fi), NESSUN codice del repo toccato. Verifiche: (1) la nostra app
+  non avvia mai l'assistente: l'unico punto e' il pulsante di dettatura della
+  chat (`RecognizerIntent.ACTION_RECOGNIZE_SPEECH`, `ChatScreen.kt`), che parte
+  solo al tocco; nessun uso di `SpeechRecognizer`, `RECORD_AUDIO` o Gemini.
+  (2) Il pacchetto dell'assistente sul watch e'
+  `com.google.android.wearable.assistant` (v1.38, aggiornato il 2026-09-17),
+  attivo con 61 MB di RAM. (3) RAM: 1,09 GB usati su 1,3 GB gia' 5 minuti dopo
+  il boot (349 MB del kernel, ZRAM 350 MB, sistema "low-ram"); maggiori:
+  `system` 126 MB, Samsung sysui 93, Google Play Services 69, watch face
+  animata `livewallpaper` 40, Play Store in background 34. La nostra app non e'
+  tra i primi. (4) `dumpsys batterystats --charged`, 850 mAh in 3 giorni:
+  radio mobile 279, CPU 99, wakelock 38, sensori 15, schermo 12. Per app:
+  Galaxy Store (`com.sec.android.app.samsungapps`) 157 mAh (93 in background,
+  56 "cached"), Google Play Services 88, sistema (UID 1000) 54, la nostra app
+  (`com.gwatch.childtracker`) 18 mAh, circa il 2%, di cui 12,8 come servizio
+  in primo piano. Conclusione: il consumo non e' della nostra app; il costo
+  vero e' la radio LTE.
+  Interventi sul watch (tutti reversibili, non nel repo):
+  * Disattivati con `pm disable-user --user 0`: `com.google.android.wearable.assistant`
+    (Gemini), `com.samsung.android.watch.weather`, `com.samsung.android.gallery.watch`,
+    `com.samsung.android.wear.voicerecorder`, `com.samsung.android.watch.watchface.bitmoji`,
+    `...watchface.aremoji`, `...watchface.superfiction`.
+  * Calcolatrice (`com.samsung.android.wear.calculator`): NON disattivata, deve
+    restare usabile; impostati `appops RUN_IN_BACKGROUND` e
+    `RUN_ANY_IN_BACKGROUND` su `ignore` e standby bucket `restricted`, cosi'
+    non parte da sola. Provata l'apertura manuale: funziona. Non verificato
+    che dopo un riavvio non si avvii da sola.
+  * Galaxy Store: stessi due `appops` su `ignore`; `set-standby-bucket
+    restricted` non ha avuto effetto (il bucket risulta 5, esente), il blocco
+    in background invece e' attivo e il processo non gira. Effetto: gli
+    aggiornamenti delle app Samsung non partono da soli, vanno fatti aprendo
+    lo store a mano.
+  * Watch face: era `livewallpaper` (animata); l'utente l'ha cambiata a mano in
+    `digitalmodular` (verificato con `dumpsys wallpaper`). Via adb non c'e' un
+    modo affidabile per cambiarla.
+  Dettatura della chat dopo la disattivazione di Gemini: `RECOGNIZE_SPEECH`
+  resta servito da `com.google.android.tts` e da `honeyboard RemoteInputActivity`
+  (verificato con `query-activities`), ma il pulsante NON e' stato provato dal
+  vivo. Decisione: NON tolto il pulsante di dettatura dall'app (e' una funzione
+  usata; da valutare solo se Gemini risultasse la causa e tornasse a comparire).
+  Rollback: `adb -s <ip>:<porta> shell pm enable <pacchetto>` per ogni
+  pacchetto disattivato; `adb shell cmd appops reset <pacchetto>` per
+  calcolatrice e Galaxy Store. Da osservare nelle ore successive: se il lag
+  sparisce, se la schermata di Gemini non compare piu', come scende la
+  batteria (56% alle 11:00 del 2026-11-21, 55% alle 11:12). Un aggiornamento
+  di Google potrebbe riattivare il pacchetto dell'assistente.
