@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.7
+**Versione contesto:** 0.103.8
 **Ultimo aggiornamento:** 2026-11-21
 
 ---
@@ -3012,3 +3012,18 @@ CHANGELOG.md  Storico versioni
   `node --check messages.js` ok, la query non e' stata provata su Firestore
   reale. Limite noto: il backend va rilasciato (Vercel) perche' il filtro
   lato server sia attivo; il filtro lato watch c'e' comunque.
+- 2026-11-21: Mail "Run failed: Avviso watch muto" del 2026-11-20 alle 22:38
+  (ora italiana). Verificato: il workflow `watch-silence-cron.yml` e' fallito
+  in 33 secondi alle 21:37 UTC perche' `/api/watch-silence` e' andata in
+  timeout (30 s, errore unico nei log di Vercel); `gh run list`: 1 fallimento
+  su 30 esecuzioni, le due successive riuscite. Causa probabile (non provata):
+  avvio a freddo di Firestore. Fatto: la chiamata `curl` del workflow ora fa
+  `--retry 2 --retry-delay 5 --retry-all-errors --max-time 45`. Scoperta a
+  parte: in 25 giorni (dal 2026-10-27) ci sono state solo 100 esecuzioni
+  pianificate, circa 4 al giorno (una ogni 6 ore circa) invece di una ogni 30
+  minuti: GitHub Actions ritarda o salta i cron nei periodi di carico. Quindi
+  l'avviso "watch muto" in pratica arriva molto piu' tardi di "60-90 minuti".
+  Non risolto: servirebbe un altro scheduler (per esempio un cron esterno
+  gratuito che chiami l'endpoint, oppure un controllo lato phone-app); da
+  decidere con l'utente, non fatto. Nessun codice dell'app toccato.
+  Rollback: `git revert` del commit.

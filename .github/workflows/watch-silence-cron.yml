@@ -23,7 +23,13 @@ jobs:
     steps:
       - name: Chiama /api/watch-silence
         run: |
-          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+          # 0.1.1 (2026-11-21): --retry 2 --retry-all-errors --max-time 45.
+          # Il 20/11 alle 21:37 UTC la funzione e' andata in timeout (30 s) una
+          # sola volta su 30 esecuzioni (probabile avvio a freddo di
+          # Firestore) e il workflow e' fallito con una mail. Il controllo e'
+          # di sola lettura salvo la push, quindi ripeterlo e' sicuro.
+          status=$(curl -s --retry 2 --retry-delay 5 --retry-all-errors --max-time 45 \
+            -o /tmp/response.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             https://gwatch-child-tracker.vercel.app/api/watch-silence)
           echo "HTTP $status"

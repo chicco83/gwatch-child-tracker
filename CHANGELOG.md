@@ -7,6 +7,20 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.8] - 2026-11-21
+
+### Fixed
+- Workflow `watch-silence-cron.yml` v0.1.1: la chiamata a `/api/watch-silence`
+  ora ripete fino a 2 volte (`--retry 2 --retry-all-errors`, `--max-time 45`).
+  Il 2026-11-20 alle 21:37 UTC la funzione e' andata in timeout (30 s) una volta
+  su 30 esecuzioni e il workflow ha mandato la mail di errore.
+
+### Known limitations
+- GitHub Actions esegue il cron circa 4 volte al giorno invece di una ogni 30
+  minuti (100 esecuzioni in 25 giorni): l'avviso "watch muto" puo' arrivare con
+  ore di ritardo. Non risolto, serve un altro scheduler (da decidere).
+
+
 ## [0.103.7] - 2026-11-21
 
 ### Added
