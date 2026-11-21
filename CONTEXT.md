@@ -5,8 +5,8 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.4
-**Ultimo aggiornamento:** 2026-10-12
+**Versione contesto:** 0.103.5
+**Ultimo aggiornamento:** 2026-11-21
 
 ---
 
@@ -2920,3 +2920,20 @@ CHANGELOG.md  Storico versioni
   senza risposta resta in sospeso finche' MapScreen e' in composizione, quindi
   se il watch si rifa' vivo ore dopo la prima posizione nuova sposta la mappa.
   Accettato dall'utente. Non compilato.
+- 2026-11-21: Richiesta utente: poter fare un factory reset del watch e
+  ripristinare senza rifare l'associazione dal telefono (eSIM inclusa).
+  Analisi: (1) la eSIM non si puo' salvare ne' ripristinare, il profilo sta
+  nel chip sicuro (eUICC) e le chiavi non escono; dopo un reset che la
+  cancella serve un nuovo QR dell'operatore (non verificato sul Watch4 se il
+  reset la cancella). (2) Per l'app non c'e' nessuna "associazione" sul watch:
+  l'identita' e' `device.token` scritto nell'APK da `watch-app/local.properties`
+  (BuildConfig), il backend lo riconosce per hash in
+  `devices/{childId}.deviceTokenHash`. Reinstallando un APK con lo stesso token
+  il watch e' lo stesso bambino. Si perde solo lo stato locale
+  (`allowBackup="false"`), che si ricostruisce da solo; i permessi e
+  "Migliora precisione" vanno rimessi a mano. Documentato in
+  `RUNBOOK_RESET_WATCH.md`. Decisione: NON implementata l'azione
+  `rotate_child_token` (rigenerare il token di un bambino esistente nel caso
+  di token perso): e' una modifica all'autenticazione in produzione, da
+  decidere con l'utente; oggi il token perso obbliga a creare un nuovo bambino
+  con cronologia separata. Solo documentazione, nessun codice toccato.

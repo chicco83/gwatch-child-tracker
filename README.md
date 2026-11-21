@@ -132,6 +132,16 @@ Firebase (piano gratuito).
   Quando il genitore apre sul telefono una posizione inviata dal
   bambino (SOS o "Invia posizione"), sul watch arriva una notifica.
 
+- **Reset di fabbrica senza nuova associazione**
+
+  L'identità del watch è il `device.token` scritto nell'APK in fase di
+  build (`watch-app/local.properties`, fuori da git): reinstallando l'app
+  con lo stesso token dopo il reset il watch è di nuovo lo stesso
+  bambino, senza passare dal telefono. Prima del reset salvare in privato
+  `local.properties` (e l'APK, che contiene il token). La eSIM non è
+  copiabile: serve un nuovo QR dell'operatore. Procedura in
+  `RUNBOOK_RESET_WATCH.md`.
+
 ### Telefono (app Android del genitore)
 
 - **Accesso e famiglie**

@@ -7,6 +7,31 @@ versionamento secondo [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [0.103.5] - 2026-11-21
+
+### Added
+- **`RUNBOOK_RESET_WATCH.md`**: procedura per fare il reset di fabbrica del
+  watch e rimettere in funzione l'app senza nuova associazione. Verificato nel
+  codice: l'identità del watch è `device.token`, iniettato nell'APK da
+  `watch-app/local.properties` (`BuildConfig.DEVICE_TOKEN`); il backend lo
+  riconosce per hash SHA-256 (`auth.js`, `resolveDeviceId`). Reinstallando
+  un APK con lo stesso token il watch resta lo stesso bambino. Elenca cosa
+  salvare prima del reset, cosa si perde (`allowBackup="false"`: punti non
+  inviati e stato locale, tutto ricostruibile), i passi dopo il reset e il
+  caso token perso.
+- README: voce "Reset di fabbrica senza nuova associazione" nelle funzioni
+  del watch.
+
+### Known limitations
+- Se il token si perde non si può rileggere (su Firestore c'è solo l'hash) e
+  nel backend non esiste un'azione per rigenerarlo: `create_child` crea un
+  bambino nuovo con cronologia separata. Azione `rotate_child_token`
+  possibile ma non implementata (modifica all'autenticazione, da decidere).
+- La eSIM non è salvabile né ripristinabile da backup (profilo nel chip
+  eUICC): dopo un reset che la cancella serve un nuovo QR dell'operatore.
+  Non verificato sul Watch4 se il reset la cancella.
+- Solo documentazione: nessuna modifica al codice. Rollback: `git revert <commit>`.
+
 ## [0.103.4] - 2026-10-12
 
 ### Changed
