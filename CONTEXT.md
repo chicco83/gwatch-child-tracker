@@ -5,7 +5,7 @@
 > prese. Non è uno storico (per quello c'è CHANGELOG.md), è una fotografia
 > del "dove siamo e perché".
 
-**Versione contesto:** 0.103.8
+**Versione contesto:** 0.103.9
 **Ultimo aggiornamento:** 2026-11-21
 
 ---
@@ -3027,3 +3027,20 @@ CHANGELOG.md  Storico versioni
   gratuito che chiami l'endpoint, oppure un controllo lato phone-app); da
   decidere con l'utente, non fatto. Nessun codice dell'app toccato.
   Rollback: `git revert` del commit.
+- 2026-11-21: Indagine su perche' il cron GitHub "Avviso watch muto"
+  (`*/30 * * * *`) gira solo circa 4 volte al giorno. Dati misurati con `gh run
+  list` sulle ultime 100 esecuzioni (dal 2026-10-27): 3-5 esecuzioni al
+  giorno, TUTTE di tipo `schedule` sul branch predefinito
+  `claude/child-geolocation-smartwatch-dblfrv`; intervallo tra due esecuzioni:
+  minimo 182 minuti, mediana 378, massimo 634 minuti, nessuna a meno di 45
+  minuti. Anche la pulizia notturna, programmata alle 03:00 UTC, parte ogni
+  giorno fra le 09:35 e le 11:17 UTC, cioe' con 6-8 ore di ritardo. Il
+  repository e' pubblico (minuti Actions illimitati, quindi non e' un limite di
+  quota), i workflow sono attivi e il file del cron non e' cambiato dal
+  2026-09-24. Conclusione: non e' un errore nostro ne' una configurazione
+  sbagliata, e' il comportamento del programmatore di GitHub, che per i cron
+  e' "best effort": ritarda e scarta le esecuzioni nei periodi di carico, in
+  particolare quelle molto frequenti. Non si risolve dal nostro lato (non
+  provato: spostare i minuti a valori diversi da :00/:30, vantaggio incerto).
+  Le alternative valutate sono nell'elenco della risposta all'utente e NON
+  sono implementate; decisione da prendere con l'utente.
